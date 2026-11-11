@@ -1,0 +1,28 @@
+{
+  "name": "سوبر مايند — الحساب الذهني وأسئلة الذكاء",
+  "short_name": "SUPER MIND",
+  "description": "منصة الحساب الذهني الذكية وتنمية التفكير والذكاء — تدريب الأستاذ قتادة كريم",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#4f46e5",
+  "orientation": "any",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "games", "productivity"]
+}
