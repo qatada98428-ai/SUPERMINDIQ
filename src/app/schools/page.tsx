@@ -11,7 +11,6 @@ import {
   ShieldCheck,
   MapPin,
   Award,
-  Phone,
 } from "lucide-react";
 import {
   SCHOOLS_DIRECTORY,
@@ -55,7 +54,7 @@ export default function SchoolsDirectoryPage() {
               className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2"
             >
               <MessageCircle className="w-4 h-4 text-slate-950" />
-              <span>أدرج مدرستك في المنصة (الاشتراك السنوي: 75,000 د.ع)</span>
+              <span>أدرج مدرستك وافتح مميزات المنصة (الاشتراك السنوي: 150,000 د.ع)</span>
             </a>
 
             <Link
@@ -171,11 +170,6 @@ export default function SchoolsDirectoryPage() {
                       <span>{school.address}</span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-mono font-bold">
-                      <Phone className="w-3.5 h-3.5 shrink-0" />
-                      <span>هاتف المدرسة: {school.whatsapp.replace("+964", "0")}</span>
-                    </div>
-
                     <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed pt-1">
                       {school.bio}
                     </p>
@@ -191,7 +185,7 @@ export default function SchoolsDirectoryPage() {
                     className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm"
                   >
                     <MessageCircle className="w-3.5 h-3.5" />
-                    <span>تواصل مع المدرسة عبر واتساب ({school.whatsapp.replace("+964", "0")})</span>
+                    <span>اضغط للتواصل مع {school.name}</span>
                   </a>
                 </div>
               </div>

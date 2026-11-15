@@ -17,10 +17,17 @@ import {
   ChevronRight,
   Settings2,
   Share2,
+  Volume2,
+  ArrowRight,
 } from "lucide-react";
 import {
   generateFlashAnzanSeries,
   playSoundEffect,
+  speakSorobanNumber,
+  speakSorobanCountdown,
+  warmupSpeechEngine,
+  numberToArabicWords,
+  numberToEnglishWords,
 } from "@/lib/soroban-engine";
 import { soundSynth } from "@/lib/audio-synthesizer";
 import { getWhatsAppLink } from "@/lib/constants";
@@ -127,7 +134,9 @@ export default function TeamsBattlePage() {
   const [teamCount, setTeamCount] = useState<2 | 3 | 4 | 5>(2);
   const [teams, setTeams] = useState<Team[]>(DEFAULT_TEAMS.slice(0, 2));
   const [digitsCount, setDigitsCount] = useState<1 | 2 | 3>(1);
-  const [rulesLevel, setRulesLevel] = useState<"simple" | "complex_5" | "complex_10" | "all">("complex_5");
+  const [rulesLevel, setRulesLevel] = useState<"simple" | "complex_5" | "complex_10" | "all">("simple");
+  const [targetRules, setTargetRules] = useState<number[]>([]);
+  const [allowSubtraction, setAllowSubtraction] = useState<boolean>(true);
   const [termsCount, setTermsCount] = useState<number>(4);
   const [showDelayMs, setShowDelayMs] = useState<number>(700); // 0.7s Arabic sweet-spot
   const [totalRounds, setTotalRounds] = useState<number>(5);
@@ -151,20 +160,14 @@ export default function TeamsBattlePage() {
 
   // Reaction Timer
   const turnStartTimeRef = useRef<number>(0);
+  const arenaCardRef = useRef<HTMLDivElement | null>(null);
 
   // Speech Voice
   const speakNumber = useCallback(
     (num: number) => {
-      if (voiceMode === "off" || typeof window === "undefined" || !("speechSynthesis" in window)) return;
-      window.speechSynthesis.cancel();
-      const textToSpeak = voiceMode === "arabic" ? (num > 0 ? `${num}` : `ناقص ${Math.abs(num)}`) : `${num}`;
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      utterance.lang = voiceMode === "arabic" ? "ar-SA" : "en-US";
-      utterance.rate = voiceMode === "arabic" ? 1.65 : 1.4;
-      utterance.pitch = 1.05;
-      window.speechSynthesis.speak(utterance);
+      speakSorobanNumber(num, voiceMode, showDelayMs);
     },
-    [voiceMode]
+    [voiceMode, showDelayMs]
   );
 
   // Initialize or reset teams according to teamCount
@@ -188,6 +191,7 @@ export default function TeamsBattlePage() {
 
   // Start Tournament
   const startTournament = () => {
+    warmupSpeechEngine();
     // Reset tournament stats
     setTeams((prev) =>
       prev.map((t) => ({
@@ -206,6 +210,7 @@ export default function TeamsBattlePage() {
 
   // Prepare and launch turn for team
   const startTurnForTeam = (teamIdx: number, roundNum: number) => {
+    warmupSpeechEngine();
     setActiveTeamIndex(teamIdx);
     setCurrentRound(roundNum);
     setUserAnswer("");
@@ -218,8 +223,9 @@ export default function TeamsBattlePage() {
       digitsCount,
       showDelayMs,
       clearDelayMs: 250,
-      allowSubtraction: true,
-      level: rulesLevel === "all" ? (Math.random() < 0.5 ? "complex_5" : "complex_10") : rulesLevel,
+      allowSubtraction,
+      level: rulesLevel === "all" ? "mixed" : rulesLevel,
+      targetRules: targetRules.length > 0 ? targetRules : undefined,
       numeralSystem: "western",
     });
 
@@ -230,60 +236,72 @@ export default function TeamsBattlePage() {
     // Start 3.. 2.. 1 countdown
     setStage("countdown");
     setCountdownNum(3);
+
+    setTimeout(() => {
+      arenaCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
   };
 
   // Countdown timer effect
   useEffect(() => {
     if (stage !== "countdown") return;
 
-    soundSynth.playFlashBeep(0.18);
+    speakSorobanCountdown(3, voiceMode);
+    let c = 3;
     const timer = setInterval(() => {
-      setCountdownNum((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          // Launch Flash Sequence
-          setStage("flashing");
-          return 0;
-        }
-        soundSynth.playFlashBeep(0.2);
-        return prev - 1;
-      });
-    }, 800);
+      c -= 1;
+      if (c <= 0) {
+        clearInterval(timer);
+        setCountdownNum(0);
+        setStage("flashing");
+      } else {
+        setCountdownNum(c);
+        speakSorobanCountdown(c, voiceMode);
+      }
+    }, 850);
 
     return () => clearInterval(timer);
-  }, [stage]);
+  }, [stage, voiceMode]);
 
   // Flash Animation Sequence Loop
   useEffect(() => {
     if (stage !== "flashing" || currentSeries.length === 0) return;
 
-    let index = 0;
-    setCurrentFlashIdx(0);
-    setIsFlashVisible(true);
-    speakNumber(currentSeries[0]);
-    playSoundEffect("beep");
+    const timers: NodeJS.Timeout[] = [];
+    let delayAccumulator = 120;
+    const clearGapMs = Math.min(240, Math.max(120, Math.round(showDelayMs * 0.3)));
 
-    const flashInterval = setInterval(() => {
+    currentSeries.forEach((num, idx) => {
+      // Show number & speak immediately
+      const showTimer = setTimeout(() => {
+        setCurrentFlashIdx(idx);
+        setIsFlashVisible(true);
+        speakNumber(num);
+      }, delayAccumulator);
+      timers.push(showTimer);
+
+      delayAccumulator += showDelayMs;
+
+      // Blank interval between numbers
+      const blankTimer = setTimeout(() => {
+        setIsFlashVisible(false);
+      }, delayAccumulator);
+      timers.push(blankTimer);
+
+      delayAccumulator += clearGapMs;
+    });
+
+    // Move to answering stage
+    const finishTimer = setTimeout(() => {
       setIsFlashVisible(false);
+      turnStartTimeRef.current = Date.now();
+      setStage("answering");
+    }, delayAccumulator);
+    timers.push(finishTimer);
 
-      setTimeout(() => {
-        index++;
-        if (index < currentSeries.length) {
-          setCurrentFlashIdx(index);
-          setIsFlashVisible(true);
-          speakNumber(currentSeries[index]);
-          playSoundEffect("beep");
-        } else {
-          // Finished flashing series -> move to answering stage
-          clearInterval(flashInterval);
-          setIsFlashVisible(false);
-          turnStartTimeRef.current = Date.now();
-          setStage("answering");
-        }
-      }, 250); // Clear gap between numbers
-    }, showDelayMs + 250);
-
-    return () => clearInterval(flashInterval);
+    return () => {
+      timers.forEach((t) => clearTimeout(t));
+    };
   }, [stage, currentSeries, showDelayMs, speakNumber]);
 
   // Submit Answer
@@ -382,15 +400,24 @@ export default function TeamsBattlePage() {
           </p>
         </div>
 
-        {stage !== "setup" && (
-          <button
-            onClick={() => setStage("setup")}
-            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-2 transition-colors self-end sm:self-auto"
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          {stage !== "setup" && (
+            <button
+              onClick={() => setStage("setup")}
+              className="px-4 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-xs flex items-center gap-2 transition-colors"
+            >
+              <Settings2 className="w-4 h-4" />
+              <span>إعدادات البطولة</span>
+            </button>
+          )}
+          <Link
+            href="/mental-arithmetic"
+            className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition-colors"
           >
-            <Settings2 className="w-4 h-4" />
-            <span>إعدادات البطولة</span>
-          </button>
-        )}
+            <ArrowRight className="w-4 h-4" />
+            <span>رجوع</span>
+          </Link>
+        </div>
       </div>
 
       {/* ========================================================================= */}
@@ -500,18 +527,88 @@ export default function TeamsBattlePage() {
 
               {/* Rules Level */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-300 block">قواعد السوروبان:</label>
+                <label className="text-xs font-bold text-slate-300 block">قواعد السوروبان (الافتراضي: بسيط):</label>
                 <select
                   value={rulesLevel}
-                  onChange={(e) => setRulesLevel(e.target.value as "simple" | "complex_5" | "complex_10" | "all")}
+                  onChange={(e) => {
+                    setRulesLevel(e.target.value as "simple" | "complex_5" | "complex_10" | "all");
+                    setTargetRules([]);
+                  }}
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-white text-xs font-bold focus:outline-none focus:border-amber-400 text-right"
                 >
-                  <option value="simple">بسيط مباشر (بدون أصدقاء)</option>
-                  <option value="complex_5">أصدقاء الـ 5 (المساعد الصغير ±)</option>
-                  <option value="complex_10">أصدقاء الـ 10 (المساعد الكبير ±)</option>
-                  <option value="all">شامل مكس (أصدقاء 5 و 10 معاً)</option>
+                  <option value="simple">✅ الجمع والطرح البسيط (بدون أصدقاء)</option>
+                  <option value="complex_5">5️⃣ أصدقاء الـ 5 (المساعد الصغير ±)</option>
+                  <option value="complex_10">🔟 أصدقاء الـ 10 (المساعد الكبير ±)</option>
+                  <option value="all">🔀 شامل مكس (أصدقاء 5 و 10 معاً)</option>
                 </select>
               </div>
+
+              {/* Operations Type (Addition & Subtraction vs Addition Only) */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-300 block">نوع العمليات:</label>
+                <div className="grid grid-cols-2 gap-1 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setAllowSubtraction(true)}
+                    className={`py-2 rounded-lg text-xs font-bold transition-all ${
+                      allowSubtraction ? "bg-amber-400 text-slate-950 font-black shadow-sm" : "text-slate-400"
+                    }`}
+                  >
+                    ➕➖ جمع وطرح
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAllowSubtraction(false)}
+                    className={`py-2 rounded-lg text-xs font-bold transition-all ${
+                      !allowSubtraction ? "bg-amber-400 text-slate-950 font-black shadow-sm" : "text-slate-400"
+                    }`}
+                  >
+                    ➕ جمع فقط
+                  </button>
+                </div>
+              </div>
+
+              {/* Optional sub-rule picker if trainer selects complex_5 or complex_10 */}
+              {(rulesLevel === "complex_5" || rulesLevel === "complex_10") && (
+                <div className="col-span-full p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                    <span>تخصيص القاعدة الفرعية للمدرب (اختياري — اتركه للكل):</span>
+                    <button
+                      type="button"
+                      onClick={() => setTargetRules([])}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-black ${
+                        targetRules.length === 0
+                          ? "bg-amber-400 text-slate-950"
+                          : "bg-slate-800 text-slate-300"
+                      }`}
+                    >
+                      الكل
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(rulesLevel === "complex_5" ? [1, 2, 3, 4] : [1, 2, 3, 4, 5, 6, 7, 8, 9]).map(
+                      (r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() =>
+                            setTargetRules((prev) =>
+                              prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
+                            )
+                          }
+                          className={`px-3 py-1.5 rounded-lg text-xs font-black border transition-all ${
+                            targetRules.includes(r)
+                              ? "bg-amber-400 text-slate-950 border-amber-300"
+                              : "bg-slate-800 text-slate-300 border-slate-700"
+                          }`}
+                        >
+                          قاعدة {r} (±{r})
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Numbers Count per turn */}
               <div className="space-y-2">
@@ -635,132 +732,135 @@ export default function TeamsBattlePage() {
       {/* 2. LIVE BATTLE ARENA (شاشة السباق والتحدي المباشر)                       */}
       {/* ========================================================================= */}
       {(stage === "countdown" || stage === "flashing" || stage === "answering" || stage === "feedback") && (
-        <div className="space-y-8 animate-in fade-in duration-300">
-          {/* Live Race Track (لوحة سباق الفرق) */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xl space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
-                <span className="text-xs sm:text-sm font-bold text-slate-700">
-                  الجولة {currentRound} من {totalRounds}
-                </span>
-              </div>
-
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">
-                <Trophy className="w-4 h-4 text-amber-500" />
-                <span>مسار سباق الفرق نحو الكأس الذهبي</span>
-              </div>
+        <div ref={arenaCardRef} className="space-y-6 animate-in fade-in duration-300">
+          {/* Compact Top Status Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 px-5 py-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <span className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
+              <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100">
+                الجولة {currentRound} من {totalRounds}
+              </span>
+              <span className="text-slate-300 dark:text-slate-700">|</span>
+              <span className="text-xs font-bold text-brand-600 dark:text-brand-400">
+                {termsCount} أرقام • {digitsCount === 1 ? "آحاد" : digitsCount === 2 ? "عشرات" : "مئات"}
+              </span>
             </div>
 
-            {/* Race Lanes */}
-            <div className="space-y-4">
-              {teams.map((tm, idx) => {
-                const isActive = idx === activeTeamIndex;
-                const maxPossibleScore = totalRounds * 150;
-                const progressPct = Math.min(100, Math.round((tm.score / maxPossibleScore) * 100));
-                const isLeader = rankedTeams[0]?.id === tm.id && tm.score > 0;
-
-                return (
-                  <div
-                    key={tm.id}
-                    className={`p-4 rounded-2xl border transition-all duration-300 ${
-                      isActive
-                        ? `${tm.borderClass} ${tm.bgLightClass} ring-4 ring-brand-500/10 shadow-md`
-                        : "border-slate-200 bg-slate-50/70"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-2xl">{tm.icon}</span>
-                        <div>
-                          <span className="font-black text-sm sm:text-base text-slate-900 flex items-center gap-1.5">
-                            {tm.name}
-                            {isLeader && (
-                              <span className="text-[10px] bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full font-black flex items-center gap-1">
-                                <Crown className="w-3 h-3 fill-slate-950" />
-                                المتصدر
-                              </span>
-                            )}
-                          </span>
-                          <span className="text-xs text-slate-500">
-                            صحيح: {tm.correctCount} / {tm.totalAttempts}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <span className="font-mono font-black text-lg sm:text-2xl text-slate-900">
-                          {tm.score}
-                        </span>
-                        <span className="text-[10px] text-slate-500 block">نقطة</span>
-                      </div>
-                    </div>
-
-                    {/* Progress Bar Track */}
-                    <div className="relative w-full h-3.5 bg-slate-200 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full bg-gradient-to-r ${tm.gradientClass} transition-all duration-700 rounded-full`}
-                        style={{ width: `${Math.max(5, progressPct)}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+            {/* Mini Team Score Pills */}
+            <div className="flex flex-wrap items-center gap-2">
+              {teams.map((tm, idx) => (
+                <div
+                  key={tm.id}
+                  className={`px-3 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all ${
+                    idx === activeTeamIndex
+                      ? `${tm.badgeClass} ring-2 ring-amber-400 scale-105 shadow-sm`
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                  }`}
+                >
+                  <span>{tm.icon}</span>
+                  <span className="hidden sm:inline">{tm.name}</span>
+                  <span className="font-mono">({tm.score})</span>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Active Turn Stage Card */}
+          {/* Active Turn Stage Card — High-Contrast Flash Anzan Style Screen */}
           <div
-            className={`relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br ${activeTeam.gradientClass} text-white p-8 sm:p-14 shadow-2xl text-center space-y-8`}
+            className="relative overflow-hidden rounded-[2.5rem] bg-slate-950 text-white p-6 sm:p-12 shadow-2xl text-center space-y-6 border-4 border-slate-800 min-h-[400px] sm:min-h-[460px] flex flex-col items-center justify-between"
           >
+            {/* Ambient Glow */}
+            <div className="absolute top-0 right-1/4 w-96 h-96 bg-brand-600/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
             {/* Active Team Header */}
-            <div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-black/25 backdrop-blur-md border border-white/20 text-white font-black text-sm sm:text-base shadow-lg">
-              <span className="text-xl">{activeTeam.icon}</span>
-              <span>دور: {activeTeam.name}</span>
-              <span className="text-amber-300 font-mono">({activeTeam.score} نقطة)</span>
+            <div className="relative z-10 w-full flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-4">
+              <div className={`inline-flex items-center gap-2.5 px-5 py-2 rounded-2xl bg-gradient-to-r ${activeTeam.gradientClass} text-white font-black text-sm sm:text-base shadow-lg border border-white/20`}>
+                <span className="text-xl">{activeTeam.icon}</span>
+                <span>دور: {activeTeam.name}</span>
+                <span className="text-amber-200 font-mono text-xs sm:text-sm">({activeTeam.score} نقطة)</span>
+              </div>
+
+              {stage === "flashing" && (
+                <div className="bg-slate-900/90 px-4 py-1.5 rounded-xl border border-slate-700 font-mono text-emerald-400 font-black text-sm">
+                  {(currentFlashIdx >= 0 ? currentFlashIdx + 1 : 1)} / {currentSeries.length}
+                </div>
+              )}
             </div>
 
             {/* Stage: Countdown */}
             {stage === "countdown" && (
-              <div className="py-12 space-y-4 animate-in zoom-in-75 duration-300">
-                <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-white/20 backdrop-blur-md border-4 border-white/60 mx-auto flex items-center justify-center">
-                  <span className="text-6xl sm:text-7xl font-black font-mono text-white animate-pulse">
-                    {countdownNum}
-                  </span>
+              <div className="relative z-10 py-8 space-y-4 animate-in zoom-in-75 duration-200 my-auto">
+                <div
+                  className="font-black text-amber-400 drop-shadow-[0_12px_32px_rgba(245,158,11,0.55)] select-none leading-none"
+                  style={{
+                    fontSize: "clamp(6.5rem, 28vw, 12rem)",
+                    fontFamily: "'Fredoka', 'Baloo Bhaijaan 2', 'Alexandria', sans-serif",
+                  }}
+                >
+                  {countdownNum}
                 </div>
-                <p className="text-base sm:text-lg font-bold text-white/90">
+                <p className="text-base sm:text-xl font-black text-amber-200 tracking-wide">
                   استعدوا يا أبطال... الوميض سيبدأ فوراً!
                 </p>
               </div>
             )}
 
-            {/* Stage: Flashing Numbers */}
+            {/* Stage: Flashing Numbers (HUGE & CRYSTAL CLEAR LIKE FLASH ANZAN) */}
             {stage === "flashing" && (
-              <div className="py-8 sm:py-14 space-y-6">
-                <div className="min-h-[160px] sm:min-h-[220px] flex items-center justify-center">
-                  {isFlashVisible && currentFlashIdx >= 0 && (
-                    <div className="animate-in zoom-in-50 duration-150">
-                      <span
+              <div className="relative z-10 py-4 sm:py-8 space-y-6 my-auto w-full flex flex-col items-center justify-center">
+                <div className="min-h-[200px] sm:min-h-[260px] flex flex-col items-center justify-center w-full">
+                  {isFlashVisible && currentFlashIdx >= 0 ? (
+                    <div className="animate-in zoom-in-95 fade-in duration-75 flex flex-col items-center justify-center">
+                      <div
                         dir="ltr"
-                        className="text-7xl sm:text-9xl font-black font-mono tracking-wider drop-shadow-2xl text-white"
+                        className={`font-black tracking-wider select-none leading-none px-8 sm:px-12 py-5 sm:py-6 rounded-[3rem] bg-slate-900/95 border-4 border-amber-400/50 shadow-2xl transition-all ${
+                          currentSeries[currentFlashIdx] < 0
+                            ? "text-rose-400 drop-shadow-[0_14px_35px_rgba(244,63,94,0.5)]"
+                            : "text-emerald-400 drop-shadow-[0_14px_35px_rgba(16,185,129,0.5)]"
+                        }`}
+                        style={{
+                          fontSize: "clamp(5.5rem, 25vw, 13rem)",
+                          fontFamily: "'Fredoka', 'Baloo Bhaijaan 2', 'Alexandria', sans-serif",
+                        }}
                       >
                         {currentSeries[currentFlashIdx] > 0
-                          ? currentSeries[currentFlashIdx]
-                          : `-${Math.abs(currentSeries[currentFlashIdx])}`}
-                      </span>
+                          ? `+${currentSeries[currentFlashIdx]}`
+                          : `−${Math.abs(currentSeries[currentFlashIdx])}`}
+                      </div>
+
+                      {voiceMode !== "off" && (
+                        <span className="mt-4 px-4 py-1.5 rounded-full bg-slate-800/95 border border-slate-700 text-amber-300 font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-md">
+                          <Volume2 className="w-4 h-4 text-amber-400" />
+                          <span>
+                            {voiceMode === "arabic"
+                              ? currentSeries[currentFlashIdx] > 0
+                                ? `زائد ${numberToArabicWords(Math.abs(currentSeries[currentFlashIdx]))}`
+                                : `ناقص ${numberToArabicWords(Math.abs(currentSeries[currentFlashIdx]))}`
+                              : currentSeries[currentFlashIdx] > 0
+                              ? `Plus ${numberToEnglishWords(Math.abs(currentSeries[currentFlashIdx]))}`
+                              : `Minus ${numberToEnglishWords(Math.abs(currentSeries[currentFlashIdx]))}`}
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-32">
+                      <div className="w-4 h-4 rounded-full bg-amber-400/40 animate-ping" />
                     </div>
                   )}
                 </div>
 
+                {/* Progress Dots */}
                 <div className="flex items-center justify-center gap-2">
                   {currentSeries.map((_, idx) => (
                     <div
                       key={idx}
-                      className={`h-2 rounded-full transition-all duration-200 ${
+                      className={`h-2.5 rounded-full transition-all duration-200 ${
                         idx === currentFlashIdx
-                          ? "w-8 bg-amber-300"
+                          ? "w-10 bg-amber-400 shadow-sm shadow-amber-400/50"
                           : idx < currentFlashIdx
-                          ? "w-3 bg-white/70"
+                          ? "w-3 bg-emerald-400"
                           : "w-3 bg-white/20"
                       }`}
                     />
@@ -771,13 +871,13 @@ export default function TeamsBattlePage() {
 
             {/* Stage: Answering (إدخال الحل وحساب زمن السرعة) */}
             {stage === "answering" && (
-              <div className="max-w-md mx-auto space-y-6 py-4 animate-in fade-in duration-200">
-                <div className="space-y-2">
-                  <span className="text-xs sm:text-sm font-bold text-amber-300 flex items-center justify-center gap-1.5">
-                    <Timer className="w-4 h-4 animate-spin" />
+              <div className="relative z-10 max-w-md w-full mx-auto space-y-5 py-2 my-auto animate-in fade-in duration-200">
+                <div className="space-y-1.5">
+                  <span className="text-sm sm:text-base font-black text-amber-300 flex items-center justify-center gap-1.5">
+                    <Timer className="w-5 h-5 animate-spin" />
                     <span>انتهت الأرقام! أدخل الناتج الصحيح بأسرع ما يمكن:</span>
                   </span>
-                  <p className="text-xs text-white/80">كلما أسرعت في الإجابة حصد فريقك نقاط سرعة إضافية!</p>
+                  <p className="text-xs text-slate-300">كلما أسرعت في الإجابة حصد فريقك نقاط سرعة إضافية!</p>
                 </div>
 
                 <form onSubmit={handleAnswerSubmit} className="space-y-4">
@@ -787,7 +887,7 @@ export default function TeamsBattlePage() {
                     placeholder="الناتج..."
                     value={userAnswer}
                     onChange={(e) => setUserAnswer(e.target.value)}
-                    className="w-full text-center text-4xl sm:text-5xl font-black font-mono py-4 px-6 rounded-2xl bg-white text-slate-900 border-4 border-amber-300 shadow-2xl focus:outline-none focus:ring-4 focus:ring-amber-400"
+                    className="w-full text-center text-4xl sm:text-5xl font-black font-mono py-4 px-6 rounded-2xl bg-slate-900 text-white border-4 border-amber-400 shadow-2xl focus:outline-none focus:ring-4 focus:ring-amber-400/30"
                   />
 
                   {/* Virtual Quick Keypad */}
@@ -797,7 +897,7 @@ export default function TeamsBattlePage() {
                         key={digit}
                         type="button"
                         onClick={() => setUserAnswer((prev) => prev + digit)}
-                        className="py-3 bg-white/20 hover:bg-white/30 active:scale-95 text-white font-mono font-black text-xl rounded-xl transition-all"
+                        className="py-3.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 active:scale-95 text-white font-mono font-black text-2xl rounded-xl transition-all"
                       >
                         {digit}
                       </button>
@@ -805,20 +905,20 @@ export default function TeamsBattlePage() {
                     <button
                       type="button"
                       onClick={() => setUserAnswer((prev) => prev.slice(0, -1))}
-                      className="py-3 bg-rose-500/40 hover:bg-rose-500/60 active:scale-95 text-white font-bold text-sm rounded-xl transition-all"
+                      className="py-3.5 bg-rose-600/30 hover:bg-rose-600/50 border border-rose-500/40 active:scale-95 text-rose-200 font-bold text-sm rounded-xl transition-all"
                     >
                       مسح ⌫
                     </button>
                     <button
                       type="button"
                       onClick={() => setUserAnswer((prev) => prev + "0")}
-                      className="py-3 bg-white/20 hover:bg-white/30 active:scale-95 text-white font-mono font-black text-xl rounded-xl transition-all"
+                      className="py-3.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 active:scale-95 text-white font-mono font-black text-2xl rounded-xl transition-all"
                     >
                       0
                     </button>
                     <button
                       type="submit"
-                      className="py-3 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black text-base rounded-xl transition-all shadow-lg"
+                      className="py-3.5 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black text-base rounded-xl transition-all shadow-lg"
                     >
                       تأكيد ✔
                     </button>
@@ -829,15 +929,15 @@ export default function TeamsBattlePage() {
 
             {/* Stage: Feedback (نتيجة الحل والنقاط) */}
             {stage === "feedback" && (
-              <div className="py-6 space-y-6 max-w-lg mx-auto animate-in zoom-in-95 duration-200">
+              <div className="relative z-10 py-4 space-y-6 max-w-lg w-full mx-auto my-auto animate-in zoom-in-95 duration-200">
                 {isLastAnswerCorrect ? (
-                  <div className="p-6 rounded-3xl bg-emerald-950/80 border-2 border-emerald-400 text-white space-y-3 shadow-2xl">
+                  <div className="p-6 rounded-3xl bg-emerald-950/90 border-2 border-emerald-400 text-white space-y-3 shadow-2xl">
                     <CheckCircle2 className="w-16 h-16 text-emerald-400 mx-auto animate-bounce" />
-                    <h3 className="text-2xl font-black text-emerald-300">
+                    <h3 className="text-2xl sm:text-3xl font-black text-emerald-300">
                       إجابة صحيحة خارقة! ⚡
                     </h3>
                     <div className="flex items-center justify-center gap-4 text-sm font-bold">
-                      <span className="px-3 py-1 rounded-full bg-emerald-800 text-white font-mono">
+                      <span className="px-3.5 py-1.5 rounded-full bg-emerald-800 text-white font-mono text-base">
                         +{earnedPoints} نقطة
                       </span>
                       <span className="text-emerald-200 font-mono">
@@ -846,22 +946,24 @@ export default function TeamsBattlePage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-6 rounded-3xl bg-rose-950/80 border-2 border-rose-400 text-white space-y-3 shadow-2xl">
+                  <div className="p-6 rounded-3xl bg-rose-950/90 border-2 border-rose-400 text-white space-y-3 shadow-2xl">
                     <XCircle className="w-16 h-16 text-rose-400 mx-auto" />
-                    <h3 className="text-2xl font-black text-rose-300">
+                    <h3 className="text-2xl sm:text-3xl font-black text-rose-300">
                       إجابة غير صحيحة!
                     </h3>
-                    <p className="text-sm text-slate-200">
-                      الناتج الصحيح كان: <strong className="text-amber-300 font-mono text-xl">{correctAnswer}</strong>
+                    <p className="text-base text-slate-200">
+                      الناتج الصحيح كان: <strong className="text-amber-300 font-mono text-2xl">{correctAnswer}</strong>
                     </p>
-                    <p className="text-xs text-rose-200">حظاً أوفر في الجولة القادمة يا أبطال!</p>
+                    <p className="text-xs text-rose-200 font-mono" dir="ltr">
+                      {currentSeries.map((n, i) => (i === 0 ? `${n}` : n >= 0 ? `+ ${n}` : `− ${Math.abs(n)}`)).join("  ")} = {correctAnswer}
+                    </p>
                   </div>
                 )}
 
                 <button
                   type="button"
                   onClick={handleProceedNext}
-                  className="w-full py-4 px-8 rounded-2xl bg-white hover:bg-amber-50 active:scale-95 text-slate-950 font-black text-base shadow-2xl transition-all flex items-center justify-center gap-2"
+                  className="w-full py-4 px-8 rounded-2xl bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black text-base shadow-2xl transition-all flex items-center justify-center gap-2"
                 >
                   <span>
                     {activeTeamIndex + 1 < teams.length
@@ -874,6 +976,75 @@ export default function TeamsBattlePage() {
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Live Race Track (لوحة سباق الفرق) */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/90 dark:border-slate-800 shadow-xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 text-xs font-bold">
+                <Trophy className="w-4 h-4 text-amber-500" />
+                <span>مسار سباق الفرق نحو الكأس الذهبي</span>
+              </div>
+              <span className="text-xs font-bold text-slate-500">
+                ترتيب النقاط المباشر
+              </span>
+            </div>
+
+            {/* Race Lanes */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {teams.map((tm, idx) => {
+                const isActive = idx === activeTeamIndex;
+                const maxPossibleScore = totalRounds * 150;
+                const progressPct = Math.min(100, Math.round((tm.score / maxPossibleScore) * 100));
+                const isLeader = rankedTeams[0]?.id === tm.id && tm.score > 0;
+
+                return (
+                  <div
+                    key={tm.id}
+                    className={`p-4 rounded-2xl border transition-all duration-300 ${
+                      isActive
+                        ? `${tm.borderClass} ${tm.bgLightClass} ring-2 ring-brand-500/20 shadow-md`
+                        : "border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-2xl">{tm.icon}</span>
+                        <div>
+                          <span className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5">
+                            {tm.name}
+                            {isLeader && (
+                              <span className="text-[10px] bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full font-black flex items-center gap-1">
+                                <Crown className="w-3 h-3 fill-slate-950" />
+                                المتصدر
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">
+                            صحيح: {tm.correctCount} / {tm.totalAttempts}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="font-mono font-black text-lg sm:text-2xl text-slate-900 dark:text-white">
+                          {tm.score}
+                        </span>
+                        <span className="text-[10px] text-slate-500 block">نقطة</span>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar Track */}
+                    <div className="relative w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full bg-gradient-to-r ${tm.gradientClass} transition-all duration-700 rounded-full`}
+                        style={{ width: `${Math.max(5, progressPct)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

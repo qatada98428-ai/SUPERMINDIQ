@@ -1,7 +1,9 @@
 /**
  * SUPER MIND — Soroban & Mental Arithmetic Engine
- * Complete decoupled mathematical calculation engine for Soroban and Flash Anzan
+ * Complete decoupled mathematical calculation engine for Soroban, Flash Anzan, and Competitions
  */
+
+import { soundSynth } from "@/lib/audio-synthesizer";
 
 export interface SorobanRodState {
   upper: boolean; // Upper deck bead (worth 5 when active, pushed toward reckoning beam)
@@ -75,10 +77,11 @@ export function sorobanToNumber(rods: SorobanRodState[]): number {
 // ==========================================
 
 /**
- * Checks if adding addDigit (1..9) to currentDigit (0..9) on a single rod is Direct / Simple
+ * Checks if adding addDigit (0..9) to currentDigit (0..9) on a single rod is Direct / Simple
  * Direct addition means beads can be pushed directly without using 5-decomposition or 10-carry.
  */
 export function isSimpleAddition(current: number, add: number): boolean {
+  if (add === 0) return true;
   if (current + add > 9) return false; // Requires 10-carry
   const currUpper = current >= 5;
   const currLower = current % 5;
@@ -94,9 +97,10 @@ export function isSimpleAddition(current: number, add: number): boolean {
 }
 
 /**
- * Checks if subtracting subDigit (1..9) from currentDigit (0..9) on a single rod is Direct / Simple
+ * Checks if subtracting subDigit (0..9) from currentDigit (0..9) on a single rod is Direct / Simple
  */
 export function isSimpleSubtraction(current: number, sub: number): boolean {
+  if (sub === 0) return true;
   if (current < sub) return false; // Requires borrowing from 10
   const currUpper = current >= 5;
   const currLower = current % 5;
@@ -155,10 +159,6 @@ export function isFriendsOf5Subtraction(current: number, sub: number, targetFrie
 /**
  * Checks if adding addDigit (1..9) requires Friends of 10 rule:
  * +d = +10 - (10 - d)
- * Conditions:
- * Requires carrying 1 to the tens rod (u + add >= 10).
- * For rule 1: u must be 9 (9 + 1 = 10).
- * For rule 2: u must be 8 or 9.
  */
 export function isFriendsOf10Addition(current: number, add: number, targetFriends?: number[] | number): boolean {
   const c = Math.abs(current);
@@ -176,10 +176,6 @@ export function isFriendsOf10Addition(current: number, add: number, targetFriend
 /**
  * Checks if subtracting subDigit (1..9) requires Friends of 10 rule:
  * -d = -10 + (10 - d)
- * Conditions:
- * Total must be >= 10 (or >= sub), and units digit is less than sub (requiring 10 borrow).
- * For rule 1: u must be 0 (10 - 1 = 9, 20 - 1 = 19...).
- * For rule 2: u must be 0 or 1 (10 - 2 = 8, 11 - 2 = 9...).
  */
 export function isFriendsOf10Subtraction(current: number, sub: number, targetFriends?: number[] | number): boolean {
   if (current < sub || current < 10) return false;
@@ -198,8 +194,148 @@ export function isFriendsOf10Subtraction(current: number, sub: number, targetFri
 // FLASH ANZAN SEQUENCE GENERATION ENGINE
 // ==========================================
 
+/**
+ * Strict Simple Series Generator (البسيط المباشر)
+ * Ensures EVERY rod (units, tens, hundreds...) performs only direct bead movements
+ * without ever needing Friends of 5 or Friends of 10.
+ */
+function generateStrictSimpleSeries(
+  termsCount: number,
+  digitsCount: number,
+  allowSubtraction: boolean
+): number[] {
+  const safeStartDigits = [1, 2, 3, 5, 6, 7];
+
+  for (let attempt = 0; attempt < 200; attempt++) {
+    // Build starting number rod by rod
+    let startNum = 0;
+    for (let d = 0; d < digitsCount; d++) {
+      const place = Math.pow(10, d);
+      const digit = safeStartDigits[Math.floor(Math.random() * safeStartDigits.length)];
+      startNum += digit * place;
+    }
+
+    const series: number[] = [startNum];
+    let running = startNum;
+    let validSequence = true;
+
+    for (let step = 1; step < termsCount; step++) {
+      // Decide possible operations (+ or -) that are valid across all rods
+      const possibleMoves: number[] = [];
+
+      // Try addition moves
+      const addDigitsPerRod: number[][] = [];
+      let canAdd = true;
+      for (let d = 0; d < digitsCount; d++) {
+        const currDigit = Math.floor(running / Math.pow(10, d)) % 10;
+        const validAdd: number[] = [];
+        const minD = d === digitsCount - 1 ? 1 : 0; // Highest rod must be >= 1 if digitsCount > 1, or for 1-digit minD = 1
+        for (let val = minD; val <= 9; val++) {
+          if (isSimpleAddition(currDigit, val)) {
+            validAdd.push(val);
+          }
+        }
+        if (validAdd.length === 0) {
+          canAdd = false;
+          break;
+        }
+        addDigitsPerRod.push(validAdd);
+      }
+
+      if (canAdd) {
+        for (let sample = 0; sample < 6; sample++) {
+          let moveVal = 0;
+          for (let d = 0; d < digitsCount; d++) {
+            const choices = addDigitsPerRod[d];
+            const picked = choices[Math.floor(Math.random() * choices.length)];
+            moveVal += picked * Math.pow(10, d);
+          }
+          if (moveVal > 0) possibleMoves.push(moveVal);
+        }
+      }
+
+      // Try subtraction moves if allowed (or if addition is blocked on some rod and we need a valid simple subtraction)
+      const trySub = allowSubtraction || possibleMoves.length === 0;
+      if (trySub) {
+        const subDigitsPerRod: number[][] = [];
+        let canSub = true;
+        for (let d = 0; d < digitsCount; d++) {
+          const currDigit = Math.floor(running / Math.pow(10, d)) % 10;
+          const validSub: number[] = [];
+          const minD = d === digitsCount - 1 ? 1 : 0;
+          for (let val = minD; val <= 9; val++) {
+            if (isSimpleSubtraction(currDigit, val)) {
+              validSub.push(val);
+            }
+          }
+          if (validSub.length === 0) {
+            canSub = false;
+            break;
+          }
+          subDigitsPerRod.push(validSub);
+        }
+
+        if (canSub) {
+          for (let sample = 0; sample < 6; sample++) {
+            let moveVal = 0;
+            for (let d = 0; d < digitsCount; d++) {
+              const choices = subDigitsPerRod[d];
+              const picked = choices[Math.floor(Math.random() * choices.length)];
+              moveVal += picked * Math.pow(10, d);
+            }
+            if (moveVal > 0 && running - moveVal >= 0) {
+              possibleMoves.push(-moveVal);
+            }
+          }
+        }
+      }
+
+      // If allowSubtraction is false and we had no pure n-digit addition, fail this attempt and retry
+      const filteredMoves = allowSubtraction
+        ? possibleMoves
+        : possibleMoves.filter((m) => m > 0);
+
+      if (filteredMoves.length === 0) {
+        validSequence = false;
+        break;
+      }
+
+      const chosen = filteredMoves[Math.floor(Math.random() * filteredMoves.length)];
+      series.push(chosen);
+      running += chosen;
+    }
+
+    if (validSequence && running >= 0) {
+      return series;
+    }
+  }
+
+  // Fallback guaranteed simple sequence
+  const unit = Math.pow(10, digitsCount - 1);
+  if (termsCount <= 4) {
+    return [unit, unit, 2 * unit, 5 * unit].slice(0, termsCount);
+  }
+  const fb: number[] = [2 * unit, 2 * unit, 5 * unit];
+  let total = 9 * unit;
+  while (fb.length < termsCount) {
+    if (total >= 3 * unit) {
+      fb.push(-2 * unit);
+      total -= 2 * unit;
+    } else {
+      fb.push(2 * unit);
+      total += 2 * unit;
+    }
+  }
+  return fb;
+}
+
 export function generateFlashAnzanSeries(config: FlashAnzanConfig): number[] {
   const { termsCount, digitsCount, allowSubtraction, level, targetRules, targetRule } = config;
+
+  // 1. Strict Simple Level
+  if (level === "simple") {
+    return generateStrictSimpleSeries(termsCount, digitsCount, allowSubtraction);
+  }
 
   let activeRules: number[] = [];
   if (targetRules && targetRules.length > 0) {
@@ -208,7 +344,7 @@ export function generateFlashAnzanSeries(config: FlashAnzanConfig): number[] {
     activeRules = [targetRule];
   } else if (level === "complex_5") {
     activeRules = [1, 2, 3, 4];
-  } else if (level === "complex_10") {
+  } else if (level === "complex_10" || level === "mixed") {
     activeRules = [1, 2, 3, 4, 5, 6, 7, 8, 9];
   }
 
@@ -216,62 +352,61 @@ export function generateFlashAnzanSeries(config: FlashAnzanConfig): number[] {
   const max = Math.pow(10, digitsCount) - 1;
 
   // Try generating a natural, non-monotonous sequence where target rules occur organically
-  for (let attempt = 0; attempt < 70; attempt++) {
+  for (let attempt = 0; attempt < 120; attempt++) {
     const series: number[] = [];
     let runningTotal = 0;
     let targetRuleAppliedCount = 0;
 
-    // STEP 0: Natural varied starting number (e.g., 2, 3, 1, or sometimes direct setup)
+    // STEP 0: Natural varied starting number
     let startNum = 0;
     if (level === "complex_5" && activeRules.length > 0) {
-      if (Math.random() < 0.35) {
-        // Direct setup start
-        const r = activeRules[Math.floor(Math.random() * activeRules.length)];
-        const wantSub = allowSubtraction && Math.random() < 0.5;
-        if (wantSub) {
-          const validUnits: number[] = [];
-          for (let u = 5; u <= 5 + r - 1; u++) validUnits.push(u);
-          startNum = validUnits[Math.floor(Math.random() * validUnits.length)];
-        } else {
-          const validUnits: number[] = [];
-          for (let u = 5 - r; u <= 4; u++) validUnits.push(u);
-          startNum = validUnits[Math.floor(Math.random() * validUnits.length)];
-        }
+      const validRules = activeRules.filter((r) => r >= 1 && r <= 4);
+      const rulesToUse = validRules.length > 0 ? validRules : [1, 2, 3, 4];
+      const r = rulesToUse[Math.floor(Math.random() * rulesToUse.length)];
+      const wantSub = allowSubtraction && Math.random() < 0.45;
+      if (wantSub) {
+        const validUnits: number[] = [];
+        for (let u = 5; u <= 5 + r - 1; u++) validUnits.push(u);
+        startNum = validUnits[Math.floor(Math.random() * validUnits.length)];
       } else {
-        // Natural varied start (1, 2, 3, etc.)
-        startNum = Math.floor(Math.random() * 3) + 1;
+        const validUnits: number[] = [];
+        for (let u = 5 - r; u <= 4; u++) validUnits.push(u);
+        startNum = validUnits[Math.floor(Math.random() * validUnits.length)];
       }
-    } else if (level === "complex_10" && activeRules.length > 0) {
-      if (Math.random() < 0.35) {
-        const r = activeRules[Math.floor(Math.random() * activeRules.length)];
-        const wantSub = allowSubtraction && Math.random() < 0.5;
-        if (wantSub) {
-          startNum = 10;
-        } else {
-          startNum = 10 - r + Math.floor(Math.random() * r);
-        }
+    } else if ((level === "complex_10" || level === "mixed") && activeRules.length > 0) {
+      const r = activeRules[Math.floor(Math.random() * activeRules.length)];
+      const wantSub = allowSubtraction && Math.random() < 0.4;
+      if (wantSub) {
+        startNum = 10 + Math.floor(Math.random() * Math.max(1, r));
       } else {
-        startNum = Math.floor(Math.random() * 6) + 2; // 2, 3, 4, 5, 6, 7
+        startNum = 10 - r + Math.floor(Math.random() * r);
       }
     } else {
       startNum = Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
-    if (digitsCount > 1) {
-      const high = Math.floor(Math.random() * (Math.pow(10, digitsCount - 1) - 1) + 1) * 10;
-      startNum += high;
+    if (digitsCount > 1 && startNum < min) {
+      let higherPart = 0;
+      for (let d = 1; d < digitsCount; d++) {
+        const digit = Math.floor(Math.random() * 4) + 1; // 1..4 on higher rods so room to add
+        higherPart += digit * Math.pow(10, d);
+      }
+      startNum = (startNum % 10) + higherPart;
     }
 
     series.push(startNum);
     runningTotal = startNum;
 
     // STEPS 1 .. termsCount - 1
+    let sequenceFailed = false;
     for (let step = 1; step < termsCount; step++) {
       const u = runningTotal % 10;
       const targetCandidates: { val: number }[] = [];
 
       if (level === "complex_5") {
-        for (const r of activeRules) {
+        const rules5 = activeRules.filter((r) => r >= 1 && r <= 4);
+        const list = rules5.length > 0 ? rules5 : [1, 2, 3, 4];
+        for (const r of list) {
           if (isFriendsOf5Addition(runningTotal, r)) targetCandidates.push({ val: r });
           if (allowSubtraction && isFriendsOf5Subtraction(runningTotal, r)) targetCandidates.push({ val: -r });
         }
@@ -280,30 +415,66 @@ export function generateFlashAnzanSeries(config: FlashAnzanConfig): number[] {
           if (isFriendsOf10Addition(runningTotal, r)) targetCandidates.push({ val: r });
           if (allowSubtraction && isFriendsOf10Subtraction(runningTotal, r)) targetCandidates.push({ val: -r });
         }
-      }
-
-      // If target rule moves are available, execute one (prioritize if not applied yet, or 60% chance)
-      if (targetCandidates.length > 0 && (targetRuleAppliedCount === 0 || Math.random() < 0.6)) {
-        const picked = targetCandidates[Math.floor(Math.random() * targetCandidates.length)];
-        let val = picked.val;
-        if (digitsCount > 1) {
-          const high = Math.floor(Math.random() * Math.pow(10, digitsCount - 1)) * 10;
-          val = val > 0 ? val + high : val - high;
+      } else if (level === "mixed") {
+        for (const r of [1, 2, 3, 4]) {
+          if (isFriendsOf5Addition(runningTotal, r)) targetCandidates.push({ val: r });
+          if (allowSubtraction && isFriendsOf5Subtraction(runningTotal, r)) targetCandidates.push({ val: -r });
         }
-        series.push(val);
-        runningTotal += val;
-        targetRuleAppliedCount++;
-        continue;
+        for (const r of activeRules) {
+          if (isFriendsOf10Addition(runningTotal, r)) targetCandidates.push({ val: r });
+          if (allowSubtraction && isFriendsOf10Subtraction(runningTotal, r)) targetCandidates.push({ val: -r });
+        }
       }
 
-      // Natural Bridge Moves (Simple additions / subtractions that guide the beads toward the target state)
+      // Helper to attach higher digits safely without creating negative total or unintended 10-carry in complex_5
+      const attachHigherDigits = (unitMove: number): number | null => {
+        if (digitsCount === 1) {
+          return runningTotal + unitMove >= 0 ? unitMove : null;
+        }
+        const isNeg = unitMove < 0;
+        const absUnit = Math.abs(unitMove);
+        let higherMove = 0;
+        for (let d = 1; d < digitsCount; d++) {
+          const currDigit = Math.floor(runningTotal / Math.pow(10, d)) % 10;
+          const validDigits: number[] = [];
+          for (let hd = 1; hd <= 4; hd++) {
+            if (!isNeg && isSimpleAddition(currDigit, hd)) validDigits.push(hd);
+            if (isNeg && isSimpleSubtraction(currDigit, hd)) validDigits.push(hd);
+          }
+          const picked = validDigits.length > 0
+            ? validDigits[Math.floor(Math.random() * validDigits.length)]
+            : 1;
+          higherMove += picked * Math.pow(10, d);
+        }
+        const fullVal = isNeg ? -(absUnit + higherMove) : (absUnit + higherMove);
+        if (runningTotal + fullVal < 0) {
+          return runningTotal + unitMove >= 0 ? unitMove : null;
+        }
+        return fullVal;
+      };
+
+      // Execute target rule move if available
+      if (targetCandidates.length > 0 && (targetRuleAppliedCount === 0 || Math.random() < 0.65)) {
+        const picked = targetCandidates[Math.floor(Math.random() * targetCandidates.length)];
+        const fullVal = attachHigherDigits(picked.val);
+        if (fullVal !== null) {
+          series.push(fullVal);
+          runningTotal += fullVal;
+          targetRuleAppliedCount++;
+          continue;
+        }
+      }
+
+      // Natural Bridge Moves (Simple moves guiding toward target state)
       const bridgeMoves: number[] = [];
       if (level === "complex_5") {
-        const targetR = activeRules[Math.floor(Math.random() * activeRules.length)];
+        const rules5 = activeRules.filter((r) => r >= 1 && r <= 4);
+        const list = rules5.length > 0 ? rules5 : [1, 2, 3, 4];
+        const targetR = list[Math.floor(Math.random() * list.length)];
         const desiredUnits: number[] = [];
         for (let du = 5 - targetR; du <= 4; du++) desiredUnits.push(du);
 
-        for (let d = 1; d <= 4; d++) {
+        for (let d = 1; d <= 9; d++) {
           if (isSimpleAddition(u, d)) {
             const nextU = u + d;
             const weight = desiredUnits.includes(nextU) ? 4 : 1;
@@ -315,66 +486,77 @@ export function generateFlashAnzanSeries(config: FlashAnzanConfig): number[] {
             for (let k = 0; k < weight; k++) bridgeMoves.push(-d);
           }
         }
-      } else if (level === "complex_10") {
-        const targetR = activeRules[Math.floor(Math.random() * activeRules.length)];
+      } else if (level === "complex_10" || level === "mixed") {
+        const targetR = activeRules[Math.floor(Math.random() * activeRules.length)] || 5;
         const desiredUnits: number[] = [];
         for (let du = 10 - targetR; du <= 9; du++) desiredUnits.push(du);
 
         for (let d = 1; d <= 9; d++) {
-          if (u + d <= 9) {
+          if (isSimpleAddition(u, d)) {
             const nextU = u + d;
             const weight = desiredUnits.includes(nextU) ? 4 : 1;
             for (let k = 0; k < weight; k++) bridgeMoves.push(d);
           }
-          if (allowSubtraction && u - d >= 0 && runningTotal - d >= 0) {
+          if (allowSubtraction && isSimpleSubtraction(u, d) && runningTotal - d >= 0) {
             bridgeMoves.push(-d);
           }
         }
       } else {
-        // Simple level
-        for (let d = 1; d <= 9; d++) {
-          if (isSimpleAddition(u, d)) bridgeMoves.push(d);
-          if (allowSubtraction && isSimpleSubtraction(u, d) && runningTotal - d >= 0) bridgeMoves.push(-d);
+        // General level
+        for (let d = min; d <= max; d++) {
+          bridgeMoves.push(d);
+          if (allowSubtraction && runningTotal - d >= 0) {
+            bridgeMoves.push(-d);
+          }
         }
       }
 
       if (bridgeMoves.length > 0) {
-        let move = bridgeMoves[Math.floor(Math.random() * bridgeMoves.length)];
-        if (digitsCount > 1) {
-          const high = Math.floor(Math.random() * Math.pow(10, digitsCount - 1)) * 10;
-          move = move > 0 ? move + high : move - high;
+        const rawMove = bridgeMoves[Math.floor(Math.random() * bridgeMoves.length)];
+        const finalMove = level === "general" ? rawMove : attachHigherDigits(rawMove);
+        if (finalMove !== null && runningTotal + finalMove >= 0) {
+          series.push(finalMove);
+          runningTotal += finalMove;
+        } else {
+          sequenceFailed = true;
+          break;
         }
-        series.push(move);
-        runningTotal += move;
       } else {
-        const fallback = (allowSubtraction && runningTotal > 2) ? -1 : 1;
-        series.push(fallback);
-        runningTotal += fallback;
+        sequenceFailed = true;
+        break;
       }
     }
 
+    if (sequenceFailed) continue;
+
     // Ensure the target rule was applied at least once in the series
-    if ((level === "complex_5" || level === "complex_10") && targetRuleAppliedCount === 0) {
+    if ((level === "complex_5" || level === "complex_10" || level === "mixed") && targetRuleAppliedCount === 0) {
       continue;
     }
 
     return series;
   }
 
-  // Graceful fallback if strict generation times out
-  return [2, 2, 1];
+  // Graceful fallback
+  if (level === "complex_5") return [3, 2, 1].slice(0, termsCount);
+  if (level === "complex_10") return [7, 3, 2].slice(0, termsCount);
+  return [2, 2, 5].slice(0, termsCount);
 }
 
-import { soundSynth } from "@/lib/audio-synthesizer";
+// ==========================================
+// CENTRALIZED SOUND & SPEECH PRONUNCIATION ENGINE
+// ==========================================
 
 /**
  * Comfortable & Soothing Sound Player
  */
-export function playSoundEffect(type: "beep" | "correct" | "wrong") {
+export function playSoundEffect(type: "beep" | "correct" | "wrong" | "tick") {
   if (typeof window === "undefined") return;
   try {
     if (type === "beep") {
       soundSynth.playFlashBeep(0.22);
+    } else if (type === "tick") {
+      soundSynth.playBeadClick(640, 0.12);
     } else if (type === "correct") {
       soundSynth.playSuccessChime(0.28);
     } else if (type === "wrong") {
@@ -382,5 +564,237 @@ export function playSoundEffect(type: "beep" | "correct" | "wrong") {
     }
   } catch {
     // Ignore audio errors
+  }
+}
+
+const ARABIC_ONES = [
+  "صفر", "واحد", "اثنان", "ثلاثة", "أربعة",
+  "خمسة", "ستة", "سبعة", "ثمانية", "تسعة",
+  "عشرة", "أحد عشر", "اثنا عشر", "ثلاثة عشر", "أربعة عشر",
+  "خمسة عشر", "ستة عشر", "سبعة عشر", "ثمانية عشر", "تسعة عشر",
+];
+
+const ARABIC_TENS = [
+  "", "", "عشرون", "ثلاثون", "أربعون",
+  "خمسون", "ستون", "سبعون", "ثمانون", "تسعون",
+];
+
+const ARABIC_HUNDREDS = [
+  "", "مئة", "مئتان", "ثلاثمئة", "أربعمئة",
+  "خمسمئة", "ستمئة", "سبعمئة", "ثمانمئة", "تسعمئة",
+];
+
+/**
+ * Converts an integer (0..9999) into clear, natural Arabic words for crisp TTS pronunciation
+ */
+export function numberToArabicWords(n: number): string {
+  const abs = Math.abs(Math.floor(n));
+  if (abs < 20) return ARABIC_ONES[abs];
+  if (abs < 100) {
+    const u = abs % 10;
+    const t = Math.floor(abs / 10);
+    return u === 0 ? ARABIC_TENS[t] : `${ARABIC_ONES[u]} و${ARABIC_TENS[t]}`;
+  }
+  if (abs < 1000) {
+    const h = Math.floor(abs / 100);
+    const rem = abs % 100;
+    return rem === 0 ? ARABIC_HUNDREDS[h] : `${ARABIC_HUNDREDS[h]} و${numberToArabicWords(rem)}`;
+  }
+  return abs.toString();
+}
+
+const ENGLISH_ONES = [
+  "Zero", "One", "Two", "Three", "Four",
+  "Five", "Six", "Seven", "Eight", "Nine",
+  "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen",
+  "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen",
+];
+
+const ENGLISH_TENS = [
+  "", "", "Twenty", "Thirty", "Forty",
+  "Fifty", "Sixty", "Seventy", "Eighty", "Ninety",
+];
+
+export function numberToEnglishWords(n: number): string {
+  const abs = Math.abs(Math.floor(n));
+  if (abs < 20) return ENGLISH_ONES[abs];
+  if (abs < 100) {
+    const u = abs % 10;
+    const t = Math.floor(abs / 10);
+    return u === 0 ? ENGLISH_TENS[t] : `${ENGLISH_TENS[t]} ${ENGLISH_ONES[u]}`;
+  }
+  return abs.toString();
+}
+
+let cachedVoices: SpeechSynthesisVoice[] = [];
+
+function getBestVoice(langPrefix: "ar" | "en"): SpeechSynthesisVoice | null {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return null;
+  if (cachedVoices.length === 0) {
+    cachedVoices = window.speechSynthesis.getVoices();
+  }
+  const matching = cachedVoices.filter((v) =>
+    v.lang.toLowerCase().startsWith(langPrefix)
+  );
+  if (matching.length === 0) return null;
+  // Prefer Google / Microsoft / Apple high-quality natural voices
+  const preferred = matching.find(
+    (v) =>
+      v.name.includes("Google") ||
+      v.name.includes("Microsoft") ||
+      v.name.includes("Natural") ||
+      v.name.includes("Maged") ||
+      v.name.includes("Tarik") ||
+      v.name.includes("Hoda") ||
+      v.localService
+  );
+  return preferred || matching[0];
+}
+
+if (typeof window !== "undefined" && "speechSynthesis" in window) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    cachedVoices = window.speechSynthesis.getVoices();
+  };
+}
+
+/**
+ * Warms up browser speechSynthesis on user button click so first number never lags
+ */
+export function warmupSpeechEngine() {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  try {
+    cachedVoices = window.speechSynthesis.getVoices();
+    window.speechSynthesis.cancel();
+    const silent = new SpeechSynthesisUtterance("");
+    silent.volume = 0;
+    window.speechSynthesis.speak(silent);
+  } catch {
+    // Ignore
+  }
+}
+
+/**
+ * Speaks a flashed/question number clearly in Arabic or English, or plays a clean click if off
+ */
+export function speakSorobanNumber(
+  num: number,
+  voiceMode: "arabic" | "english" | "off",
+  speedMs = 700
+) {
+  if (typeof window === "undefined") return;
+
+  if (voiceMode === "off" || !("speechSynthesis" in window)) {
+    playSoundEffect("beep");
+    return;
+  }
+
+  // Play a gentle subtle tick so there is immediate tactile feedback alongside the voice
+  playSoundEffect("tick");
+
+  try {
+    window.speechSynthesis.cancel();
+    const isNeg = num < 0;
+    const abs = Math.abs(num);
+
+    let text = "";
+    if (voiceMode === "arabic") {
+      const words = numberToArabicWords(abs);
+      text = isNeg ? `ناقص ${words}` : words;
+    } else {
+      const words = numberToEnglishWords(abs);
+      text = isNeg ? `Minus ${words}` : words;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voice = getBestVoice(voiceMode === "arabic" ? "ar" : "en");
+    if (voice) utterance.voice = voice;
+    utterance.lang = voiceMode === "arabic" ? "ar-SA" : "en-US";
+
+    // Adapt rate dynamically to flash speed so fast flashes are never cut off
+    if (speedMs <= 400) {
+      utterance.rate = 2.0;
+    } else if (speedMs <= 650) {
+      utterance.rate = 1.75;
+    } else if (speedMs <= 900) {
+      utterance.rate = 1.5;
+    } else {
+      utterance.rate = 1.3;
+    }
+
+    utterance.pitch = 1.05;
+    utterance.volume = 1.0;
+    window.speechSynthesis.speak(utterance);
+  } catch {
+    playSoundEffect("beep");
+  }
+}
+
+/**
+ * Speaks a full question sequence (e.g. "4, زائد 5, ناقص 2") for voice/competition mode
+ */
+export function speakQuestionSequence(
+  series: number[],
+  voiceMode: "arabic" | "english" | "off"
+) {
+  if (typeof window === "undefined" || voiceMode === "off" || !("speechSynthesis" in window)) {
+    playSoundEffect("beep");
+    return;
+  }
+
+  try {
+    window.speechSynthesis.cancel();
+    const parts = series.map((n, idx) => {
+      const abs = Math.abs(n);
+      if (voiceMode === "arabic") {
+        const w = numberToArabicWords(abs);
+        if (idx === 0) return n < 0 ? `ناقص ${w}` : w;
+        return n < 0 ? `ناقص ${w}` : `زائد ${w}`;
+      } else {
+        const w = numberToEnglishWords(abs);
+        if (idx === 0) return n < 0 ? `Minus ${w}` : w;
+        return n < 0 ? `Minus ${w}` : `Plus ${w}`;
+      }
+    });
+
+    const text = parts.join(" ، ");
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voice = getBestVoice(voiceMode === "arabic" ? "ar" : "en");
+    if (voice) utterance.voice = voice;
+    utterance.lang = voiceMode === "arabic" ? "ar-SA" : "en-US";
+    utterance.rate = 1.35;
+    utterance.pitch = 1.05;
+    window.speechSynthesis.speak(utterance);
+  } catch {
+    // Ignore
+  }
+}
+
+/**
+ * Speaks countdown numbers (3, 2, 1, Go / ابدأ)
+ */
+export function speakSorobanCountdown(
+  count: number,
+  voiceMode: "arabic" | "english" | "off"
+) {
+  if (typeof window === "undefined") return;
+  playSoundEffect(count === 0 ? "correct" : "beep");
+
+  if (voiceMode === "off" || !("speechSynthesis" in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const arMap: Record<number, string> = { 3: "ثلاثة", 2: "اثنان", 1: "واحد", 0: "ابدأ" };
+    const enMap: Record<number, string> = { 3: "Three", 2: "Two", 1: "One", 0: "Go" };
+    const text = voiceMode === "arabic" ? arMap[count] || "" : enMap[count] || "";
+    if (!text) return;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voice = getBestVoice(voiceMode === "arabic" ? "ar" : "en");
+    if (voice) utterance.voice = voice;
+    utterance.lang = voiceMode === "arabic" ? "ar-SA" : "en-US";
+    utterance.rate = 1.35;
+    utterance.pitch = 1.1;
+    window.speechSynthesis.speak(utterance);
+  } catch {
+    // Ignore
   }
 }

@@ -11,6 +11,7 @@ import {
   migrateGuestProgressToSupabase,
   GuestProgressData,
 } from "@/lib/guest-storage";
+import { recordRealTrainingSession } from "@/lib/platform-store";
 
 interface AuthContextValue {
   user: User | null;
@@ -362,6 +363,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const updatedGuest = recordGuestAnswer(params);
       setGuestProgress(updatedGuest);
 
+      // 1b. Also record in real platform sessions & profile stats
+      const activeUserId = user?.id || "guest-local";
+      const mapType = (t: string): "abacus" | "flash-anzan" | "competition" | "quiz" | "balloon" | "multiplication" => {
+        if (t.includes("flash")) return "flash-anzan";
+        if (t.includes("comp")) return "competition";
+        if (t.includes("quiz") || t.includes("intel")) return "quiz";
+        if (t.includes("balloon")) return "balloon";
+        if (t.includes("mult")) return "multiplication";
+        return "abacus";
+      };
+      await recordRealTrainingSession({
+        userId: activeUserId,
+        userName: profile?.name,
+        type: mapType(params.exerciseType),
+        title: params.exerciseType,
+        level: params.level,
+        totalQuestions: 1,
+        correctAnswers: params.isCorrect ? 1 : 0,
+        durationSeconds: params.durationSeconds || 5,
+      });
+
       // 2. If user is logged in and Supabase is configured, sync to database
       const supabase = getSupabaseClient();
       if (supabase && user) {
@@ -395,7 +417,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     },
-    [user]
+    [user, profile?.name]
   );
 
   const effectiveRole: UserRole | "guest" = isGuest

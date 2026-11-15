@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   School,
@@ -13,7 +13,7 @@ import {
   BookOpen,
   MapPin,
   Building2,
-  Phone,
+  Trophy,
 } from "lucide-react";
 import {
   TRAINERS_DIRECTORY,
@@ -24,6 +24,7 @@ import {
   SchoolProfile,
 } from "@/lib/constants";
 import { useApp } from "@/context/AppContext";
+import { ExtendedUserProfile, getVerifiedTrainersForDirectory } from "@/lib/platform-store";
 
 export default function AccreditationsAndPartnersPage() {
   const { language, dir, playFx } = useApp();
@@ -31,6 +32,11 @@ export default function AccreditationsAndPartnersPage() {
   const ArrowIcon = dir === "rtl" ? ArrowLeft : ArrowRight;
 
   const [activeTab, setActiveTab] = useState<"all" | "trainers" | "schools">("all");
+  const [dynamicTrainers, setDynamicTrainers] = useState<ExtendedUserProfile[]>([]);
+
+  useEffect(() => {
+    setDynamicTrainers(getVerifiedTrainersForDirectory());
+  }, []);
 
   const trainerApplicationLink = getTrainerApplicationLink();
   const schoolApplicationLink = getSchoolApplicationLink();
@@ -73,9 +79,9 @@ export default function AccreditationsAndPartnersPage() {
               <div className="space-y-0.5 text-right">
                 <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
                   <UserPlus className="w-4 h-4 text-amber-400" />
-                  <span>دليل المدربين (25 ألف د.ع/سنة)</span>
+                  <span>توثيق المدربين (25 ألف شهري / 50 ألف 3 أشهر / 100 ألف سنوي)</span>
                 </div>
-                <div className="text-[11px] text-slate-300">أدرج اسمك وبياناتك المهنية في الدليل</div>
+                <div className="text-[11px] text-slate-300">وثّق حسابك وأدرج بياناتك وإنجازاتك في الدليل</div>
               </div>
               <ArrowIcon className="w-4 h-4 text-amber-400 transition-transform group-hover:scale-110" />
             </a>
@@ -91,9 +97,9 @@ export default function AccreditationsAndPartnersPage() {
               <div className="space-y-0.5 text-right">
                 <div className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
                   <Building2 className="w-4 h-4 text-emerald-400" />
-                  <span>دليل المدارس (75 ألف د.ع/سنة)</span>
+                  <span>اعتماد المدارس (150 ألف د.ع/سنة شامل المميزات)</span>
                 </div>
-                <div className="text-[11px] text-slate-300">أدرج مدرستك مع نسخة كتاب المنهاج</div>
+                <div className="text-[11px] text-slate-300">أدرج مدرستك مع إتاحة كل مميزات المنصة</div>
               </div>
               <ArrowIcon className="w-4 h-4 text-emerald-400 transition-transform group-hover:scale-110" />
             </a>
@@ -176,11 +182,96 @@ export default function AccreditationsAndPartnersPage() {
               className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-transform active:scale-95"
             >
               <UserPlus className="w-4 h-4" />
-              <span>أدرج اسمك في دليل المدربين (25,000 د.ع)</span>
+              <span>وثّق حسابك كمدرب معتمد (25 / 50 / 100 ألف د.ع)</span>
             </a>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {dynamicTrainers
+              .filter((dt) => dt.id !== "trainer-qatada")
+              .map((dt) => (
+                <div
+                  key={dt.id}
+                  className="bg-white dark:bg-slate-900 rounded-3xl p-6 border-2 border-emerald-500/70 shadow-xl flex flex-col justify-between space-y-5"
+                >
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-4">
+                      <div className="w-16 h-16 rounded-2xl overflow-hidden shrink-0 border-2 border-emerald-400 bg-slate-800 flex items-center justify-center text-white font-black text-xl">
+                        {dt.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={dt.avatarUrl}
+                            alt={dt.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          dt.name.charAt(0)
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                            {dt.name}
+                          </h3>
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950">
+                            مدرب موثق ✅
+                          </span>
+                        </div>
+                        <p className="text-xs text-brand-600 dark:text-brand-400 font-bold">
+                          {dt.trainerTitle || "مدرب حساب ذهني معتمد"}
+                        </p>
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-400 font-semibold">
+                          <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                          <span>
+                            {dt.country} — {dt.governorate}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {dt.bio && (
+                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                        {dt.bio}
+                      </p>
+                    )}
+
+                    {dt.achievements && dt.achievements.length > 0 && (
+                      <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                          <Trophy className="w-3.5 h-3.5" />
+                          <span>إنجازات وكؤوس المدرب وطلابه:</span>
+                        </span>
+                        <div className="space-y-1">
+                          {dt.achievements.slice(0, 3).map((ach) => (
+                            <div
+                              key={ach.id}
+                              className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 border border-amber-200/70 dark:border-amber-800/60"
+                            >
+                              🏆 {ach.title} ({ach.year})
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {dt.phone && (
+                    <div className="pt-2">
+                      <a
+                        href={`https://wa.me/${dt.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+                          `مرحباً ${dt.name}، أود الاستفسار عن دورات الحساب الذهني.`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        <span>اضغط للتواصل مع {dt.name}</span>
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ))}
             {TRAINERS_DIRECTORY.map((trainer: TrainerProfile) => {
               const isReservedSlot = !trainer.avatar;
 
@@ -213,8 +304,10 @@ export default function AccreditationsAndPartnersPage() {
                       </p>
 
                       <div className="p-3 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 space-y-1">
-                        <div className="font-bold text-brand-600">الاشتراك السنوي: 25,000 د.ع</div>
-                        <div className="text-[11px] text-slate-400">يخضع لتدقيق الإدارة واعتماد رخصة التدريب</div>
+                        <div className="font-bold text-brand-600">
+                          الباقات: شهري 25,000 | 3 أشهر 50,000 | سنوي 100,000 د.ع
+                        </div>
+                        <div className="text-[11px] text-slate-400">شامل توثيق الحساب ولوحة الطلاب والواجبات</div>
                       </div>
                     </div>
 
@@ -264,10 +357,6 @@ export default function AccreditationsAndPartnersPage() {
                           <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                           <span>العراق — الأنبار — الرمادي</span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 font-mono font-bold">
-                          <Phone className="w-3.5 h-3.5 shrink-0" />
-                          <span>هاتف التواصل: 07806086016</span>
-                        </div>
                       </div>
                     </div>
 
@@ -299,7 +388,7 @@ export default function AccreditationsAndPartnersPage() {
                       className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
                     >
                       <MessageCircle className="w-4 h-4" />
-                      <span>تواصل مع الأستاذ قتادة كريم</span>
+                      <span>اضغط للتواصل مع {trainer.name}</span>
                     </a>
                   </div>
                 </div>
@@ -337,7 +426,7 @@ export default function AccreditationsAndPartnersPage() {
               className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-transform active:scale-95"
             >
               <School className="w-4 h-4" />
-              <span>أدرج مدرستك في المنصة (75,000 د.ع)</span>
+              <span>أدرج مدرستك في المنصة (150,000 د.ع سنوياً)</span>
             </a>
           </div>
 
@@ -434,11 +523,6 @@ export default function AccreditationsAndPartnersPage() {
                         <span>{school.address}</span>
                       </div>
 
-                      <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-mono font-bold">
-                        <Phone className="w-3.5 h-3.5 shrink-0" />
-                        <span>هاتف المدرسة: {school.whatsapp.replace("+964", "0")}</span>
-                      </div>
-
                       <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed pt-1">
                         {school.bio}
                       </p>
@@ -454,7 +538,7 @@ export default function AccreditationsAndPartnersPage() {
                       className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
-                      <span>تواصل مع المدرسة عبر واتساب ({school.whatsapp.replace("+964", "0")})</span>
+                      <span>اضغط للتواصل مع {school.name}</span>
                     </a>
                   </div>
                 </div>

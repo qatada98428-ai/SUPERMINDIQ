@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Menu,
   X,
@@ -20,6 +20,8 @@ import {
   ShieldCheck,
   User,
   LogOut,
+  ArrowRight,
+  ArrowLeft,
 } from "lucide-react";
 import BrandLogo from "@/components/ui/BrandLogo";
 import { useApp } from "@/context/AppContext";
@@ -30,9 +32,21 @@ export default function Navbar() {
   const { user, profile, role, isGuest, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   const isEn = language === "en";
   const isHomePage = pathname === "/";
+
+  const handleGoBack = () => {
+    playFx("click");
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else if (pathname.startsWith("/mental-arithmetic/")) {
+      router.push("/mental-arithmetic");
+    } else {
+      router.push("/");
+    }
+  };
 
   // Clean, quiet navigation items with "الداعمون" highlighted with a distinctive prestigious theme
   const navItems = [
@@ -58,8 +72,19 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-3">
-        {/* Brand Logo */}
-        <div className="shrink-0">
+        {/* Brand Logo + Back Button on non-home pages */}
+        <div className="shrink-0 flex items-center gap-2 sm:gap-3">
+          {!isHomePage && (
+            <button
+              type="button"
+              onClick={handleGoBack}
+              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm flex items-center gap-1.5 border border-slate-200/80 dark:border-slate-700 transition-all active:scale-95 shadow-2xs"
+              title={isEn ? "Go Back" : "رجوع للصفحة السابقة"}
+            >
+              {isEn ? <ArrowLeft className="w-4 h-4 text-brand-600" /> : <ArrowRight className="w-4 h-4 text-brand-600" />}
+              <span>{isEn ? "Back" : "رجوع"}</span>
+            </button>
+          )}
           <BrandLogo />
         </div>
 
@@ -109,55 +134,54 @@ export default function Navbar() {
 
         {/* Action Controls: Quiet and Uncluttered */}
         <div className="flex items-center gap-2">
-          {/* Language & Day/Night Mode: Appears in the Navbar on the Homepage as requested */}
-          {isHomePage && (
-            <div className="hidden sm:flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100/80 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-              {/* Language Switcher */}
+          {/* Language, Day/Night Mode & Sound Controls */}
+          <div className="hidden sm:flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100/80 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            {isHomePage && (
               <button
                 onClick={() => {
                   toggleLanguage();
                   playFx("click");
                 }}
                 title={isEn ? "التبديل إلى العربية" : "Switch to English"}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-800 dark:text-slate-200 text-xs font-black shadow-xs transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-black shadow-xs transition-colors"
               >
                 <Globe className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
                 <span>{isEn ? "عربي" : "EN"}</span>
               </button>
+            )}
 
-              {/* Theme Mode Switcher */}
-              <button
-                onClick={() => {
-                  toggleTheme();
-                  playFx("click");
-                }}
-                title={theme === "dark" ? "الوضع الفاتح" : "الوضع الليلي"}
-                className="p-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-200 shadow-xs transition-colors"
-              >
-                {theme === "dark" ? (
-                  <Sun className="w-4 h-4 text-amber-400" />
-                ) : (
-                  <Moon className="w-4 h-4 text-slate-600" />
-                )}
-              </button>
+            {/* Theme Mode Switcher */}
+            <button
+              onClick={() => {
+                toggleTheme();
+                playFx("click");
+              }}
+              title={theme === "dark" ? "الوضع الفاتح" : "الوضع الليلي"}
+              className="p-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-xs transition-colors"
+            >
+              {theme === "dark" ? (
+                <Sun className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+              )}
+            </button>
 
-              {/* Sound Toggle */}
-              <button
-                onClick={() => {
-                  toggleSound();
-                  if (!soundEnabled) playFx("click");
-                }}
-                title={soundEnabled ? "كتم الصوت" : "تشغيل الصوت"}
-                className="p-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-200 shadow-xs transition-colors"
-              >
-                {soundEnabled ? (
-                  <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                ) : (
-                  <VolumeX className="w-4 h-4 text-slate-400" />
-                )}
-              </button>
-            </div>
-          )}
+            {/* Sound Toggle */}
+            <button
+              onClick={() => {
+                toggleSound();
+                if (!soundEnabled) playFx("click");
+              }}
+              title={soundEnabled ? "كتم الصوت" : "تشغيل الصوت"}
+              className="p-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-xs transition-colors"
+            >
+              {soundEnabled ? (
+                <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              ) : (
+                <VolumeX className="w-4 h-4 text-slate-400" />
+              )}
+            </button>
+          </div>
 
           {/* Auth Action Controls */}
           {!isGuest && user ? (

@@ -6,7 +6,6 @@ import {
   HelpCircle,
   MessageCircle,
   Mail,
-  Phone,
   ShieldAlert,
   Camera,
   Laptop,
@@ -79,7 +78,7 @@ export default function TechnicalSupportPage() {
               className="px-6 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
             >
               <MessageCircle className="w-5 h-5" />
-              <span>{isEn ? "WhatsApp Support (+9647806086016)" : "الدعم المباشر عبر واتساب"}</span>
+              <span>{isEn ? "Contact Technical Support" : "اضغط للتواصل مع الدعم الفني"}</span>
             </a>
 
             <a
@@ -256,12 +255,17 @@ export default function TechnicalSupportPage() {
             <p className="text-xs text-slate-300 leading-relaxed">
               فريق الدعم متاح يومياً لمساعدة المدربين، المدارس، وأولياء الأمور في تشغيل التمارين وقاعات الفلاش.
             </p>
-            <div className="space-y-2 text-xs font-mono">
-              <div className="flex items-center gap-2 text-emerald-400">
-                <Phone className="w-4 h-4" />
-                <span>{PLATFORM_INFO.whatsappNumber}</span>
-              </div>
-              <div className="flex items-center gap-2 text-brand-300">
+            <div className="space-y-2 text-xs">
+              <a
+                href={directWhatsAppLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 font-bold transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>{isEn ? "Click to contact Technical Support" : "اضغط للتواصل مع الدعم الفني"}</span>
+              </a>
+              <div className="flex items-center gap-2 text-brand-300 font-mono">
                 <Mail className="w-4 h-4" />
                 <span>{PLATFORM_INFO.supportEmail}</span>
               </div>

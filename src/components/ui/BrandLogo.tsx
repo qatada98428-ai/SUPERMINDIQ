@@ -55,19 +55,19 @@ export default function BrandLogo({ size = "md", inverted = false }: BrandLogoPr
         <div className="flex items-center gap-1.5">
           <span
             className={`font-black tracking-tight ${
-              inverted ? "text-white" : "text-slate-900"
+              inverted ? "text-white" : "text-slate-900 dark:text-white"
             } ${isLarge ? "text-2xl" : isSmall ? "text-base" : "text-lg md:text-xl"}`}
           >
             العقل الخارق
           </span>
-          <span className="text-xs font-bold tracking-widest px-1.5 py-0.5 rounded-md bg-brand-50 text-brand-700 border border-brand-200">
+          <span className="text-xs font-bold tracking-widest px-1.5 py-0.5 rounded-md bg-brand-50 dark:bg-brand-950/80 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
             SUPER MIND
           </span>
         </div>
         {!isSmall && (
           <span
             className={`text-[11px] leading-tight font-medium ${
-              inverted ? "text-slate-300" : "text-slate-500"
+              inverted ? "text-slate-300" : "text-slate-500 dark:text-slate-400"
             }`}
           >
             منصة برنامج العقل الخارق

@@ -231,47 +231,95 @@ export default function MentalArithmeticPage() {
         </div>
       </div>
 
-      {/* Row 2: Balloon Pop Game (Full width highlight) */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-700 to-violet-800 p-7 sm:p-8 shadow-2xl shadow-indigo-500/30 border border-indigo-400/30">
-        {/* Decorative balloons */}
-        <div className="absolute top-0 right-0 text-9xl opacity-10 pointer-events-none select-none leading-none">🎈</div>
-        <div className="absolute bottom-0 left-6 text-7xl opacity-10 pointer-events-none select-none leading-none rotate-12">🎈</div>
+      {/* Row 2: Official Competition Simulator + Balloon Pop Game */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+        {/* 5. محاكي مسابقة الحساب الذهني الرسمي */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-7 sm:p-8 shadow-xl border-2 border-amber-500/40 flex flex-col justify-between space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black px-3 py-1 rounded-full bg-amber-400 text-slate-950 flex items-center gap-1.5 shadow-sm">
+                <Trophy className="w-3.5 h-3.5" />
+                <span>اختبارات ومسابقات رسمية 🏅</span>
+              </span>
+              <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-emerald-500 text-slate-950">
+                جديد 🆕
+              </span>
+            </div>
 
-        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-          <div className="space-y-3 flex-1">
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-white">
+                {isEn ? "5. Mental Math Competition Simulator" : "5. محاكي مسابقة الحساب الذهني"}
+              </h2>
+              <p className="text-slate-300 text-sm leading-relaxed">
+                {isEn
+                  ? "Official competition sheet simulator: set countdown time (5 to 30 minutes) or open stopwatch, customize question count, and get instant grading & review."
+                  : "محاكي أوراق المسابقات القياسية؛ اختر وقتاً محدداً (من 5 إلى 30 دقيقة) أو تايمر مفتوح، حدد عدد الأسئلة ومستوى القواعد، واحصل على تصحيح فوري وكشف تفصيلي بالنتائج."}
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2 border-t border-slate-800 text-xs text-slate-300">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>تحديد وقت (5 - 30 دقيقة) أو تشغيل تايمر مفتوح</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>تصحيح آلي فوري مع كشف مراجعة الأخطاء والطباعة</span>
+              </div>
+            </div>
+          </div>
+
+          <Link
+            href="/mental-arithmetic/competition"
+            onClick={() => playFx("click")}
+            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 font-black text-sm transition-all flex items-center justify-center gap-2 shadow-md"
+          >
+            <span>{isEn ? "Start Competition Simulator" : "دخول محاكي المسابقة الآن 🏅"}</span>
+            <ArrowIcon className="w-4 h-4" />
+          </Link>
+        </div>
+
+        {/* 6. لعبة صيد البالونات */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-700 to-violet-800 p-7 sm:p-8 shadow-xl border border-indigo-400/30 flex flex-col justify-between space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
               <span className="text-xs font-black px-3 py-1 rounded-full bg-white/20 text-white backdrop-blur-sm border border-white/20 flex items-center gap-1.5">
                 <Target className="w-3.5 h-3.5" />
-                <span>لعبة تفاعلية</span>
+                <span>لعبة تفاعلية 🎈</span>
               </span>
               <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 shadow-sm">
                 جديد 🆕
               </span>
             </div>
 
-            <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight">
-              🎈 لعبة صيد البالونات
-            </h2>
-            <p className="text-indigo-200 text-sm leading-relaxed max-w-lg">
-              تُعرض أرقام الفلاش أنزان، ثم تطير بالونات تحمل أرقاماً — اصطد البالونة التي تحمل الإجابة الصحيحة!
-              تدعم منافسة حتى 4 فرق على نفس الشاشة.
-            </p>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-white">
+                {isEn ? "6. Balloon Pop Math Game" : "6. لعبة صيد البالونات"}
+              </h2>
+              <p className="text-indigo-100 text-sm leading-relaxed">
+                تُعرض أرقام الفلاش أنزان مع نطق صوتي واضح، ثم تطير بالونات ملونة تحمل أرقاماً — اصطد البالونة التي تحمل الإجابة الصحيحة!
+              </p>
+            </div>
 
-            <div className="flex flex-wrap gap-4 text-xs text-indigo-200">
-              <span className="flex items-center gap-1.5">✅ بالونات طائرة بأنيميشن</span>
-              <span className="flex items-center gap-1.5">💥 انفجار للخاطئة وسحر للصحيحة</span>
-              <span className="flex items-center gap-1.5">👥 حتى 4 فرق</span>
-              <span className="flex items-center gap-1.5">⚙️ إعدادات كاملة</span>
+            <div className="space-y-2 pt-2 border-t border-white/15 text-xs text-indigo-100">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
+                <span>تحكم كامل بالسرعة وقواعد البسيط ومركب 5 و 10</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
+                <span>تدعم اللعب الفردي أو التنافس بين 4 فرق</span>
+              </div>
             </div>
           </div>
 
           <Link
             href="/mental-arithmetic/balloon-pop"
             onClick={() => playFx("click")}
-            className="shrink-0 px-8 py-4 rounded-2xl bg-white hover:bg-indigo-50 text-indigo-900 font-black text-sm shadow-xl transition-all hover:scale-105 active:scale-98 flex items-center gap-2.5 whitespace-nowrap"
+            className="w-full py-3.5 rounded-2xl bg-white hover:bg-indigo-50 text-indigo-950 font-black text-sm shadow-md transition-all flex items-center justify-center gap-2"
           >
-            <span className="text-xl">🎈</span>
-            <span>العب الآن!</span>
+            <span>🎈 العب صيد البالونات الآن</span>
+            <ArrowIcon className="w-4 h-4" />
           </Link>
         </div>
       </div>

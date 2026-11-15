@@ -18,6 +18,11 @@ import {
 import {
   generateFlashAnzanSeries,
   playSoundEffect,
+  speakSorobanNumber,
+  speakSorobanCountdown,
+  warmupSpeechEngine,
+  numberToArabicWords,
+  numberToEnglishWords,
   ArithmeticLevel,
   FlashAnzanConfig,
 } from "@/lib/soroban-engine";
@@ -48,7 +53,7 @@ export default function FlashAnzanPage() {
   const { recordProgressAnswer } = useAuth();
 
   // Configuration State
-  const [level, setLevel] = useState<ArithmeticLevel>("general");
+  const [level, setLevel] = useState<ArithmeticLevel>("simple");
   const [targetRules, setTargetRules] = useState<number[]>([]);
   const [digits, setDigits] = useState(1);
   const [terms, setTerms] = useState(5); // Up to 50 operations
@@ -104,55 +109,13 @@ export default function FlashAnzanPage() {
   };
 
   const speakFlashNumber = (num: number) => {
-    if (voiceMode === "off" || typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    try {
-      window.speechSynthesis.cancel();
-      
-      const arabicDigits: Record<number, string> = {
-        1: "واحد", 2: "اثنان", 3: "ثلاثة", 4: "أربعة", 5: "خمسة",
-        6: "ستة", 7: "سبعة", 8: "ثمانية", 9: "تسعة", 10: "عشرة"
-      };
-      const englishDigits: Record<number, string> = {
-        1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five",
-        6: "Six", 7: "Seven", 8: "Eight", 9: "Nine", 10: "Ten"
-      };
-
-      const isNeg = num < 0;
-      const abs = Math.abs(num);
-      let text = "";
-
-      if (voiceMode === "arabic") {
-        const word = arabicDigits[abs] || abs.toString();
-        text = isNeg ? `ناقص ${word}` : word;
-      } else {
-        const word = englishDigits[abs] || abs.toString();
-        text = isNeg ? `Minus ${word}` : word;
-      }
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = voiceMode === "arabic" ? "ar-SA" : "en-US";
-      utterance.rate = 1.65; // Rapid, crisp speed for Flash Anzan
-      utterance.pitch = 1.1;
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      // Fallback if blocked
-    }
+    if (!soundEnabled) return;
+    speakSorobanNumber(num, voiceMode, showDelayMs);
   };
 
   const speakCountdownNumber = (count: number) => {
-    if (voiceMode === "off" || typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    try {
-      window.speechSynthesis.cancel();
-      const arMap: Record<number, string> = { 3: "ثلاثة", 2: "اثنان", 1: "واحد", 0: "ابدأ" };
-      const enMap: Record<number, string> = { 3: "Three", 2: "Two", 1: "One", 0: "Go" };
-      const text = voiceMode === "arabic" ? (arMap[count] || "") : (enMap[count] || "");
-      if (!text) return;
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = voiceMode === "arabic" ? "ar-SA" : "en-US";
-      utterance.rate = 1.4;
-      utterance.pitch = 1.15;
-      window.speechSynthesis.speak(utterance);
-    } catch {}
+    if (!soundEnabled) return;
+    speakSorobanCountdown(count, voiceMode);
   };
 
   const triggerConfetti = () => {
@@ -170,6 +133,7 @@ export default function FlashAnzanPage() {
 
   const startTraining = () => {
     clearAllTimers();
+    warmupSpeechEngine();
 
     const config: FlashAnzanConfig = {
       termsCount: Math.max(3, Math.min(50, terms)),
@@ -194,14 +158,12 @@ export default function FlashAnzanPage() {
     setCountdown(3);
 
     // Countdown 3 -> 2 -> 1 -> start with soft audio and voice
-    playAudio("beep");
     speakCountdownNumber(3);
     let c = 3;
     const countInterval = setInterval(() => {
       c--;
       if (c > 0) {
         setCountdown(c);
-        playAudio("beep");
         speakCountdownNumber(c);
       } else {
         clearInterval(countInterval);
@@ -227,7 +189,6 @@ export default function FlashAnzanPage() {
       setCurrentNumber(numToFlash);
       setCurrentIndex(idx + 1);
       setSessionState("showing");
-      playAudio("beep");
       speakFlashNumber(numToFlash);
 
       // After showDelayMs, enter clear interval
@@ -466,8 +427,8 @@ export default function FlashAnzanPage() {
                     <Volume2 className="w-3.5 h-3.5" />
                     <span>
                       {voiceMode === "arabic"
-                        ? (currentNumber > 0 ? `زائد ${Math.abs(currentNumber)}` : `ناقص ${Math.abs(currentNumber)}`)
-                        : (currentNumber > 0 ? `Plus ${Math.abs(currentNumber)}` : `Minus ${Math.abs(currentNumber)}`)}
+                        ? (currentNumber > 0 ? `زائد ${numberToArabicWords(Math.abs(currentNumber))}` : `ناقص ${numberToArabicWords(Math.abs(currentNumber))}`)
+                        : (currentNumber > 0 ? `Plus ${numberToEnglishWords(Math.abs(currentNumber))}` : `Minus ${numberToEnglishWords(Math.abs(currentNumber))}`)}
                     </span>
                   </span>
                 )}

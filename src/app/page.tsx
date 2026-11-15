@@ -22,7 +22,6 @@ import {
 import SorobanTeaser from "@/components/home/SorobanTeaser";
 import HeroIllustration from "@/components/home/HeroIllustration";
 import {
-  PLATFORM_INFO,
   getWhatsAppLink,
 } from "@/lib/constants";
 import { useApp } from "@/context/AppContext";
@@ -303,27 +302,36 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* NEW: Teams Tournament Banner */}
-        <div className="mt-8 rounded-3xl bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 border-2 border-amber-500/30 p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+        {/* NEW: Teams Tournament & Official Competition Simulator Banner */}
+        <div className="mt-8 rounded-3xl bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 border-2 border-amber-500/30 p-6 sm:p-8 flex flex-col lg:flex-row items-center justify-between gap-6 shadow-xl">
           <div className="space-y-2 text-right">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400 text-slate-950 text-xs font-black">
               <Trophy className="w-3.5 h-3.5" />
-              <span>ميزة البطولات الحية للفرق (A, B, C, D)</span>
+              <span>محاكي المسابقات الرسمية وحلبة تحدي الفرق</span>
             </div>
             <h3 className="text-xl sm:text-2xl font-black text-white">
-              حلبة تحدي الفرق ومضمار السباق التفاعلي 🏁
+              محاكي المسابقات القياسية 🏅 وحلبة تحدي الفرق 🏁
             </h3>
-            <p className="text-slate-300 text-xs sm:text-sm max-w-xl">
-              تنافس بين الفرق في الصفوف والمسابقات مع قياس زمن الإجابة بالمللي ثانية، تتويج أولمبي 3D، ولقب «مركز بطل الأبطال».
+            <p className="text-slate-300 text-xs sm:text-sm max-w-2xl">
+              اختبر مستواك في محاكي المسابقات الرسمي (بوقت محدد 5-30 دقيقة أو تايمر مفتوح مع تصحيح فوري)، أو نافس بين الفرق في الصفوف والمسابقات الحية.
             </p>
           </div>
-          <Link
-            href="/mental-arithmetic/teams-battle"
-            className="shrink-0 px-6 py-3.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm transition-all shadow-lg shadow-amber-400/20 flex items-center gap-2"
-          >
-            <span>بدء بطولة الفرق الآن</span>
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <Link
+              href="/mental-arithmetic/competition"
+              className="px-6 py-3.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm transition-all shadow-lg shadow-amber-400/20 flex items-center gap-2"
+            >
+              <span>محاكي المسابقة 🏅</span>
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <Link
+              href="/mental-arithmetic/teams-battle"
+              className="px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-black text-sm transition-all flex items-center gap-2"
+            >
+              <span>تحدي الفرق 🏆</span>
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -554,9 +562,6 @@ export default function HomePage() {
                 هل لديك استفسار عن تسجيل الطلاب، دورات إعداد المدربين، أو ترخيص الأكاديميات؟
                 فريقنا متاح عبر واتساب لتقديم الدعم والمساعدة الفورية.
               </p>
-              <div className="text-emerald-200 font-mono font-bold text-sm pt-1">
-                الرقم المعتمد: {PLATFORM_INFO.whatsappNumber}
-              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 shrink-0">
@@ -567,7 +572,7 @@ export default function HomePage() {
                 className="px-8 py-4 rounded-2xl bg-white hover:bg-emerald-50 text-emerald-800 font-black text-base shadow-lg transition-transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
               >
                 <MessageCircle className="w-5 h-5 text-emerald-600" />
-                <span>محادثة واتساب فورية</span>
+                <span>اضغط للتواصل مع إدارة المنصة</span>
               </a>
               <Link
                 href="/subscriptions"
@@ -580,52 +585,52 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Frequently Asked Questions */}
-      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center space-y-3 mb-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">
+      {/* Frequently Asked Questions — Clean 2x2 Grid */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-4">
+        <div className="text-center space-y-2 mb-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold">
             <HelpCircle className="w-4 h-4 text-brand-600" />
             <span>الأسئلة الشائعة</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-900">
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
             كل ما تود معرفته عن منصة العقل الخارق
           </h2>
         </div>
 
-        <div className="space-y-4">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200">
-            <h4 className="font-bold text-slate-900 text-base mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <h4 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base mb-1.5">
               هل يحتاج الطالب لمعرفة سابقة بالعداد الصيني السوروبان؟
             </h4>
-            <p className="text-slate-600 text-sm leading-relaxed">
+            <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm leading-relaxed">
               كلا، تبدأ المنصة مع الطالب من الصفر خطوة بخطوة؛ عبر التعرف على الخرزات، وقيمتها، وقواعد الجمع والطرح البسيطة والمركبة ومكملات الأرقام.
             </p>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl border border-slate-200">
-            <h4 className="font-bold text-slate-900 text-base mb-2">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <h4 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base mb-1.5">
               ما الفرق بين تمارين العداد التفاعلي والفلاش أنزان؟
             </h4>
-            <p className="text-slate-600 text-sm leading-relaxed">
-              العداد التفاعلي يُمكّن الطالب من تحريك الخرزات بلمس الشاشة لترسيخ المفاهيم المادية، بينما الفلاش أنزان يعرض أرقاماً تومض بسرعة محددة لتدريب الطالب على الحساب الذهني الخالص والتخيل دون تحريك أي خرزة فعلية.
+            <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm leading-relaxed">
+              العداد التفاعلي يُمكّن الطالب من تحريك الخرزات بلمس الشاشة لترسيخ المفاهيم المادية، بينما الفلاش أنزان يعرض أرقاماً تومض بسرعة محددة لتدريب الطالب على التخيل الذهني.
             </p>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl border border-slate-200">
-            <h4 className="font-bold text-slate-900 text-base mb-2">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <h4 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base mb-1.5">
               كيف يمكن للمدرب إنشاء مجموعة لطلابه ومتابعة نتائجهم؟
             </h4>
-            <p className="text-slate-600 text-sm leading-relaxed">
-              توفر المنصة لوحة تحكم مخصصة للمدرب (Trainer Dashboard) تمكنه من استعراض قائمة طلابه، مراقبة نسب الدقة وسرعة الإنجاز، وإرسال التوجيهات والواجبات عبر واتساب أو النظام مباشرة.
+            <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm leading-relaxed">
+              توفر المنصة لوحة تحكم مخصصة للمدرب تمكنه من استعراض قائمة طلابه، مراقبة نسب الدقة وسرعة الإنجاز، وإرسال التوجيهات والواجبات مباشرة.
             </p>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl border border-slate-200">
-            <h4 className="font-bold text-slate-900 text-base mb-2">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <h4 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base mb-1.5">
               هل تعمل المنصة على الأجهزة اللوحية والهواتف الذكية؟
             </h4>
-            <p className="text-slate-600 text-sm leading-relaxed">
-              نعم، المنصة مبنية بتصميم متجاوب بالكامل وتدعم اللمس المتعدد على الآيباد، التابلت، والهواتف الذكية والحواسيب بنظام شاشات اللمس.
+            <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm leading-relaxed">
+              نعم، المنصة مبنية بتصميم متجاوب بالكامل وتدعم اللمس المتعدد على الآيباد، التابلت، والهواتف الذكية والحواسيب وشاشات القاعات الذكية.
             </p>
           </div>
         </div>

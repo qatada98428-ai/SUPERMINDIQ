@@ -4,177 +4,194 @@ import {
   Sparkles,
   MessageCircle,
   ShieldCheck,
+  GraduationCap,
+  Award,
+  Building2,
 } from "lucide-react";
-import { PLATFORM_INFO, getWhatsAppLink } from "@/lib/constants";
+import { getWhatsAppLink } from "@/lib/constants";
+import { SUBSCRIPTION_PLANS } from "@/lib/platform-store";
 
 export default function SubscriptionsPage() {
-  const plans = [
-    {
-      id: "student",
-      name: "باقة البطل (طالب فردي)",
-      badge: "الأكثر شيوعاً للأهالي",
-      popular: false,
-      description: "اشتراك فردي للطفل أو الطالب للتدريب في المنزل وتطوير مهارات الحساب الذهني.",
-      features: [
-        "وصول غير محدود لعداد السوروبان التفاعلي",
-        "تمارين الفلاش أنزان مع تحكم كامل بالسرعة",
-        "بنك تحديات الذكاء وأسئلة الأولمبياد",
-        "لوحة متابعة لقياس الدقة والسرعة اليومية",
-        "تقارير تقدم شهرية وإنجازات تحفيزية",
-        "دعم فني عبر واتساب",
-      ],
-      whatsappMsg: "مرحباً إدارة العقل الخارق، أود الاستفسار والاشتراك في (باقة البطل - طالب فردي).",
-      cta: "طلب اشتراك الطالب عبر واتساب",
-    },
-    {
-      id: "trainer",
-      name: "باقة المدرب المعتمد",
-      badge: "الخيار الاحترافي",
-      popular: true,
-      description: "للمدربين المستقلين والمعلمين لتنظيم وتدريب حتى 50 طالباً بمجموعات ذكية.",
-      features: [
-        "كل ميزات باقة الطالب كاملة",
-        "إدارة حتى 50 طالباً موزعون على مجموعات",
-        "لوحة تحكم المدرب مع إحصائيات كل طالب",
-        "إمكانية إرسال الواجبات والتحديات الموجهة",
-        "تقارير أداء جاهزة للطباعة والمشاركة مع أولياء الأمور",
-        "شهادة رخصة مدرب معتمد (SUPER MIND Gold)",
-        "أولوية في الدعم الفني والاستشارات التعليمية",
-      ],
-      whatsappMsg: "مرحباً إدارة العقل الخارق، أود الاستفسار والاشتراك في (باقة المدرب المعتمد - حتى 50 طالباً).",
-      cta: "طلب باقة المدرب عبر واتساب",
-    },
-    {
-      id: "academy",
-      name: "باقة المراكز والأكاديميات",
-      badge: "للمؤسسات والمدارس",
-      popular: false,
-      description: "ترخيص كامل للمدارس، المراكز التعليمية، والأكاديميات المتخصصة مع حسابات متعددة.",
-      features: [
-        "سعة طلاب مرنة (100 إلى 500+ طالب)",
-        "حسابات متعددة للمدربين والإداريين",
-        "نظام الشاشات الكبيرة والعروض التقديمية في القاعات",
-        "تخصيص مستويات التدريب والبطولات الداخلية",
-        "جلسات تدريبية وإعداد كوادر المركز التدريبي",
-        "اتفاقية ترخيص رسمية معتمدة",
-      ],
-      whatsappMsg: "مرحباً إدارة العقل الخارق، نود الاستفسار عن ترخيص (باقة المراكز والأكاديميات) والخصومات الجماعية.",
-      cta: "طلب ترخيص الأكاديميات عبر واتساب",
-    },
-  ];
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
       {/* Header */}
       <div className="text-center max-w-3xl mx-auto space-y-4">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 border border-brand-200 text-brand-700 text-xs font-bold">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 text-xs font-bold">
           <Sparkles className="w-4 h-4 text-brand-600" />
-          <span>خطط ورخص الاشتراك الرسمية</span>
+          <span>خطط ورخص الاشتراك الرسمية في منصة العقل الخارق</span>
         </div>
-        <h1 className="text-3xl sm:text-5xl font-black text-slate-900">
-          اختر الباقة المناسبة لطموحك التدريبي
+        <h1 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white">
+          باقات الاشتراك للطلاب والمدربين والمدارس
         </h1>
-        <p className="text-slate-600 text-base leading-relaxed">
-          سواء كنت ولي أمر يبحث عن تفوق طفله، مدرباً طموحاً يقود فصولاً دراسية، أو أكاديمية تسعى لاعتماد المنصة في مناهجها.
+        <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base leading-relaxed">
+          قسم التعليم، المعداد الحر (السوروبان)، والفلاش أنزان متاحة مجاناً للجميع، مع 100 سؤال مجاناً كل شهر في محاكي المسابقة لكل طالب مسجل بحساب رسمي! وللوصول المفتوح بلا حدود وتوثيق الحساب اختر باقتك:
         </p>
       </div>
 
-      {/* Pricing Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
-        {plans.map((plan) => {
-          const directLink = getWhatsAppLink(plan.whatsappMsg);
-          return (
+      {/* 1. Student Subscriptions (25k / 50k / 100k) */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-2.5 border-b border-slate-200 dark:border-slate-800 pb-3">
+          <GraduationCap className="w-7 h-7 text-brand-600" />
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+              أولاً: باقات الطالب الفردي (فتح محاكي المسابقة والبطولات بلا حدود)
+            </h2>
+            <p className="text-xs text-slate-500">
+              يتم تثبيت تاريخ بدء وانتهاء الاشتراك تلقائياً في بروفايل البطل
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {SUBSCRIPTION_PLANS.student.map((plan) => (
             <div
               key={plan.id}
-              className={`relative bg-white rounded-3xl p-8 border flex flex-col justify-between transition-all duration-300 hover:shadow-xl ${
+              className={`rounded-3xl p-7 bg-white dark:bg-slate-900 border-2 flex flex-col justify-between transition-all hover:shadow-xl ${
                 plan.popular
-                  ? "border-2 border-brand-600 shadow-card lg:-translate-y-2"
-                  : "border-slate-200 shadow-sm"
+                  ? "border-brand-600 shadow-lg"
+                  : "border-slate-200 dark:border-slate-800"
               }`}
             >
-              {plan.popular && (
-                <span className="absolute -top-3.5 right-8 px-4 py-1 rounded-full bg-brand-600 text-white text-xs font-bold shadow-md">
+              <div className="space-y-4">
+                <span className="inline-block px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-black text-xs">
                   {plan.badge}
                 </span>
-              )}
-
-              <div className="space-y-6">
-                <div>
-                  {!plan.popular && (
-                    <span className="text-xs font-bold text-slate-500 block mb-1">
-                      {plan.badge}
-                    </span>
-                  )}
-                  <h3 className="text-2xl font-black text-slate-900">{plan.name}</h3>
-                  <p className="text-slate-600 text-xs sm:text-sm mt-2 leading-relaxed">
-                    {plan.description}
-                  </p>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                  {plan.name}
+                </h3>
+                <div className="text-3xl font-black text-brand-600 dark:text-amber-400 font-mono">
+                  {plan.priceFormatted}
                 </div>
-
-                <div className="py-4 border-y border-slate-100 space-y-1">
-                  <div className="text-xs text-slate-500 font-medium">طريقة الاشتراك:</div>
-                  <div className="text-emerald-700 font-bold text-sm flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <span>تفعيل مباشر ومتابعة عبر واتساب الإدارة</span>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <span className="text-xs font-bold text-slate-900 block">
-                    المزايا والخصائص المتضمنة:
-                  </span>
-                  <ul className="space-y-2.5 text-xs sm:text-sm text-slate-600">
-                    {plan.features.map((feat, i) => (
-                      <li key={i} className="flex items-start gap-2.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <span>{feat}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <ul className="space-y-2.5 pt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+                  {plan.features.map((feat, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              <div className="pt-8 mt-8 border-t border-slate-100">
-                <a
-                  href={directLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`w-full py-3.5 px-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-md ${
-                    plan.popular
-                      ? "bg-brand-600 hover:bg-brand-700 text-white shadow-brand-500/25"
-                      : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/20"
-                  }`}
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>{plan.cta}</span>
-                </a>
-              </div>
+              <a
+                href={getWhatsAppLink(
+                  `مرحباً إدارة منصة العقل الخارق، أود الاشتراك للطالب وتفعيل (${plan.name} - بسعر ${plan.priceFormatted}).`
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>اضغط للتواصل مع إدارة المنصة</span>
+              </a>
             </div>
-          );
-        })}
-      </div>
-
-      {/* WhatsApp Help Banner */}
-      <div className="bg-slate-900 text-white p-8 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="space-y-2 text-right">
-          <h3 className="text-xl font-bold">هل تحتاج إلى استشارة لتحديد الباقة الأنسب؟</h3>
-          <p className="text-slate-400 text-xs sm:text-sm">
-            فريق الدعم الفني والأكاديمي جاهز للإجابة على جميع الاستفسارات عبر رقم الإدارة الرسمي:{" "}
-            <span dir="ltr" className="font-mono text-emerald-400 font-bold">
-              {PLATFORM_INFO.whatsappNumber}
-            </span>
-          </p>
+          ))}
         </div>
-        <a
-          href={getWhatsAppLink("مرحباً إدارة العقل الخارق، أرغب في استشارة حول الباقة الأنسب لطلابي.")}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shrink-0 flex items-center gap-2"
-        >
-          <MessageCircle className="w-5 h-5" />
-          <span>تحدث معنا عبر واتساب</span>
-        </a>
-      </div>
+      </section>
+
+      {/* 2. Trainer Subscriptions (25k / 50k / 100k) */}
+      <section className="space-y-6">
+        <div className="flex items-center gap-2.5 border-b border-slate-200 dark:border-slate-800 pb-3">
+          <Award className="w-7 h-7 text-amber-500" />
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+              ثانياً: باقات توثيق واعتماد المدربين (لوحة المدرب + الدليل + الواجبات)
+            </h2>
+            <p className="text-xs text-slate-500">
+              توثيق حساب المدرب بالشارة الرسمية ونشر معلوماته وصورته وكؤوسه في دليل المدربين المعتمدين
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {SUBSCRIPTION_PLANS.trainer.map((plan) => (
+            <div
+              key={plan.id}
+              className={`rounded-3xl p-7 bg-white dark:bg-slate-900 border-2 flex flex-col justify-between transition-all hover:shadow-xl ${
+                plan.popular
+                  ? "border-amber-500 shadow-lg"
+                  : "border-slate-200 dark:border-slate-800"
+              }`}
+            >
+              <div className="space-y-4">
+                <span className="inline-block px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-black text-xs">
+                  {plan.badge}
+                </span>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                  {plan.name}
+                </h3>
+                <div className="text-3xl font-black text-brand-600 dark:text-amber-400 font-mono">
+                  {plan.priceFormatted}
+                </div>
+                <ul className="space-y-2.5 pt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-300">
+                  {plan.features.map((feat, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <a
+                href={getWhatsAppLink(
+                  `مرحباً إدارة منصة العقل الخارق، أنا مدرب حساب ذهني وأود الاشتراك وتوثيق حسابي ضمن (${plan.name} - بسعر ${plan.priceFormatted}).`
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>اضغط للتواصل مع إدارة المنصة</span>
+              </a>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 3. School Annual Accreditation (150k IQD) */}
+      <section className="rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-8 sm:p-10 border-2 border-amber-400/60 shadow-2xl">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div className="lg:col-span-8 space-y-4">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-black">
+              <Building2 className="w-4 h-4" />
+              <span>{SUBSCRIPTION_PLANS.school.badge}</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black">
+              ثالثاً: {SUBSCRIPTION_PLANS.school.name}
+            </h2>
+            <p className="text-slate-300 text-sm leading-relaxed">
+              مخصص للمدارس الأهلية والروضات والمراكز التعليمية المعتمدة لمنهاج وبرنامج العقل الخارق، مع فتح كامل مميزات المنصة للشاشات الذكية ونشر معلومات المدرسة والتواصل المباشر معها في الدليل الرسمي.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              {SUBSCRIPTION_PLANS.school.features.map((feat, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs sm:text-sm text-emerald-200">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <span>{feat}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="lg:col-span-4 bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/15 text-center space-y-4">
+            <div className="text-xs font-bold text-amber-300">الاشتراك السنوي للمدارس المعتمدة</div>
+            <div className="text-3xl sm:text-4xl font-black text-white font-mono">
+              150,000 د.ع
+            </div>
+            <div className="text-xs text-slate-300">لمدة سنة دراسية كاملة مع النشر في الدليل</div>
+            <a
+              href={getWhatsAppLink(
+                "مرحباً إدارة منصة العقل الخارق، نود اعتماد مدرستنا ضمن باقة المدارس السنوية (150,000 د.ع) ونشر معلومات المدرسة في الدليل."
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-lg"
+            >
+              <MessageCircle className="w-5 h-5" />
+              <span>اضغط للتواصل مع إدارة المنصة</span>
+            </a>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

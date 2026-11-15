@@ -105,7 +105,7 @@ export default function ContactPage() {
               className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-500/25 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
             >
               <MessageCircle className="w-5 h-5 text-amber-300" />
-              <span>مراسلة واتساب المباشرة: 07806086016</span>
+              <span>اضغط للتواصل مع الأستاذ قتادة كريم</span>
             </a>
           </div>
         </div>
@@ -287,12 +287,6 @@ export default function ContactPage() {
               <p className="text-xs sm:text-sm text-emerald-100 leading-relaxed">
                 لطلب المناهج، تسجيل الطلاب، برامج تدريب المدربين، أو اعتماد المدارس والمراكز الأهلية:
               </p>
-              <div className="p-4 rounded-2xl bg-white/10 border border-white/20 text-center">
-                <span className="text-xs text-emerald-200 block mb-1">رقم واتساب المعتمد:</span>
-                <span dir="ltr" className="text-2xl sm:text-3xl font-black font-mono tracking-wider block text-white">
-                  +964 780 608 6016
-                </span>
-              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
@@ -303,7 +297,7 @@ export default function ContactPage() {
                 className="w-full sm:flex-1 py-3.5 px-6 rounded-2xl bg-white hover:bg-emerald-50 text-emerald-800 font-black text-sm sm:text-base shadow-lg transition-transform hover:scale-102 active:scale-98 flex items-center justify-center gap-2"
               >
                 <MessageCircle className="w-5 h-5 text-emerald-600" />
-                <span>رابط واتساب المباشر (اضغط للمحادثة)</span>
+                <span>اضغط للتواصل مع إدارة المنصة</span>
               </a>
 
               <a

@@ -21,10 +21,29 @@ import {
   MessageCircle,
   RefreshCw,
   Loader2,
+  Trophy,
+  Crown,
+  Calendar,
+  MapPin,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useApp } from "@/context/AppContext";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { getWhatsAppLink } from "@/lib/constants";
+import {
+  ExtendedUserProfile,
+  PlatformAssignment,
+  SubscriptionPlanId,
+  getAllExtendedProfiles,
+  getExtendedProfile,
+  saveExtendedProfile,
+  evaluateSubscription,
+  createSubscriptionForPlan,
+  getAllAssignments,
+  createPlatformAssignment,
+  deletePlatformAssignment,
+  COUNTRIES_WITH_GOVERNORATES,
+} from "@/lib/platform-store";
 import {
   UserProfile,
   UserProgressRecord,
@@ -40,8 +59,40 @@ export default function AdminDashboardPage() {
   const isEn = language === "en";
 
   const [activeTab, setActiveTab] = useState<
-    "overview" | "users" | "trainers" | "schools" | "supporters" | "audit"
+    | "overview"
+    | "subscriptions"
+    | "competitions"
+    | "users"
+    | "trainers"
+    | "schools"
+    | "supporters"
+    | "audit"
   >("overview");
+
+  // Extended Platform Profiles & Admin Competitions State
+  const [extProfiles, setExtProfiles] = useState<ExtendedUserProfile[]>([]);
+  const [subFilter, setSubFilter] = useState<
+    "all" | "active" | "expiring_soon" | "expired" | "pending_trainers"
+  >("all");
+  const [subSearch, setSubSearch] = useState("");
+  const [platformAssignments, setPlatformAssignments] = useState<PlatformAssignment[]>([]);
+  const [showCreateCompModal, setShowCreateCompModal] = useState(false);
+  const [compKind, setCompKind] = useState<"admin_competition" | "admin_challenge" | "trainer_homework">(
+    "admin_competition"
+  );
+  const [compTitle, setCompTitle] = useState("");
+  const [compDesc, setCompDesc] = useState("");
+  const [compTargetType, setCompTargetType] = useState<
+    "all_students" | "active_subscribers" | "by_level" | "by_governorate"
+  >("all_students");
+  const [compTargetValue, setCompTargetValue] = useState("كربلاء المقدسة");
+  const [compRulesLevel, setCompRulesLevel] = useState<"simple" | "complex_5" | "complex_10" | "general">(
+    "simple"
+  );
+  const [compQuestionsCount, setCompQuestionsCount] = useState(30);
+  const [compTimeMinutes, setCompTimeMinutes] = useState(10);
+  const [compAnswerMode, setCompAnswerMode] = useState<"typing" | "choices">("typing");
+  const compChoicesCount: 2 | 3 | 4 | 5 = 4;
 
   // Data states from Supabase
   const [loadingData, setLoadingData] = useState(false);
@@ -68,8 +119,12 @@ export default function AdminDashboardPage() {
 
   const isAdmin = role === "admin";
 
-  // Load real data from Supabase
+  // Load real data from Supabase + Extended Platform Store
   const loadAdminData = useCallback(async () => {
+    setPlatformAssignments(getAllAssignments());
+    const localExt = getAllExtendedProfiles();
+    setExtProfiles(localExt);
+
     const supabase = getSupabaseClient();
     if (!supabase || !isAdmin) return;
 
@@ -81,7 +136,19 @@ export default function AdminDashboardPage() {
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (profilesData) setUsersList(profilesData as UserProfile[]);
+      if (profilesData) {
+        setUsersList(profilesData as UserProfile[]);
+        // Ensure every Supabase user has an ExtendedUserProfile entry
+        for (const u of profilesData as UserProfile[]) {
+          getExtendedProfile(u.id, {
+            email: u.email,
+            name: u.name,
+            role: u.role,
+            phone: u.phone,
+          });
+        }
+        setExtProfiles(getAllExtendedProfiles());
+      }
 
       // 2. Fetch Progress
       const { data: progData } = await supabase.from("user_progress").select("*");
@@ -376,6 +443,8 @@ export default function AdminDashboardPage() {
         <div className="mt-8 pt-4 border-t border-slate-800 flex items-center gap-2 overflow-x-auto no-scrollbar">
           {[
             { id: "overview", label: "نظرة عامة وإحصائيات", icon: BarChart3 },
+            { id: "subscriptions", label: `👑 الاشتراكات والمدربون (${extProfiles.length})`, icon: Crown },
+            { id: "competitions", label: `🏆 المسابقات والواجبات العامة (${platformAssignments.length})`, icon: Trophy },
             { id: "users", label: `المستخدمون (${stats.totalUsers})`, icon: Users },
             { id: "trainers", label: `طلبات المدربين (${stats.pendingTrainerApps})`, icon: Award },
             { id: "schools", label: `طلبات المدارس (${stats.pendingSchoolApps})`, icon: Building2 },
@@ -970,6 +1039,547 @@ export default function AdminDashboardPage() {
                       className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs"
                     >
                       إلغاء
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* =========================================================================
+          TAB: SUBSCRIPTIONS, SMART FILTERS & TRAINER VERIFICATION
+         ========================================================================= */}
+      {activeTab === "subscriptions" && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 space-y-5 shadow-sm">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <Crown className="w-6 h-6 text-amber-500" />
+                  <span>إدارة اشتراكات الطلاب والمدربين وتواريخ الصلاحية</span>
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  فعّل اشتراك أي طالب أو مدرب بضغطة زر (شهري 25 ألف | 3 أشهر 50 ألف | سنوي 100 ألف د.ع)، وسيتم تثبيت تاريخ البدء والانتهاء والإلغاء التلقائي بعد انتهاء المدة!
+                </p>
+              </div>
+
+              <div className="relative sm:w-72">
+                <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="ابحث بالاسم أو الهاتف أو المحافظة..."
+                  value={subSearch}
+                  onChange={(e) => setSubSearch(e.target.value)}
+                  className="w-full pr-10 pl-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold"
+                />
+              </div>
+            </div>
+
+            {/* Smart Subscription Filters */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              {[
+                { id: "all", label: "الكل" },
+                { id: "active", label: "المشتركون الفعالون ✅" },
+                { id: "expiring_soon", label: "تنتهي قريباً (خلال 3 أيام) ⚠️" },
+                { id: "expired", label: "اشتراكات منتهية ❌" },
+                { id: "pending_trainers", label: "مدربون بانتظار التوثيق ⏳" },
+              ].map((flt) => (
+                <button
+                  key={flt.id}
+                  type="button"
+                  onClick={() =>
+                    setSubFilter(
+                      flt.id as
+                        | "all"
+                        | "active"
+                        | "expiring_soon"
+                        | "expired"
+                        | "pending_trainers"
+                    )
+                  }
+                  className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all ${
+                    subFilter === flt.id
+                      ? "bg-brand-600 text-white shadow-sm"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                  }`}
+                >
+                  {flt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Profiles List */}
+            <div className="space-y-4">
+              {extProfiles
+                .filter((p) => {
+                  const evalSub = evaluateSubscription(p.subscription);
+                  if (subFilter === "active" && !evalSub.isActive) return false;
+                  if (subFilter === "expiring_soon" && !evalSub.isExpiringSoon) return false;
+                  if (subFilter === "expired" && evalSub.effectiveStatus !== "expired") return false;
+                  if (
+                    subFilter === "pending_trainers" &&
+                    !(p.role === "trainer" && !evalSub.isActive)
+                  )
+                    return false;
+                  if (subSearch.trim()) {
+                    const q = subSearch.toLowerCase();
+                    return (
+                      p.name.toLowerCase().includes(q) ||
+                      (p.phone || "").includes(q) ||
+                      (p.governorate || "").toLowerCase().includes(q) ||
+                      (p.email || "").toLowerCase().includes(q)
+                    );
+                  }
+                  return true;
+                })
+                .map((p) => {
+                  const evalSub = evaluateSubscription(p.subscription);
+                  const activatePlan = async (planId: SubscriptionPlanId) => {
+                    const newSub = createSubscriptionForPlan(planId);
+                    await saveExtendedProfile({
+                      ...p,
+                      subscription: newSub,
+                      isVerifiedTrainer:
+                        p.role === "trainer" ? planId !== "free" : p.isVerifiedTrainer,
+                      showInDirectory:
+                        p.role === "trainer" ? planId !== "free" : p.showInDirectory,
+                    });
+                    setExtProfiles(getAllExtendedProfiles());
+                    playFx("fanfare");
+                  };
+
+                  return (
+                    <div
+                      key={p.id}
+                      className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                    >
+                      <div className="flex items-start gap-3.5">
+                        <div className="w-12 h-12 rounded-2xl overflow-hidden bg-brand-100 dark:bg-slate-700 flex items-center justify-center font-black text-brand-700 shrink-0">
+                          {p.avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
+                          ) : (
+                            p.name.charAt(0)
+                          )}
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                              {p.name}
+                            </span>
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
+                                p.role === "trainer"
+                                  ? "bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300"
+                                  : "bg-brand-100 text-brand-800 dark:bg-brand-950/70 dark:text-brand-300"
+                              }`}
+                            >
+                              {p.role === "trainer" ? "مدرب" : p.role === "admin" ? "مشرف عام" : "طالب"}
+                            </span>
+                            {evalSub.isActive ? (
+                              <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 text-[10px] font-black">
+                                فعال ({p.subscription.planLabel}) • متبقي {evalSub.daysRemaining} يوم
+                              </span>
+                            ) : evalSub.effectiveStatus === "expired" ? (
+                              <span className="px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-black">
+                                منتهي الصلاحية ❌
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold">
+                                باقة مجانية
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3.5 h-3.5 text-rose-500" />
+                              <span>
+                                {p.country || "العراق"} - {p.governorate || "غير محدد"}
+                              </span>
+                            </span>
+                            {p.phone && (
+                              <span className="font-mono font-bold text-emerald-600">
+                                واتساب: {p.phone}
+                              </span>
+                            )}
+                            {p.subscription.startDate && (
+                              <span className="flex items-center gap-1 text-[11px] text-slate-400">
+                                <Calendar className="w-3 h-3" />
+                                <span>
+                                  من {new Date(p.subscription.startDate).toLocaleDateString("ar-IQ")} إلى{" "}
+                                  {p.subscription.endDate
+                                    ? new Date(p.subscription.endDate).toLocaleDateString("ar-IQ")
+                                    : "—"}
+                                </span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Admin Quick Subscription Action Buttons */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => activatePlan("monthly_25k")}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] shadow-sm"
+                        >
+                          تفعيل شهر (25 ألف)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => activatePlan("quarterly_50k")}
+                          className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-black text-[11px] shadow-sm"
+                        >
+                          تفعيل 3 أشهر (50 ألف)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => activatePlan("yearly_100k")}
+                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[11px] shadow-sm"
+                        >
+                          تفعيل سنة (100 ألف)
+                        </button>
+                        {evalSub.isActive && (
+                          <button
+                            type="button"
+                            onClick={() => activatePlan("free")}
+                            className="px-3 py-1.5 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold text-[11px]"
+                          >
+                            إلغاء الاشتراك
+                          </button>
+                        )}
+                        {p.phone && (
+                          <a
+                            href={getWhatsAppLink(
+                              `مرحباً (${p.name})، معك إدارة منصة العقل الخارق بخصوص حسابك واشتراكك في المنصة.`,
+                              p.phone
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-xl bg-slate-900 text-white font-bold text-[11px] flex items-center gap-1"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>مراسلة واتساب</span>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          TAB: ADMIN OFFICIAL COMPETITIONS, CHALLENGES & HOMEWORKS
+         ========================================================================= */}
+      {activeTab === "competitions" && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+            <div className="space-y-1">
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <Trophy className="w-6 h-6 text-amber-500" />
+                <span>🏆 إدارة المسابقات والتحديات والواجبات العامة للمنصة</span>
+              </h2>
+              <p className="text-xs text-slate-500">
+                أطلق مسابقة رسمية أو تحدياً عاماً لجميع المشتركين أو لفئة محددة (حسب المحافظة أو المستوى)، وتابع ترتيب الفائزين تلقائياً!
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowCreateCompModal(true)}
+              className="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg flex items-center gap-2 shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>إنشاء مسابقة أو تحدي جديد 🏆</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {platformAssignments.map((item) => (
+              <div
+                key={item.id}
+                className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm flex flex-col justify-between gap-4"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 font-black text-xs">
+                      {item.kind === "admin_competition"
+                        ? "🏆 مسابقة رسمية من الإدارة"
+                        : item.kind === "admin_challenge"
+                        ? "⚡ تحدي أسبوعي"
+                        : `📝 واجب مدرب (${item.creatorName})`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        deletePlatformAssignment(item.id);
+                        setPlatformAssignments(getAllAssignments());
+                      }}
+                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-slate-500">{item.description}</p>
+
+                  <div className="flex flex-wrap gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800">
+                      الأسئلة: {item.questionsCount} سؤال
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800">
+                      الوقت: {item.timeLimitMinutes} دقائق
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                      المشاركون: {item.submissions?.length || 0} طالب
+                    </span>
+                  </div>
+
+                  {/* Leaderboard Preview */}
+                  {item.submissions && item.submissions.length > 0 && (
+                    <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                      <div className="text-xs font-black text-amber-600">
+                        🥇 ترتيب الأبطال الفائزين (حسب الأعلى دقة والأسرع وقتاً):
+                      </div>
+                      <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                        {item.submissions.slice(0, 10).map((sub, idx) => (
+                          <div
+                            key={sub.studentId}
+                            className="flex items-center justify-between text-xs font-bold bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl"
+                          >
+                            <span>
+                              {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`}{" "}
+                              {sub.studentName} {sub.governorate ? `(${sub.governorate})` : ""}
+                            </span>
+                            <span className="font-mono text-emerald-600">
+                              {sub.correctAnswers}/{sub.totalQuestions} ({sub.accuracy}%) • {sub.durationSeconds}ث
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                  <Link
+                    href={`/mental-arithmetic/competition?assignmentId=${item.id}`}
+                    className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs"
+                  >
+                    معاينة وتجربة المسابقة 🚀
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Modal to Create Admin Competition / Challenge */}
+          {showCreateCompModal && (
+            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in overflow-y-auto">
+              <div className="relative w-full max-w-xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-8 my-8 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                    🏆 إطلاق مسابقة أو تحدي أو واجب عام من إدارة المنصة
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateCompModal(false)}
+                    className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold"
+                  >
+                    إغلاق ✕
+                  </button>
+                </div>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!compTitle.trim()) return;
+                    createPlatformAssignment({
+                      kind: compKind,
+                      title: compTitle.trim(),
+                      description:
+                        compDesc.trim() ||
+                        "مسابقة وتحدي رسمي من إدارة منصة العقل الخارق - ابدأ الحل الآن بضغطة زر!",
+                      creatorId: "trainer-qatada",
+                      creatorName: "إدارة منصة العقل الخارق (الأستاذ قتادة كريم)",
+                      creatorRole: "admin",
+                      targetType: compTargetType,
+                      targetValue:
+                        compTargetType === "by_governorate" || compTargetType === "by_level"
+                          ? compTargetValue
+                          : undefined,
+                      exerciseType: "competition",
+                      rulesLevel: compRulesLevel,
+                      allowSubtraction: true,
+                      digitPlace: "units",
+                      termsCount: 5,
+                      questionsCount: compQuestionsCount,
+                      timeLimitMinutes: compTimeMinutes,
+                      answerMode: compAnswerMode,
+                      choicesCount: compChoicesCount,
+                      isActive: true,
+                    });
+                    setPlatformAssignments(getAllAssignments());
+                    setCompTitle("");
+                    setCompDesc("");
+                    setShowCreateCompModal(false);
+                    playFx("fanfare");
+                  }}
+                  className="space-y-4"
+                >
+                  <div>
+                    <label className="text-xs font-bold block mb-1">نوع الفعالية</label>
+                    <select
+                      value={compKind}
+                      onChange={(e) =>
+                        setCompKind(
+                          e.target.value as
+                            | "admin_competition"
+                            | "admin_challenge"
+                            | "trainer_homework"
+                        )
+                      }
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                    >
+                      <option value="admin_competition">🏆 مسابقة رسمية كبرى للمنصة</option>
+                      <option value="admin_challenge">⚡ تحدي أسبوعي سريع</option>
+                      <option value="trainer_homework">📝 واجب تدريبي عام</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold block mb-1">عنوان المسابقة أو التحدي *</label>
+                    <input
+                      type="text"
+                      required
+                      value={compTitle}
+                      onChange={(e) => setCompTitle(e.target.value)}
+                      placeholder="مثال: بطولة أبطال العقل الخارق الكبرى - المستوى الأول"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold block mb-1">الفئة المستهدفة</label>
+                      <select
+                        value={compTargetType}
+                        onChange={(e) =>
+                          setCompTargetType(
+                            e.target.value as
+                              | "all_students"
+                              | "active_subscribers"
+                              | "by_level"
+                              | "by_governorate"
+                          )
+                        }
+                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                      >
+                        <option value="all_students">جميع الطلاب والمشتركين في المنصة</option>
+                        <option value="active_subscribers">المشتركون الفعالون فقط (الباقات المدفوعة)</option>
+                        <option value="by_governorate">تحديد محافظة معينة</option>
+                        <option value="by_level">تحديد مستوى معين</option>
+                      </select>
+                    </div>
+
+                    {compTargetType === "by_governorate" && (
+                      <div>
+                        <label className="text-xs font-bold block mb-1">اختر المحافظة</label>
+                        <select
+                          value={compTargetValue}
+                          onChange={(e) => setCompTargetValue(e.target.value)}
+                          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                        >
+                          {COUNTRIES_WITH_GOVERNORATES["العراق"].map((g) => (
+                            <option key={g} value={g}>
+                              {g}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="text-xs font-bold block mb-1">القاعدة الحسابية</label>
+                      <select
+                        value={compRulesLevel}
+                        onChange={(e) =>
+                          setCompRulesLevel(
+                            e.target.value as "simple" | "complex_5" | "complex_10" | "general"
+                          )
+                        }
+                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                      >
+                        <option value="simple">الجمع والطرح البسيط</option>
+                        <option value="complex_5">أصدقاء الرقم 5 (مركب 5)</option>
+                        <option value="complex_10">أصدقاء الرقم 10 (مركب 10)</option>
+                        <option value="general">تحدي شامل</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold block mb-1">عدد الأسئلة (حتى 1000)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={1000}
+                        value={compQuestionsCount}
+                        onChange={(e) => setCompQuestionsCount(Number(e.target.value))}
+                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono font-bold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold block mb-1">الوقت المحدد (دقائق)</label>
+                      <select
+                        value={compTimeMinutes}
+                        onChange={(e) => setCompTimeMinutes(Number(e.target.value))}
+                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                      >
+                        {[5, 7, 10, 15, 20, 25, 30].map((m) => (
+                          <option key={m} value={m}>
+                            {m} دقائق
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold block mb-1">طريقة الإجابة</label>
+                      <select
+                        value={compAnswerMode}
+                        onChange={(e) => setCompAnswerMode(e.target.value as "typing" | "choices")}
+                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                      >
+                        <option value="typing">كتابة الجواب</option>
+                        <option value="choices">اختيارات متعددة</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateCompModal(false)}
+                      className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md"
+                    >
+                      نشر المسابقة لجميع المستهدفين 🚀
                     </button>
                   </div>
                 </form>

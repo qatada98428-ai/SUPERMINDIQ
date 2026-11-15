@@ -50,8 +50,16 @@ export const COACH_INFO = {
 };
 
 // Direct WhatsApp helper
-export function getWhatsAppLink(customMessage?: string): string {
-  const phone = PLATFORM_INFO.whatsappRaw;
+export function getWhatsAppLink(customMessage?: string, customPhone?: string): string {
+  let phone = PLATFORM_INFO.whatsappRaw;
+  if (customPhone && customPhone.trim()) {
+    const digits = customPhone.replace(/[^0-9]/g, "");
+    if (digits.startsWith("07") && digits.length === 11) {
+      phone = "964" + digits.slice(1);
+    } else if (digits.length >= 8) {
+      phone = digits;
+    }
+  }
   const defaultMsg = "مرحباً إدارة العقل الخارق (SUPER MIND)، أود الاستفسار عن برامج الحساب الذهني وتفاصيل الاشتراكات.";
   const text = encodeURIComponent(customMessage || defaultMsg);
   return `https://wa.me/${phone}?text=${text}`;
@@ -348,8 +356,8 @@ export const TRAINERS_DIRECTORY: TrainerProfile[] = [
     avatar: "",
     country: "العراق / الوطن العربي",
     governorate: "الأنبار / كافة المحافظات",
-    bio: "أدرج اسمك هنا لتصل إلى آلاف أولياء الأمور والطلاب الباحثين عن مدربين معتمدين في مدينتك باشتراك سنوي 25,000 د.ع.",
-    enBio: "List your profile here to connect with parents and students in your city for 25,000 IQD/year.",
+    bio: "أدرج اسمك هنا لتصل إلى آلاف أولياء الأمور والطلاب الباحثين عن مدربين معتمدين في مدينتك وتفتح لوحة إدارة الطلاب والواجبات (شهري 25,000 د.ع | 3 أشهر 50,000 د.ع | سنوي 100,000 د.ع).",
+    enBio: "List your profile here to connect with parents and students in your city (25k/mo, 50k/3mo, or 100k/yr).",
     levelsTaught: ["المستوى الثاني", "الضرب والقسمة", "تحديات الفرق"],
     whatsapp: "+9647806086016",
     status: "Verified Directory",
@@ -431,8 +439,8 @@ export const SCHOOLS_DIRECTORY: SchoolProfile[] = [
     country: "العراق / الوطن العربي",
     governorate: "الأنبار / كافة المحافظات",
     address: "العنوان الرسمي للمؤسسة",
-    bio: "مساحة مخصصة لإدراج مدرستكم أو أكاديميتكم التعليمية مع صورة كتاب المنهاج المخصص أو شعار المدرسة باشتراك سنوي 75,000 د.ع بعد تدقيق الإدارة.",
-    enBio: "Space reserved to display your school, official curriculum edition, and contact link for 75,000 IQD/year.",
+    bio: "مساحة مخصصة لإدراج مدرستكم أو أكاديميتكم التعليمية مع صورة كتاب المنهاج المخصص أو شعار المدرسة وإتاحة كافة مميزات المنصة باشتراك سنوي 150,000 د.ع بعد تدقيق الإدارة.",
+    enBio: "Space reserved to display your school, official curriculum edition, and full platform access for 150,000 IQD/year.",
     partnershipType: "متاح للانضمام والاعتماد",
     curriculumStage: "طلب حقيبة ومنهاج مدرسي معتمد",
     whatsapp: "+9647806086016",

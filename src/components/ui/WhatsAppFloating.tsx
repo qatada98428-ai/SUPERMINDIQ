@@ -1,77 +1,82 @@
 "use client";
 
 import React, { useState } from "react";
+import { usePathname } from "next/navigation";
 import { MessageCircle, X } from "lucide-react";
 import { getWhatsAppLink, PLATFORM_INFO } from "@/lib/constants";
 
 export default function WhatsAppFloating() {
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Hide floating button on training simulators, games, and dashboards to prevent bottom clutter
+  const hiddenPrefixes = [
+    "/mental-arithmetic/",
+    "/intelligence/quiz",
+    "/learn",
+    "/dashboard",
+    "/trainer",
+    "/admin",
+    "/login",
+    "/register",
+  ];
+  if (hiddenPrefixes.some((prefix) => pathname.startsWith(prefix))) {
+    return null;
+  }
 
   const directLink = getWhatsAppLink(
     "مرحباً إدارة العقل الخارق SUPER MIND، أود الاستفسار عن تفاصيل الاشتراكات والبرامج التدريبية المتاحة."
   );
 
   return (
-    <div className="fixed bottom-6 left-6 z-50 flex flex-col items-start gap-3">
+    <div className="fixed bottom-5 left-5 z-40 flex flex-col items-start gap-2.5">
       {isOpen && (
-        <div className="w-80 p-4 bg-white rounded-2xl shadow-2xl border border-slate-200 text-slate-800 animate-in fade-in slide-in-from-bottom-3 duration-200">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="w-72 p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 animate-in fade-in slide-in-from-bottom-3 duration-200">
+          <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold shadow-sm">
-                <MessageCircle className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold shadow-xs">
+                <MessageCircle className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="font-bold text-sm text-slate-900">إدارة العقل الخارق</h4>
-                <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  متصل الآن عبر واتساب
+                <h4 className="font-bold text-xs text-slate-900 dark:text-white">إدارة العقل الخارق</h4>
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                  متصل عبر واتساب
                 </p>
               </div>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+              className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               aria-label="إغلاق نافذة المحادثة"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <p className="text-xs text-slate-600 my-3 leading-relaxed">
-            أهلاً بك! يمكنك التواصل المباشر مع إدارة المنصة للاستفسار عن اشتراكات الطلاب، تدريب المدربين، أو اعتماد المراكز:
+          <p className="text-xs text-slate-600 dark:text-slate-300 my-2.5 leading-relaxed">
+            للاستفسار عن اشتراكات الطلاب، تدريب المدربين، أو اعتماد المراكز:
           </p>
-
-          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 mb-3 text-xs text-slate-700">
-            <span className="font-semibold text-brand-700 block mb-1">الرقم المعتمد:</span>
-            <span dir="ltr" className="font-mono text-slate-900 font-bold block text-sm">
-              {PLATFORM_INFO.whatsappNumber}
-            </span>
-          </div>
 
           <a
             href={directLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition-all shadow-md hover:shadow-emerald-200 active:scale-95"
+            className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all shadow-sm active:scale-95"
           >
             <MessageCircle className="w-4 h-4" />
-            <span>محادثة مباشرة الآن</span>
+            <span dir="ltr">{PLATFORM_INFO.whatsappNumber}</span>
           </a>
         </div>
       )}
 
-      {/* Trigger floating button */}
+      {/* Compact clean trigger button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="group relative flex items-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 focus:outline-none focus:ring-4 focus:ring-emerald-200"
+        className="group flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-3.5 rounded-full shadow-md hover:shadow-lg transition-all duration-200 active:scale-95"
         aria-label="تواصل مع الإدارة عبر واتساب"
       >
-        <span className="relative flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-200 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
-        </span>
-        <MessageCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        <span className="text-sm font-medium hidden sm:inline">تواصل عبر واتساب</span>
+        <MessageCircle className="w-5 h-5" />
+        <span className="text-xs hidden sm:inline">واتساب الإدارة</span>
       </button>
     </div>
   );

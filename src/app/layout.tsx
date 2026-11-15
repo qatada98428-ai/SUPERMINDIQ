@@ -7,6 +7,7 @@ import Footer from "@/components/layout/Footer";
 import WhatsAppFloating from "@/components/ui/WhatsAppFloating";
 import PWAInstallBanner from "@/components/ui/PWAInstallBanner";
 import GuestProgressMigrationPrompt from "@/components/ui/GuestProgressMigrationPrompt";
+import WelcomePrayerModal from "@/components/ui/WelcomePrayerModal";
 
 export const metadata: Metadata = {
   title: "منصة برنامج العقل الخارق | SUPER MIND — الحساب الذهني وتنمية القدرات العقلية",
@@ -49,6 +50,7 @@ export default function RootLayout({
         <AppProvider>
           <AuthProvider>
             <Navbar />
+            <WelcomePrayerModal />
             <GuestProgressMigrationPrompt />
             <main className="flex-1">
               {children}

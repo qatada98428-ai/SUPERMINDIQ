@@ -16,10 +16,20 @@ import {
   CheckCircle2,
   Loader2,
   ShieldCheck,
+  Globe,
+  MapPin,
+  Camera,
 } from "lucide-react";
 import BrandLogo from "@/components/ui/BrandLogo";
 import { useAuth } from "@/context/AuthContext";
 import { useApp } from "@/context/AppContext";
+import {
+  COUNTRIES_WITH_GOVERNORATES,
+  compressAvatarImage,
+  getExtendedProfile,
+  saveExtendedProfile,
+} from "@/lib/platform-store";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -33,20 +43,55 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [country, setCountry] = useState("العراق");
+  const [governorate, setGovernorate] = useState("كربلاء المقدسة");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [bio, setBio] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const governoratesList = COUNTRIES_WITH_GOVERNORATES[country] || ["مدينة أخرى"];
+
+  const handleCountryChange = (newCountry: string) => {
+    setCountry(newCountry);
+    const list = COUNTRIES_WITH_GOVERNORATES[newCountry] || ["مدينة أخرى"];
+    setGovernorate(list[0]);
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const compressed = await compressAvatarImage(file);
+      setAvatarUrl(compressed);
+    } catch {
+      setErrorMessage("تعذر رفع الصورة، يرجى اختيار صورة أخرى.");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    if (!name.trim()) {
-      setErrorMessage(isEn ? "Please enter your full name." : "يرجى إدخال الاسم الثلاثي.");
+    if (!name.trim() || name.trim().length < 3) {
+      setErrorMessage(isEn ? "Please enter your full name." : "يرجى إدخال الاسم الثلاثي الحقيقي.");
+      return;
+    }
+    if (!phone.trim() || phone.trim().length < 8) {
+      setErrorMessage(
+        isEn
+          ? "Please enter a valid WhatsApp phone number."
+          : "يرجى إدخال رقم هاتف صحيح يحتوي على واتساب للتواصل."
+      );
       return;
     }
     if (!email.trim()) {
@@ -54,7 +99,11 @@ export default function RegisterPage() {
       return;
     }
     if (password.length < 6) {
-      setErrorMessage(isEn ? "Password must be at least 6 characters." : "يجب أن تتكون كلمة المرور من 6 خانات على الأقل.");
+      setErrorMessage(
+        isEn
+          ? "Password must be at least 6 characters."
+          : "يجب أن تتكون كلمة المرور من 6 خانات على الأقل."
+      );
       return;
     }
     if (password !== confirmPassword) {
@@ -66,25 +115,88 @@ export default function RegisterPage() {
     playFx("click");
 
     const res = await signUpWithEmail(email, password, name, phone, requestedRole);
-    setIsSubmitting(false);
 
     if (!res.success) {
-      setErrorMessage(res.error || (isEn ? "Failed to create account." : "تعذر إنشاء الحساب. يرجى التأكد من صحة البيانات."));
+      setIsSubmitting(false);
+      setErrorMessage(
+        res.error || (isEn ? "Failed to create account." : "تعذر إنشاء الحساب. يرجى التأكد من صحة البيانات.")
+      );
       playFx("wrong");
-    } else {
-      if (requestedRole === "trainer") {
-        setSuccessMessage(
-          isEn
-            ? "Account created! Your trainer application has been submitted for administrative review."
-            : "تم إنشاء الحساب بنجاح! تم استلام طلب الاعتماد كمدرب ويخضع للتدقيق الإداري."
-        );
-      } else {
-        setSuccessMessage(
-          isEn
-            ? "Account created successfully! Welcome to SUPER MIND."
-            : "تم إنشاء حسابك بنجاح! أهلاً بك في منصة العقل الخارق."
-        );
+      return;
+    }
+
+    // Save Extended Profile with Country, Governorate, Avatar, WhatsApp Phone
+    try {
+      const supabase = getSupabaseClient();
+      const sessionRes = supabase ? await supabase.auth.getSession() : null;
+      const userId = sessionRes?.data?.session?.user?.id || `user_${Date.now()}`;
+
+      const baseProf = getExtendedProfile(userId, {
+        email: email.trim(),
+        name: name.trim(),
+        role: requestedRole,
+        phone: phone.trim(),
+      });
+
+      await saveExtendedProfile({
+        ...baseProf,
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        country,
+        governorate,
+        avatarUrl: avatarUrl || baseProf.avatarUrl,
+        role: requestedRole,
+        bio: requestedRole === "trainer" ? bio.trim() : baseProf.bio,
+        subscription:
+          requestedRole === "trainer"
+            ? {
+                plan: "free",
+                planLabel: "بانتظار تفعيل اشتراك المدرب",
+                priceIqd: 0,
+                status: "pending",
+              }
+            : baseProf.subscription,
+      });
+
+      // If trainer, also ensure trainer_applications record has country, governorate, photo_url
+      if (requestedRole === "trainer" && supabase) {
+        try {
+          await supabase.from("trainer_applications").insert({
+            name: name.trim(),
+            phone: phone.trim(),
+            email: email.trim(),
+            country,
+            governorate,
+            bio: bio.trim() || "مدرب حساب ذهني وسوروبان",
+            photo_url: avatarUrl || null,
+            annual_fee_iqd: 100000,
+            status: "pending",
+          });
+        } catch {}
       }
+    } catch (err) {
+      console.warn("Extended profile save warning:", err);
+    }
+
+    setIsSubmitting(false);
+
+    if (requestedRole === "trainer") {
+      setSuccessMessage(
+        isEn
+          ? "Trainer account created! Redirecting to your Trainer Dashboard..."
+          : "تم إنشاء حساب المدرب بنجاح! جاري تحويلك إلى واجهة المدرب الخاصة بك..."
+      );
+      playFx("fanfare");
+      setTimeout(() => {
+        router.push("/trainer");
+      }, 1200);
+    } else {
+      setSuccessMessage(
+        isEn
+          ? "Student account created! Welcome Champion..."
+          : "تم إنشاء حساب البطل بنجاح! جاري تحويلك إلى واجهة الطالب..."
+      );
       playFx("fanfare");
       setTimeout(() => {
         router.push("/dashboard");
@@ -93,18 +205,18 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-6">
+    <div className="min-h-[85vh] flex items-center justify-center py-10 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-lg w-full space-y-6">
         {/* Header */}
         <div className="text-center space-y-3">
           <BrandLogo size="lg" />
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-4">
-            {isEn ? "Create New Account" : "إنشاء حساب جديد على المنصة"}
+            {isEn ? "Create Official Account" : "إنشاء حساب رسمي على المنصة"}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             {isEn
-              ? "Join the champions of mental arithmetic and start your interactive journey today."
-              : "انضم إلى أبطال الحساب الذهني وابدأ التدريب التفاعلي اليوم."}
+              ? "Complete your personal profile to save your real progress and join competitions."
+              : "أدخل بياناتك الحقيقية وصورتك الشخصية لحفظ تقدمك الفعلي والمشاركة في المسابقات والواجبات."}
           </p>
         </div>
 
@@ -136,7 +248,7 @@ export default function RegisterPage() {
               }`}
             >
               <GraduationCap className="w-4 h-4" />
-              <span>{isEn ? "Student Account" : "تسجيل طالب"}</span>
+              <span>{isEn ? "Student Account" : "حساب طالب (بطل)"}</span>
             </button>
 
             <button
@@ -149,103 +261,230 @@ export default function RegisterPage() {
               }`}
             >
               <UserCheck className="w-4 h-4" />
-              <span>{isEn ? "Trainer Request" : "طلب اعتماد مدرب"}</span>
+              <span>{isEn ? "Trainer Account" : "حساب مدرب معتمد"}</span>
             </button>
           </div>
 
           {requestedRole === "trainer" && (
-            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-[11px] text-amber-900 dark:text-amber-300 flex items-start gap-2">
-              <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <p className="leading-relaxed">
-                {isEn
-                  ? "Trainer accreditation requires administrative review and verification before elevated coach privileges are granted."
-                  : "تمنح صلاحيات المدرب المعتمد بعد مراجعة الإدارة وتدقيق رخصة التدريب لضمان جودة التعليم."}
-              </p>
+            <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
+              <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="leading-relaxed space-y-1">
+                <div className="font-black">اعتماد وتوثيق حساب المدرب:</div>
+                <p>
+                  بعد التسجيل يمكنك تفعيل اشتراك المدرب (شهري 25 ألف / 3 أشهر 50 ألف / سنوي 100 ألف د.ع) عبر التواصل مع إدارة المنصة على الواتساب لتوثيق حسابك ونشر بطاقتك في دليل المدربين وإدارة طلابك.
+                </p>
+              </div>
             </div>
           )}
 
-          <form onSubmit={handleRegister} className="space-y-3.5">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                {isEn ? "Full Name" : "الاسم الثلاثي"} <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <User className={`w-4 h-4 text-slate-400 absolute ${dir === "rtl" ? "right-3.5" : "left-3.5"} top-1/2 -translate-y-1/2`} />
+          <form onSubmit={handleRegister} className="space-y-4">
+            {/* Avatar Upload */}
+            <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700">
+              <div className="w-16 h-16 rounded-2xl overflow-hidden bg-brand-100 dark:bg-slate-700 border-2 border-brand-500 flex items-center justify-center shrink-0">
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-8 h-8 text-brand-500" />
+                )}
+              </div>
+              <div className="flex-1 space-y-1">
+                <div className="text-xs font-black text-slate-900 dark:text-white">
+                  الصورة الشخصية (اختياري الآن - يمكنك إضافتها لاحقاً)
+                </div>
+                <label
+                  htmlFor="reg-avatar-upload"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[11px] font-bold cursor-pointer transition-colors"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>{uploadingPhoto ? "جارٍ الرفع..." : "اختيار صورة شخصية"}</span>
+                </label>
                 <input
-                  type="text"
-                  required
-                  placeholder={isEn ? "e.g. Ali Haidar" : "مثال: علي حيدر الزبيدي"}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className={`w-full ${dir === "rtl" ? "pr-10 pl-3.5" : "pl-10 pr-3.5"} py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none`}
+                  id="reg-avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                {isEn ? "Phone Number (WhatsApp)" : "رقم الهاتف (واتساب)"}
+                {requestedRole === "trainer" ? "اسم المدرب الثلاثي واللقب" : "اسم الطالب الثلاثي"}{" "}
+                <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
-                <Phone className={`w-4 h-4 text-slate-400 absolute ${dir === "rtl" ? "right-3.5" : "left-3.5"} top-1/2 -translate-y-1/2`} />
+                <User
+                  className={`w-4 h-4 text-slate-400 absolute ${
+                    dir === "rtl" ? "right-3.5" : "left-3.5"
+                  } top-1/2 -translate-y-1/2`}
+                />
                 <input
-                  type="tel"
-                  placeholder="0780xxxxxxx"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className={`w-full ${dir === "rtl" ? "pr-10 pl-3.5" : "pl-10 pr-3.5"} py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none`}
+                  type="text"
+                  required
+                  placeholder={
+                    requestedRole === "trainer"
+                      ? "مثال: الأستاذ أحمد محمد العلي"
+                      : "مثال: علي حيدر الزبيدي"
+                  }
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className={`w-full ${
+                    dir === "rtl" ? "pr-10 pl-3.5" : "pl-10 pr-3.5"
+                  } py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none`}
                 />
               </div>
             </div>
+
+            {/* Country & Governorate */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                  <Globe className="w-3.5 h-3.5 text-brand-600" />
+                  <span>اسم الدولة *</span>
+                </label>
+                <select
+                  value={country}
+                  onChange={(e) => handleCountryChange(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                >
+                  {Object.keys(COUNTRIES_WITH_GOVERNORATES).map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-rose-500" />
+                  <span>المحافظة / المدينة *</span>
+                </label>
+                <select
+                  value={governorate}
+                  onChange={(e) => setGovernorate(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                >
+                  {governoratesList.map((gov) => (
+                    <option key={gov} value={gov}>
+                      {gov}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                {isEn ? "Phone Number (WhatsApp)" : "رقم الهاتف (يحتوي واتساب)"}{" "}
+                <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <Phone
+                  className={`w-4 h-4 text-emerald-500 absolute ${
+                    dir === "rtl" ? "right-3.5" : "left-3.5"
+                  } top-1/2 -translate-y-1/2`}
+                />
+                <input
+                  type="tel"
+                  required
+                  dir="ltr"
+                  placeholder="0780XXXXXXX"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className={`w-full ${
+                    dir === "rtl" ? "pr-10 pl-3.5" : "pl-10 pr-3.5"
+                  } py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono text-right focus:ring-2 focus:ring-brand-500 focus:outline-none`}
+                />
+              </div>
+            </div>
+
+            {requestedRole === "trainer" && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                  نبذة تعريفية أو اسم المدرسة/المركز التدريبي
+                </label>
+                <input
+                  type="text"
+                  placeholder="مثال: مدرب حساب ذهني وسوروبان - خبرة 5 سنوات"
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                />
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
                 {isEn ? "Email Address" : "البريد الإلكتروني"} <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
-                <Mail className={`w-4 h-4 text-slate-400 absolute ${dir === "rtl" ? "right-3.5" : "left-3.5"} top-1/2 -translate-y-1/2`} />
+                <Mail
+                  className={`w-4 h-4 text-slate-400 absolute ${
+                    dir === "rtl" ? "right-3.5" : "left-3.5"
+                  } top-1/2 -translate-y-1/2`}
+                />
                 <input
                   type="email"
                   required
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className={`w-full ${dir === "rtl" ? "pr-10 pl-3.5" : "pl-10 pr-3.5"} py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none`}
+                  className={`w-full ${
+                    dir === "rtl" ? "pr-10 pl-3.5" : "pl-10 pr-3.5"
+                  } py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none`}
                 />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                {isEn ? "Password" : "كلمة المرور (6 خانات فأكثر)"} <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <Lock className={`w-4 h-4 text-slate-400 absolute ${dir === "rtl" ? "right-3.5" : "left-3.5"} top-1/2 -translate-y-1/2`} />
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={`w-full ${dir === "rtl" ? "pr-10 pl-3.5" : "pl-10 pr-3.5"} py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none`}
-                />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                  {isEn ? "Password" : "كلمة المرور"} <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <Lock
+                    className={`w-4 h-4 text-slate-400 absolute ${
+                      dir === "rtl" ? "right-3.5" : "left-3.5"
+                    } top-1/2 -translate-y-1/2`}
+                  />
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={`w-full ${
+                      dir === "rtl" ? "pr-10 pl-3.5" : "pl-10 pr-3.5"
+                    } py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none`}
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                {isEn ? "Confirm Password" : "تأكيد كلمة المرور"} <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <Lock className={`w-4 h-4 text-slate-400 absolute ${dir === "rtl" ? "right-3.5" : "left-3.5"} top-1/2 -translate-y-1/2`} />
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={`w-full ${dir === "rtl" ? "pr-10 pl-3.5" : "pl-10 pr-3.5"} py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none`}
-                />
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                  {isEn ? "Confirm Password" : "تأكيد كلمة المرور"}{" "}
+                  <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <Lock
+                    className={`w-4 h-4 text-slate-400 absolute ${
+                      dir === "rtl" ? "right-3.5" : "left-3.5"
+                    } top-1/2 -translate-y-1/2`}
+                  />
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className={`w-full ${
+                      dir === "rtl" ? "pr-10 pl-3.5" : "pl-10 pr-3.5"
+                    } py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none`}
+                  />
+                </div>
               </div>
             </div>
 
@@ -269,10 +508,10 @@ export default function RegisterPage() {
                     {requestedRole === "student"
                       ? isEn
                         ? "Create Student Account"
-                        : "إنشاء حساب طالب"
+                        : "إنشاء حساب الطالب والبدء بالتدريب"
                       : isEn
-                      ? "Submit Trainer Application"
-                      : "إرسال طلب اعتماد مدرب"}
+                      ? "Submit Trainer Account"
+                      : "إنشاء حساب المدرب والدخول للوحة المدرب"}
                   </span>
                   <ArrowIcon className="w-4 h-4" />
                 </>

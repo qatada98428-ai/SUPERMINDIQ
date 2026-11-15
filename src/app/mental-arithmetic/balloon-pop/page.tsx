@@ -15,7 +15,9 @@ import {
 import { useApp } from "@/context/AppContext";
 import {
   generateFlashAnzanSeries,
-  playSoundEffect,
+  speakSorobanNumber,
+  speakSorobanCountdown,
+  warmupSpeechEngine,
   ArithmeticLevel,
   FlashAnzanConfig,
   isSimpleAddition,
@@ -115,57 +117,12 @@ const SPEED_OPTIONS = [
 // ============================================================
 // VOICE HELPERS
 // ============================================================
-const ARABIC_DIGITS: Record<number, string> = {
-  0: "صفر", 1: "واحد", 2: "اثنان", 3: "ثلاثة", 4: "أربعة",
-  5: "خمسة", 6: "ستة", 7: "سبعة", 8: "ثمانية", 9: "تسعة",
-  10: "عشرة", 11: "أحد عشر", 12: "اثنا عشر", 13: "ثلاثة عشر",
-  14: "أربعة عشر", 15: "خمسة عشر", 16: "ستة عشر", 17: "سبعة عشر",
-  18: "ثمانية عشر", 19: "تسعة عشر", 20: "عشرون",
-};
-const ENGLISH_DIGITS: Record<number, string> = {
-  0: "Zero", 1: "One", 2: "Two", 3: "Three", 4: "Four",
-  5: "Five", 6: "Six", 7: "Seven", 8: "Eight", 9: "Nine",
-  10: "Ten", 11: "Eleven", 12: "Twelve", 13: "Thirteen",
-  14: "Fourteen", 15: "Fifteen", 16: "Sixteen", 17: "Seventeen",
-  18: "Eighteen", 19: "Nineteen", 20: "Twenty",
-};
-
-function speakNumber(num: number, voiceMode: VoiceMode) {
-  if (voiceMode === "off" || typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel();
-  const isNeg = num < 0;
-  const abs = Math.abs(num);
-  let text: string;
-  if (voiceMode === "arabic") {
-    const word = ARABIC_DIGITS[abs] ?? abs.toString();
-    text = isNeg ? `ناقص ${word}` : word;
-  } else {
-    const word = ENGLISH_DIGITS[abs] ?? abs.toString();
-    text = isNeg ? `Minus ${word}` : word;
-  }
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = voiceMode === "arabic" ? "ar-SA" : "en-US";
-  utt.rate = 1.65;
-  utt.pitch = 1.1;
-  window.speechSynthesis.speak(utt);
+function speakNumber(num: number, voiceMode: VoiceMode, speedMs = 600) {
+  speakSorobanNumber(num, voiceMode, speedMs);
 }
 
 function speakCountdown(count: number, voiceMode: VoiceMode) {
-  if (voiceMode === "off" || typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel();
-  let text: string;
-  if (count === 0) {
-    text = voiceMode === "arabic" ? "ابدأ" : "Go";
-  } else {
-    text = voiceMode === "arabic"
-      ? (ARABIC_DIGITS[count] ?? count.toString())
-      : (ENGLISH_DIGITS[count] ?? count.toString());
-  }
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = voiceMode === "arabic" ? "ar-SA" : "en-US";
-  utt.rate = 1.2;
-  utt.pitch = 1.2;
-  window.speechSynthesis.speak(utt);
+  speakSorobanCountdown(count, voiceMode);
 }
 
 // ============================================================
@@ -490,7 +447,6 @@ function CountdownScreen({ voiceMode, onDone }: { voiceMode: VoiceMode; onDone: 
   const [showGo, setShowGo] = useState(false);
 
   useEffect(() => {
-    playSoundEffect("beep");
     speakCountdown(3, voiceMode);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -506,11 +462,9 @@ function CountdownScreen({ voiceMode, onDone }: { voiceMode: VoiceMode; onDone: 
       const next = count - 1;
       if (next === 0) {
         setShowGo(true);
-        playSoundEffect("correct");
         speakCountdown(0, voiceMode);
       } else {
         setCount(next);
-        playSoundEffect("beep");
         speakCountdown(next, voiceMode);
       }
     }, 900);
@@ -600,7 +554,7 @@ function FlashDisplay({
       return;
     }
     setVisible(true);
-    speakNumber(numbers[idx], voiceMode);
+    speakNumber(numbers[idx], voiceMode, speed);
     const hide = setTimeout(() => setVisible(false), speed * 0.75);
     const next = setTimeout(() => setIdx((i) => i + 1), speed);
     return () => { clearTimeout(hide); clearTimeout(next); };
@@ -1149,6 +1103,7 @@ export default function BalloonPopPage() {
 
   // ── Start game → go to countdown ────────────────────────────
   const startGame = useCallback((cfg: GameConfig) => {
+    warmupSpeechEngine();
     setConfig(cfg);
     setTeams(cfg.teams.map((t) => ({ ...t, score: 0 })));
     setResults([]);
@@ -1330,9 +1285,23 @@ export default function BalloonPopPage() {
 
       {/* ── HUD ── */}
       <div className="relative z-20 flex items-center justify-between px-4 py-3 bg-black/30 backdrop-blur-sm border-b border-white/5">
-        <button onClick={handleRestart} className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors">
-          <Settings className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRestart}
+            className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition-colors"
+            title="الإعدادات / رجوع"
+          >
+            <Settings className="w-4 h-4" />
+            <span>الإعدادات</span>
+          </button>
+          <Link
+            href="/mental-arithmetic"
+            className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>رجوع</span>
+          </Link>
+        </div>
 
         <div className="flex items-center gap-2.5">
           <span className="text-white/60 text-xs font-bold hidden sm:block">جولة {round + 1}/{config?.totalRounds}</span>
