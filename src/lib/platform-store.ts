@@ -490,11 +490,30 @@ export function getAllExtendedProfiles(): ExtendedUserProfile[] {
 
 export function getExtendedProfile(
   userId: string,
-  fallback?: { email?: string | null; name?: string; role?: "student" | "trainer" | "admin"; phone?: string | null }
+  fallback?: {
+    email?: string | null;
+    name?: string;
+    role?: "student" | "trainer" | "admin";
+    phone?: string | null;
+    avatarUrl?: string | null;
+  }
 ): ExtendedUserProfile {
+  const rawPhoneStr = fallback?.phone || "";
+  const parsedPhone = rawPhoneStr.split("|")[0]?.trim() || "";
+  const parsedLoc = rawPhoneStr.includes("|") ? rawPhoneStr.split("|")[1]?.trim() || "" : "";
+  const parsedCountry = parsedLoc.includes("-") ? parsedLoc.split("-")[0]?.trim() || "العراق" : "العراق";
+  const parsedGov = parsedLoc.includes("-") ? parsedLoc.split("-").slice(1).join("-").trim() : parsedLoc;
+
   const map = getInitialProfiles();
   if (map[userId]) {
     const existing = map[userId];
+    if (parsedPhone && !existing.phone) existing.phone = parsedPhone;
+    if (parsedGov && !existing.governorate) {
+      existing.country = parsedCountry || existing.country;
+      existing.governorate = parsedGov;
+    }
+    if (fallback?.avatarUrl && !existing.avatarUrl) existing.avatarUrl = fallback.avatarUrl;
+    if (fallback?.name && existing.name === "بطل العقل الخارق") existing.name = fallback.name;
     // Auto-update effective subscription status if expired
     const evalSub = evaluateSubscription(existing.subscription);
     if (evalSub.effectiveStatus !== existing.subscription.status) {
@@ -512,9 +531,10 @@ export function getExtendedProfile(
     email: fallback?.email || "",
     name: fallback?.name || "بطل العقل الخارق",
     role: isAdminEmail ? "admin" : fallback?.role || "student",
-    phone: fallback?.phone || "",
-    country: "العراق",
-    governorate: "",
+    phone: parsedPhone,
+    country: parsedCountry || "العراق",
+    governorate: parsedGov || "",
+    avatarUrl: fallback?.avatarUrl || undefined,
     trainerId: "trainer-qatada",
     trainerName: "الأستاذ قتادة كريم",
     trainerCode: isAdminEmail || fallback?.role === "trainer" ? `TR-${userId.slice(0, 4).toUpperCase()}` : undefined,
@@ -570,23 +590,25 @@ export async function saveExtendedProfile(profile: ExtendedUserProfile): Promise
     }
   }
 
-  // Also sync basic fields to Supabase if available
+  // Also sync basic allowed fields (name, phone, avatar_url) to Supabase profiles
   const supabase = getSupabaseClient();
   if (supabase && profile.id && !profile.id.startsWith("trainer-")) {
     try {
+      const cleanPhoneOnly = (profile.phone || "").split("|")[0].trim();
+      const locationSuffix =
+        profile.country || profile.governorate
+          ? ` | ${profile.country || "العراق"}${profile.governorate ? ` - ${profile.governorate}` : ""}`
+          : "";
+      const packedPhone = cleanPhoneOnly ? `${cleanPhoneOnly}${locationSuffix}` : null;
+
       await supabase
         .from("profiles")
-        .upsert(
-          {
-            id: profile.id,
-            email: profile.email || null,
-            name: profile.name,
-            phone: profile.phone || null,
-            avatar_url: profile.avatarUrl || null,
-            last_activity: new Date().toISOString(),
-          },
-          { onConflict: "id" }
-        );
+        .update({
+          name: profile.name,
+          phone: packedPhone,
+          avatar_url: profile.avatarUrl || null,
+        })
+        .eq("id", profile.id);
     } catch (err) {
       console.warn("Supabase profile sync warning:", err);
     }

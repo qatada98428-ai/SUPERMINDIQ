@@ -110,6 +110,8 @@ export default function AdminDashboardPage() {
     profile: UserProfile;
     progress?: UserProgressRecord;
   } | null>(null);
+  const [editUserPhone, setEditUserPhone] = useState("");
+  const [userActionNotice, setUserActionNotice] = useState<string>("");
 
   // New Supporter Modal
   const [showAddSupporter, setShowAddSupporter] = useState(false);
@@ -130,23 +132,56 @@ export default function AdminDashboardPage() {
 
     setLoadingData(true);
     try {
-      // 1. Fetch Users
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // 1. Fetch Users & Audit Logs
+      const [{ data: profilesData }, { data: logs }] = await Promise.all([
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("admin_audit_logs").select("*").order("created_at", { ascending: false }).limit(200),
+      ]);
+
+      const fetchedLogs = (logs || []) as AdminAuditLogRecord[];
+      setAuditLogs(fetchedLogs);
 
       if (profilesData) {
-        setUsersList(profilesData as UserProfile[]);
-        // Ensure every Supabase user has an ExtendedUserProfile entry
-        for (const u of profilesData as UserProfile[]) {
-          getExtendedProfile(u.id, {
+        const mergedUsers = (profilesData as UserProfile[]).map((u) => {
+          const latestRoleLog = fetchedLogs.find(
+            (l) => l.target_type === "user" && l.target_id === u.id && l.action === "update_user_role"
+          );
+          const logRole = (latestRoleLog?.details as Record<string, unknown> | undefined)?.new_role as
+            | "student"
+            | "trainer"
+            | undefined;
+
+          const ext = getExtendedProfile(u.id, {
             email: u.email,
             name: u.name,
-            role: u.role,
+            role: logRole || u.role,
             phone: u.phone,
+            avatarUrl: u.avatar_url,
           });
-        }
+
+          const effectiveRole: UserProfile["role"] =
+            u.role === "admin"
+              ? "admin"
+              : logRole || (ext.role === "trainer" ? "trainer" : u.role);
+          const effectivePhone = u.phone || ext.phone || null;
+
+          if (ext.role !== effectiveRole || (effectivePhone && !ext.phone)) {
+            saveExtendedProfile({
+              ...ext,
+              role: effectiveRole,
+              phone: (effectivePhone || "").split("|")[0].trim() || ext.phone,
+            });
+          }
+
+          return {
+            ...u,
+            role: effectiveRole,
+            phone: effectivePhone,
+            avatar_url: u.avatar_url || ext.avatarUrl || null,
+          };
+        });
+
+        setUsersList(mergedUsers);
         setExtProfiles(getAllExtendedProfiles());
       }
 
@@ -174,14 +209,6 @@ export default function AdminDashboardPage() {
         .select("*")
         .order("sort_order", { ascending: true });
       if (supps) setSupportersList(supps as SupporterRecord[]);
-
-      // 6. Fetch Audit Logs
-      const { data: logs } = await supabase
-        .from("admin_audit_logs")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(100);
-      if (logs) setAuditLogs(logs as AdminAuditLogRecord[]);
     } catch (err) {
       console.error("Admin data load error:", err);
     } finally {
@@ -281,6 +308,122 @@ export default function AdminDashboardPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Update User Role (Student <-> Trainer)
+  const handleUpdateUserRole = async (
+    targetUser: UserProfile,
+    newRole: "student" | "trainer"
+  ) => {
+    playFx("fanfare");
+
+    setUsersList((prev) =>
+      prev.map((u) => (u.id === targetUser.id ? { ...u, role: newRole } : u))
+    );
+    setSelectedUserDetail((prev) =>
+      prev && prev.profile.id === targetUser.id
+        ? { ...prev, profile: { ...prev.profile, role: newRole } }
+        : prev
+    );
+
+    const ext = getExtendedProfile(targetUser.id, {
+      email: targetUser.email,
+      name: targetUser.name,
+      role: newRole,
+      phone: targetUser.phone,
+      avatarUrl: targetUser.avatar_url,
+    });
+    await saveExtendedProfile({
+      ...ext,
+      role: newRole,
+      isVerifiedTrainer: newRole === "trainer" ? true : ext.isVerifiedTrainer,
+      showInDirectory: newRole === "trainer" ? true : ext.showInDirectory,
+    });
+    setExtProfiles(getAllExtendedProfiles());
+
+    const supabase = getSupabaseClient();
+    if (supabase && isAdmin) {
+      try {
+        await supabase
+          .from("profiles")
+          .update({ role: newRole })
+          .eq("id", targetUser.id);
+      } catch {
+        // Ignore if column-level grant restricts direct role column update
+      }
+
+      if (user?.id) {
+        try {
+          await supabase.from("admin_audit_logs").insert([
+            {
+              admin_id: user.id,
+              admin_email: user.email || profile?.email || "",
+              action: "update_user_role",
+              target_type: "user",
+              target_id: targetUser.id,
+              details: {
+                new_role: newRole,
+                previous_role: targetUser.role,
+                user_name: targetUser.name,
+                user_email: targetUser.email,
+              },
+            },
+          ]);
+        } catch {
+          // Ignore audit log error
+        }
+      }
+    }
+
+    setUserActionNotice(
+      newRole === "trainer"
+        ? `✅ تم تحديث وضع (${targetUser.name}) إلى مدرب بنجاح!`
+        : `✅ تم إعادة وضع (${targetUser.name}) إلى طالب بنجاح!`
+    );
+    setTimeout(() => setUserActionNotice(""), 4000);
+  };
+
+  // Save or Update User WhatsApp Phone Number
+  const handleSaveUserPhone = async (targetUser: UserProfile, rawPhone: string) => {
+    const cleanPhone = rawPhone.trim();
+    playFx("click");
+
+    setUsersList((prev) =>
+      prev.map((u) => (u.id === targetUser.id ? { ...u, phone: cleanPhone || null } : u))
+    );
+    setSelectedUserDetail((prev) =>
+      prev && prev.profile.id === targetUser.id
+        ? { ...prev, profile: { ...prev.profile, phone: cleanPhone || null } }
+        : prev
+    );
+
+    const ext = getExtendedProfile(targetUser.id, {
+      email: targetUser.email,
+      name: targetUser.name,
+      role: targetUser.role,
+      phone: cleanPhone,
+      avatarUrl: targetUser.avatar_url,
+    });
+    await saveExtendedProfile({
+      ...ext,
+      phone: cleanPhone,
+    });
+    setExtProfiles(getAllExtendedProfiles());
+
+    const supabase = getSupabaseClient();
+    if (supabase && isAdmin) {
+      try {
+        await supabase
+          .from("profiles")
+          .update({ phone: cleanPhone || null })
+          .eq("id", targetUser.id);
+      } catch (err) {
+        console.error("Phone update error:", err);
+      }
+    }
+
+    setUserActionNotice(`✅ تم حفظ رقم الواتساب للمستخدم (${targetUser.name}) بنجاح!`);
+    setTimeout(() => setUserActionNotice(""), 4000);
   };
 
   // Update Application Status
@@ -554,6 +697,19 @@ export default function AdminDashboardPage() {
          ========================================================================= */}
       {activeTab === "users" && (
         <div className="space-y-6">
+          {userActionNotice && (
+            <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 font-black text-xs sm:text-sm flex items-center justify-between animate-in fade-in">
+              <span>{userActionNotice}</span>
+              <button
+                type="button"
+                onClick={() => setUserActionNotice("")}
+                className="text-xs text-emerald-700 dark:text-emerald-300 underline"
+              >
+                إغلاق
+              </button>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
             <div className="flex flex-1 items-center gap-3">
               <div className="relative flex-1 max-w-md">
@@ -614,21 +770,62 @@ export default function AdminDashboardPage() {
                   ) : (
                     filteredUsers.map((u) => {
                       const prog = progressList.find((p) => p.user_id === u.id);
+                      const extProf = extProfiles.find((ep) => ep.id === u.id);
+                      const rawPhoneField = u.phone || extProf?.phone || "";
+                      const cleanPhone = rawPhoneField.split("|")[0]?.trim() || "";
+                      const locationFromPhone = rawPhoneField.includes("|")
+                        ? rawPhoneField.split("|")[1]?.trim() || ""
+                        : "";
+                      const displayLocation =
+                        locationFromPhone ||
+                        (extProf?.governorate
+                          ? `${extProf.country || "العراق"} - ${extProf.governorate}`
+                          : "");
+                      const avatarSrc = u.avatar_url || extProf?.avatarUrl || "";
+
                       return (
                         <tr key={u.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                           <td className="p-4">
-                            <div className="font-bold text-slate-900 dark:text-white">{u.name}</div>
-                            <div className="text-[10px] text-slate-400">
-                              سجل: {new Date(u.created_at).toLocaleDateString("ar-IQ")}
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden flex items-center justify-center shrink-0 font-black text-brand-600">
+                                {avatarSrc ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={avatarSrc}
+                                    alt={u.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <span>{(u.name || "م").charAt(0)}</span>
+                                )}
+                              </div>
+                              <div>
+                                <div className="font-bold text-slate-900 dark:text-white">{u.name}</div>
+                                {displayLocation && (
+                                  <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                                    <MapPin className="w-3 h-3" />
+                                    <span>{displayLocation}</span>
+                                  </div>
+                                )}
+                                <div className="text-[10px] text-slate-400">
+                                  سجل: {new Date(u.created_at).toLocaleDateString("ar-IQ")}
+                                </div>
+                              </div>
                             </div>
                           </td>
                           <td className="p-4 text-slate-600 dark:text-slate-300 font-mono">
                             <div>{u.email || "—"}</div>
-                            <div className="text-[10px] text-slate-400">{u.phone || "بدون هاتف"}</div>
+                            {cleanPhone ? (
+                              <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                📱 {cleanPhone}
+                              </div>
+                            ) : (
+                              <div className="text-[10px] text-slate-400">بدون هاتف</div>
+                            )}
                           </td>
                           <td className="p-4">
                             <span
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
+                              className={`px-2.5 py-1 rounded-md text-[10px] font-black ${
                                 u.role === "admin"
                                   ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
                                   : u.role === "trainer"
@@ -636,7 +833,7 @@ export default function AdminDashboardPage() {
                                   : "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
                               }`}
                             >
-                              {u.role === "admin" ? "مدير" : u.role === "trainer" ? "مدرب" : "طالب"}
+                              {u.role === "admin" ? "مدير" : u.role === "trainer" ? "مدرب 👨‍🏫" : "طالب"}
                             </span>
                           </td>
                           <td className="p-4 text-slate-600 dark:text-slate-300 font-medium">
@@ -659,16 +856,70 @@ export default function AdminDashboardPage() {
                               {u.status === "active" ? "نشط" : "موقوف"}
                             </span>
                           </td>
-                          <td className="p-4 text-center">
-                            <button
-                              onClick={() => {
-                                setSelectedUserDetail({ profile: u, progress: prog });
-                                playFx("click");
-                              }}
-                              className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-brand-50 text-brand-600 font-bold text-xs transition-colors"
-                            >
-                              عرض السجل
-                            </button>
+                          <td className="p-4">
+                            <div className="flex flex-wrap items-center justify-center gap-1.5">
+                              {/* 1. View Full User Info Button */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedUserDetail({ profile: u, progress: prog });
+                                  setEditUserPhone(cleanPhone);
+                                  playFx("click");
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-brand-50 dark:bg-slate-800 hover:bg-brand-600 hover:text-white text-brand-700 dark:text-brand-300 font-black text-[11px] transition-colors border border-brand-200 dark:border-slate-700"
+                              >
+                                📋 عرض المعلومات
+                              </button>
+
+                              {/* 2. Update Role to Trainer / Student Button */}
+                              {u.role !== "admin" && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleUpdateUserRole(
+                                      u,
+                                      u.role === "trainer" ? "student" : "trainer"
+                                    )
+                                  }
+                                  className={`px-3 py-1.5 rounded-xl font-black text-[11px] transition-colors border ${
+                                    u.role === "trainer"
+                                      ? "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700"
+                                      : "bg-amber-100 hover:bg-amber-500 hover:text-slate-950 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-800"
+                                  }`}
+                                >
+                                  {u.role === "trainer" ? "🎓 إعادة لطالب" : "👨‍🏫 تحويل لمدرب"}
+                                </button>
+                              )}
+
+                              {/* 3. Direct WhatsApp Contact Button if Phone Exists */}
+                              {cleanPhone ? (
+                                <a
+                                  href={getWhatsAppLink(
+                                    `مرحباً (${u.name})، معك إدارة منصة العقل الخارق (SUPER MIND) بخصوص حسابك في المنصة.`,
+                                    cleanPhone
+                                  )}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] flex items-center gap-1 shadow-xs transition-colors"
+                                >
+                                  <MessageCircle className="w-3.5 h-3.5" />
+                                  <span>واتساب</span>
+                                </a>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedUserDetail({ profile: u, progress: prog });
+                                    setEditUserPhone("");
+                                    playFx("click");
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-bold text-[10px]"
+                                  title="إضافة رقم واتساب للمستخدم"
+                                >
+                                  + إضافة هاتف
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -679,72 +930,213 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* User Details Modal */}
-          {selectedUserDetail && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
-              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                  <div className="space-y-0.5">
-                    <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                      الملف التعليمي: {selectedUserDetail.profile.name}
-                    </h3>
-                    <p className="text-xs text-slate-400 font-mono">{selectedUserDetail.profile.email || "بدون بريد"}</p>
+          {/* Comprehensive User Information & Role/WhatsApp Modal */}
+          {selectedUserDetail && (() => {
+            const u = selectedUserDetail.profile;
+            const prog = selectedUserDetail.progress;
+            const extProf = extProfiles.find((ep) => ep.id === u.id);
+            const rawPhoneField = u.phone || extProf?.phone || "";
+            const cleanPhone = rawPhoneField.split("|")[0]?.trim() || "";
+            const locationFromPhone = rawPhoneField.includes("|")
+              ? rawPhoneField.split("|")[1]?.trim() || ""
+              : "";
+            const displayLocation =
+              locationFromPhone ||
+              (extProf?.governorate
+                ? `${extProf.country || "العراق"} - ${extProf.governorate}`
+                : "غير محدد بعد");
+            const avatarSrc = u.avatar_url || extProf?.avatarUrl || "";
+            const subEval = extProf ? evaluateSubscription(extProf.subscription) : null;
+
+            return (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-xs p-4 overflow-y-auto">
+                <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5 my-8">
+                  {/* Modal Header with Avatar & Role */}
+                  <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-4 gap-3">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-16 h-16 rounded-2xl bg-brand-50 dark:bg-slate-800 border-2 border-amber-400 overflow-hidden flex items-center justify-center shrink-0 font-black text-2xl text-brand-600 shadow-md">
+                        {avatarSrc ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={avatarSrc}
+                            alt={u.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span>{(u.name || "م").charAt(0)}</span>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                            {u.name}
+                          </h3>
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-black ${
+                              u.role === "admin"
+                                ? "bg-rose-100 text-rose-800"
+                                : u.role === "trainer"
+                                ? "bg-amber-400 text-slate-950"
+                                : "bg-blue-100 text-blue-800"
+                            }`}
+                          >
+                            {u.role === "admin" ? "مدير المنصة" : u.role === "trainer" ? "مدرب 👨‍🏫" : "طالب 🎓"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 font-mono">{u.email || "بدون بريد إلكتروني"}</p>
+                        <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5" />
+                          <span>الدولة والمحافظة: {displayLocation}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedUserDetail(null)}
+                      className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900"
+                    >
+                      <XCircle className="w-5 h-5" />
+                    </button>
                   </div>
+
+                  {/* Role Update & WhatsApp Quick Actions Bar */}
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs font-black text-slate-700 dark:text-slate-200">
+                        ⚡ تحديث وضع المستخدم والتواصل المباشر:
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {u.role !== "admin" && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleUpdateUserRole(
+                                u,
+                                u.role === "trainer" ? "student" : "trainer"
+                              )
+                            }
+                            className={`px-4 py-2 rounded-xl font-black text-xs shadow-xs transition-all ${
+                              u.role === "trainer"
+                                ? "bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 text-slate-800 dark:text-white"
+                                : "bg-amber-400 hover:bg-amber-300 text-slate-950"
+                            }`}
+                          >
+                            {u.role === "trainer"
+                              ? "🎓 إعادة وضعه إلى طالب"
+                              : "👨‍🏫 تحديث وضعه إلى مدرب"}
+                          </button>
+                        )}
+
+                        {cleanPhone && (
+                          <a
+                            href={getWhatsAppLink(
+                              `مرحباً (${u.name})، معك إدارة منصة العقل الخارق (SUPER MIND) بخصوص حسابك في المنصة.`,
+                              cleanPhone
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center gap-1.5 shadow-sm"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                            <span>التواصل عبر الواتساب ({cleanPhone})</span>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Phone Number Input / Editor */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-200/70 dark:border-slate-700">
+                      <input
+                        type="tel"
+                        dir="ltr"
+                        placeholder="رقم هاتف واتساب (مثال: 07801234567)"
+                        value={editUserPhone}
+                        onChange={(e) => setEditUserPhone(e.target.value)}
+                        className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSaveUserPhone(u, editUserPhone)}
+                        className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-black text-xs shrink-0"
+                      >
+                        حفظ رقم الواتساب
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Personal & Academic Information Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                      <span className="text-slate-400 block text-[10px]">المستوى الحالي:</span>
+                      <strong className="text-slate-800 dark:text-slate-200">
+                        {prog?.current_level || extProf?.currentLevel || "المستوى الأول"}
+                      </strong>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                      <span className="text-slate-400 block text-[10px]">آخر تمرين:</span>
+                      <strong className="text-slate-800 dark:text-slate-200">
+                        {prog?.last_exercise || "فلاش أنزان"}
+                      </strong>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                      <span className="text-slate-400 block text-[10px]">حالة الاشتراك:</span>
+                      <strong className={subEval?.isActive ? "text-emerald-600" : "text-amber-600"}>
+                        {subEval?.isActive
+                          ? `${extProf?.subscription.planLabel} (${subEval.daysRemaining} يوم)`
+                          : "الباقة المجانية"}
+                      </strong>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                      <span className="text-slate-400 block text-[10px]">إجمالي الإجابات:</span>
+                      <strong className="text-slate-800 dark:text-slate-200 font-mono text-sm">
+                        {prog?.total_answers ?? extProf?.totalQuestionsSolved ?? 0}
+                      </strong>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                      <span className="text-slate-400 block text-[10px]">الإجابات الصحيحة / الخاطئة:</span>
+                      <strong className="text-emerald-600 font-mono">
+                        {prog?.correct_answers ?? extProf?.correctAnswers ?? 0} صح
+                      </strong>{" "}
+                      /{" "}
+                      <span className="text-rose-500 font-mono">
+                        {prog?.wrong_answers ?? extProf?.wrongAnswers ?? 0} خطأ
+                      </span>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                      <span className="text-slate-400 block text-[10px]">نسبة الدقة:</span>
+                      <strong className="text-emerald-600 font-mono text-sm">
+                        {prog?.accuracy_rate ?? extProf?.accuracyRate ?? 0}%
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* Timestamps & Metadata */}
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-xs space-y-1.5 border border-slate-100 dark:border-slate-800">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">معرّف المستخدم (ID):</span>
+                      <span className="font-mono text-[11px] text-slate-600 dark:text-slate-300">{u.id}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">تاريخ التسجيل:</span>
+                      <span className="font-mono">{new Date(u.created_at).toLocaleString("ar-IQ")}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">آخر نشاط:</span>
+                      <span className="font-mono">{new Date(u.last_activity).toLocaleString("ar-IQ")}</span>
+                    </div>
+                  </div>
+
                   <button
+                    type="button"
                     onClick={() => setSelectedUserDetail(null)}
-                    className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900"
+                    className="w-full py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs"
                   >
-                    <XCircle className="w-5 h-5" />
+                    إغلاق نافذة المعلومات
                   </button>
                 </div>
-
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                    <span className="text-slate-400 block text-[10px]">المستوى الحالي:</span>
-                    <strong className="text-slate-800 dark:text-slate-200">
-                      {selectedUserDetail.progress?.current_level || "المستوى الأول"}
-                    </strong>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                    <span className="text-slate-400 block text-[10px]">آخر تمرين:</span>
-                    <strong className="text-slate-800 dark:text-slate-200">
-                      {selectedUserDetail.progress?.last_exercise || "فلاش أنزان"}
-                    </strong>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                    <span className="text-slate-400 block text-[10px]">إجمالي الإجابات:</span>
-                    <strong className="text-slate-800 dark:text-slate-200 font-mono">
-                      {selectedUserDetail.progress?.total_answers || 0}
-                    </strong>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                    <span className="text-slate-400 block text-[10px]">نسبة الدقة:</span>
-                    <strong className="text-emerald-600 font-mono">
-                      {selectedUserDetail.progress?.accuracy_rate || 0}%
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-xs space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">تاريخ التسجيل:</span>
-                    <span className="font-mono">{new Date(selectedUserDetail.profile.created_at).toLocaleString("ar-IQ")}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">آخر نشاط:</span>
-                    <span className="font-mono">{new Date(selectedUserDetail.profile.last_activity).toLocaleString("ar-IQ")}</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setSelectedUserDetail(null)}
-                  className="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs"
-                >
-                  إغلاق النافذة
-                </button>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       )}
 
@@ -1221,8 +1613,36 @@ export default function AdminDashboardPage() {
                         </div>
                       </div>
 
-                      {/* Admin Quick Subscription Action Buttons */}
+                      {/* Admin Quick Subscription & Role Action Buttons */}
                       <div className="flex flex-wrap items-center gap-2">
+                        {p.role !== "admin" && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const nextRole = p.role === "trainer" ? "student" : "trainer";
+                              const matchedUser = usersList.find((u) => u.id === p.id);
+                              if (matchedUser) {
+                                await handleUpdateUserRole(matchedUser, nextRole);
+                              } else {
+                                await saveExtendedProfile({
+                                  ...p,
+                                  role: nextRole,
+                                  isVerifiedTrainer: nextRole === "trainer" ? true : p.isVerifiedTrainer,
+                                  showInDirectory: nextRole === "trainer" ? true : p.showInDirectory,
+                                });
+                                setExtProfiles(getAllExtendedProfiles());
+                                playFx("fanfare");
+                              }
+                            }}
+                            className={`px-3 py-1.5 rounded-xl font-black text-[11px] border ${
+                              p.role === "trainer"
+                                ? "bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white border-slate-300 dark:border-slate-600"
+                                : "bg-amber-100 hover:bg-amber-400 text-amber-900 hover:text-slate-950 border-amber-300"
+                            }`}
+                          >
+                            {p.role === "trainer" ? "🎓 إعادة لطالب" : "👨‍🏫 تحويل لمدرب"}
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => activatePlan("monthly_25k")}

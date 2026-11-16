@@ -53,7 +53,8 @@ export const COACH_INFO = {
 export function getWhatsAppLink(customMessage?: string, customPhone?: string): string {
   let phone = PLATFORM_INFO.whatsappRaw;
   if (customPhone && customPhone.trim()) {
-    const digits = customPhone.replace(/[^0-9]/g, "");
+    const firstPart = customPhone.split("|")[0].trim();
+    const digits = firstPart.replace(/[^0-9]/g, "");
     if (digits.startsWith("07") && digits.length === 11) {
       phone = "964" + digits.slice(1);
     } else if (digits.length >= 8) {
