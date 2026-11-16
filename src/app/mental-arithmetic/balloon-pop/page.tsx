@@ -71,6 +71,7 @@ interface Question {
 }
 
 interface RoundResult {
+  roundNum: number;
   question: string;
   answer: number;
   correct: boolean;
@@ -442,7 +443,19 @@ function BalloonItem({
 // ============================================================
 // COUNTDOWN SCREEN (pre-game)
 // ============================================================
-function CountdownScreen({ voiceMode, onDone }: { voiceMode: VoiceMode; onDone: () => void }) {
+function CountdownScreen({
+  voiceMode,
+  onDone,
+  activeTeam,
+  roundNum,
+  totalRounds,
+}: {
+  voiceMode: VoiceMode;
+  onDone: () => void;
+  activeTeam?: Team | null;
+  roundNum?: number;
+  totalRounds?: number;
+}) {
   const [count, setCount] = useState(3);
   const [showGo, setShowGo] = useState(false);
 
@@ -479,6 +492,21 @@ function CountdownScreen({ voiceMode, onDone }: { voiceMode: VoiceMode; onDone: 
         background: "linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #ef4444 100%)",
       }}
     >
+      {/* Round & Active Team Indicator */}
+      <div className="absolute top-8 left-0 right-0 flex flex-col items-center gap-2 z-10 px-4">
+        {roundNum !== undefined && totalRounds !== undefined && (
+          <span className="px-4 py-1.5 rounded-full bg-black/25 text-white font-black text-xs sm:text-sm backdrop-blur-sm border border-white/20">
+            🔁 الجولة {roundNum} من {totalRounds}
+          </span>
+        )}
+        {activeTeam && (
+          <div className="px-6 py-2.5 rounded-2xl bg-slate-950/85 text-white font-black text-base sm:text-xl shadow-2xl border-2 border-white/40 flex items-center gap-2.5">
+            <span>{activeTeam.emoji}</span>
+            <span>استعد يا {activeTeam.name}!</span>
+          </div>
+        )}
+      </div>
+
       {/* Animated rings */}
       <div
         className="absolute rounded-full border-4 border-white/20"
@@ -899,6 +927,11 @@ function SettingsScreen({ onStart }: { onStart: (cfg: GameConfig) => void }) {
                   </OptionBtn>
                 ))}
               </div>
+              {teamCount > 1 && (
+                <p className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                  🎯 في كل جولة يُطرح سؤال مستقل لكل فريق ({totalRounds} جولات × {teamCount} فرق = {totalRounds * teamCount} سؤال إجمالاً)
+                </p>
+              )}
             </Section>
 
             <Section title="👥 عدد الفرق">
@@ -935,7 +968,7 @@ function SettingsScreen({ onStart }: { onStart: (cfg: GameConfig) => void }) {
               <span>🔢 {digitsCount} خانة</span>
               <span>🎈 {balloonCount} بالونة</span>
               <span>💥 {maxWrongPops === -1 ? "∞" : maxWrongPops} خطأ مسموح</span>
-              <span>🔁 {totalRounds} جولة</span>
+              <span>🔁 {totalRounds} جولة {teamCount > 1 ? `(${totalRounds * teamCount} سؤال)` : ""}</span>
               <span>👥 {teamCount === 1 ? "فردي" : `${teamCount} فرق`}</span>
               <span>{voiceMode === "off" ? "🔇 بدون صوت" : voiceMode === "arabic" ? "🔊 عربي" : "🔊 English"}</span>
             </div>
@@ -1024,11 +1057,22 @@ function SummaryScreen({
 
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-lg overflow-hidden text-sm">
           <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800 text-xs font-black text-slate-500 uppercase tracking-wider text-right">
-            سجل الجولات
+            سجل الجولات ({results.length} سؤال)
           </div>
           {results.map((r, i) => (
             <div key={i} className="flex items-center gap-3 px-5 py-3 border-b border-slate-50 dark:border-slate-800/50 last:border-0">
               <span className="text-base">{r.correct ? "✅" : "❌"}</span>
+              <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-black text-slate-600 dark:text-slate-300 shrink-0">
+                جولة {r.roundNum}
+              </span>
+              {teams.length > 1 && (
+                <span
+                  className="px-2 py-0.5 rounded-lg text-[11px] font-black text-white shrink-0"
+                  style={{ background: r.teamColor }}
+                >
+                  {r.teamName}
+                </span>
+              )}
               <span className="flex-1 font-mono text-slate-700 dark:text-slate-300 text-right">{r.question} = <strong>{r.answer}</strong></span>
               {r.wrongAttempts > 0 && (
                 <span className="text-xs text-rose-400 font-bold">-{r.wrongAttempts}💥</span>
@@ -1139,9 +1183,21 @@ export default function BalloonPopPage() {
       setBalloonsDisabled(true);
       setBalloons((prev) => prev.map((b) => b.state === "flying" ? { ...b, state: "escaped" } : b));
       setLastResult(null);
+      setResults((prev) => [
+        ...prev,
+        {
+          roundNum: round + 1,
+          question: question.display,
+          answer: question.answer,
+          correct: false,
+          wrongAttempts: wrongPopsThisRound,
+          teamName: config.teams[activeTeamIdx]?.name ?? "فردي",
+          teamColor: config.teams[activeTeamIdx]?.color ?? "#64748b",
+        },
+      ]);
       setPhase("result");
     }, 13000);
-  }, [question, config, clearTimers]);
+  }, [question, config, clearTimers, round, wrongPopsThisRound, activeTeamIdx]);
 
   // ── Pop balloon ──────────────────────────────────────────────
   const handlePop = useCallback((id: string, value: number) => {
@@ -1163,6 +1219,7 @@ export default function BalloonPopPage() {
       setResults((prev) => [
         ...prev,
         {
+          roundNum: round + 1,
           question: question.display,
           answer: question.answer,
           correct: true,
@@ -1176,10 +1233,6 @@ export default function BalloonPopPage() {
       const newWrong = wrongPopsThisRound + 1;
       setWrongPopsThisRound(newWrong);
       setBalloons((prev) => prev.map((b) => b.id === id ? { ...b, state: "popped-wrong" } : b));
-
-      if (config.teamCount > 1) {
-        setTimeout(() => setActiveTeamIdx((p) => (p + 1) % config.teamCount), 400);
-      }
 
       if (config.maxWrongPops !== -1 && newWrong >= config.maxWrongPops) {
         clearTimers();
@@ -1195,6 +1248,7 @@ export default function BalloonPopPage() {
           setResults((prev) => [
             ...prev,
             {
+              roundNum: round + 1,
               question: question.display,
               answer: question.answer,
               correct: false,
@@ -1207,37 +1261,62 @@ export default function BalloonPopPage() {
         }, 500);
       }
     }
-  }, [question, config, balloonsDisabled, activeTeamIdx, wrongPopsThisRound, clearTimers, playFx]);
+  }, [question, config, balloonsDisabled, activeTeamIdx, round, wrongPopsThisRound, clearTimers, playFx]);
 
-  // ── Next round ───────────────────────────────────────────────
+  // ── Next turn / Next round ───────────────────────────────────
   const handleNextRound = useCallback(() => {
     if (!config) return;
-    const next = round + 1;
-    if (next >= config.totalRounds) { setPhase("summary"); return; }
-    if (config.teamCount > 1) setActiveTeamIdx((p) => (p + 1) % config.teamCount);
-    setupRound(config, next);
+
+    // If playing with multiple teams, advance through each team within the current round first
+    if (config.teamCount > 1) {
+      const nextTeamIdx = activeTeamIdx + 1;
+      if (nextTeamIdx < config.teamCount) {
+        setActiveTeamIdx(nextTeamIdx);
+        setupRound(config, round);
+        setBalloons([]);
+        setPhase("countdown");
+        return;
+      }
+    }
+
+    // All teams have completed the current round -> move to next round
+    const nextRound = round + 1;
+    if (nextRound >= config.totalRounds) {
+      setPhase("summary");
+      return;
+    }
+    setActiveTeamIdx(0);
+    setupRound(config, nextRound);
     setBalloons([]);
     setPhase("countdown");
-  }, [config, round, setupRound]);
+  }, [config, round, activeTeamIdx, setupRound]);
 
   // ── Restart ──────────────────────────────────────────────────
   const handleRestart = useCallback(() => { clearTimers(); setPhase("settings"); setConfig(null); }, [clearTimers]);
 
   useEffect(() => () => clearTimers(), [clearTimers]);
 
-  // ── RENDER ───────────────────────────────────────────────────
-  if (phase === "settings") return <SettingsScreen onStart={startGame} />;
-
-  if (phase === "countdown" && config)
-    return <CountdownScreen voiceMode={config.voiceMode} onDone={handleCountdownDone} />;
-
-  if (phase === "summary" && config)
-    return <SummaryScreen teams={teams} results={results} totalRounds={config.totalRounds} onRestart={handleRestart} config={config} />;
-
   const activeTeam = config && config.teamCount > 1 ? teams[activeTeamIdx] : null;
   const wrongLeft = config
     ? config.maxWrongPops === -1 ? -1 : config.maxWrongPops - wrongPopsThisRound
     : -1;
+
+  // ── RENDER ───────────────────────────────────────────────────
+  if (phase === "settings") return <SettingsScreen onStart={startGame} />;
+
+  if (phase === "countdown" && config)
+    return (
+      <CountdownScreen
+        voiceMode={config.voiceMode}
+        onDone={handleCountdownDone}
+        activeTeam={activeTeam}
+        roundNum={round + 1}
+        totalRounds={config.totalRounds}
+      />
+    );
+
+  if (phase === "summary" && config)
+    return <SummaryScreen teams={teams} results={results} totalRounds={config.totalRounds} onRestart={handleRestart} config={config} />;
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-gradient-to-b from-indigo-950 via-violet-950 to-slate-950 flex flex-col">
@@ -1351,11 +1430,19 @@ export default function BalloonPopPage() {
             animation: "rise 2s ease-in-out infinite alternate",
           }} />
 
-          <div className="absolute top-4 left-0 right-0 text-center z-10">
+          <div className="absolute top-4 left-0 right-0 flex flex-col items-center gap-1.5 z-10">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-white/60 text-xs font-black border border-white/10">
               <Zap className="w-3.5 h-3.5 text-amber-400" />
               تذكر الأرقام
             </span>
+            {activeTeam && (
+              <span
+                className="px-3.5 py-1 rounded-full text-xs font-black text-white shadow-md"
+                style={{ background: activeTeam.color }}
+              >
+                {activeTeam.emoji} دور {activeTeam.name} (جولة {round + 1}/{config.totalRounds})
+              </span>
+            )}
           </div>
 
           <FlashDisplay
@@ -1502,10 +1589,23 @@ export default function BalloonPopPage() {
             onClick={handleNextRound}
             className="mt-2 px-10 py-4 rounded-2xl bg-gradient-to-r from-brand-500 to-indigo-500 text-white font-black text-lg shadow-xl hover:scale-105 active:scale-98 transition-transform flex items-center gap-3"
           >
-            {round + 1 >= (config?.totalRounds ?? 0) ? (
-              <><Trophy className="w-5 h-5" />عرض النتائج</>
+            {config && config.teamCount > 1 && activeTeamIdx + 1 < config.teamCount ? (
+              <>
+                <Zap className="w-5 h-5" />
+                <span>
+                  دور {config.teams[activeTeamIdx + 1]?.emoji} {config.teams[activeTeamIdx + 1]?.name} (جولة {round + 1}/{config.totalRounds})
+                </span>
+              </>
+            ) : round + 1 >= (config?.totalRounds ?? 0) ? (
+              <>
+                <Trophy className="w-5 h-5" />
+                <span>عرض النتائج النهائية</span>
+              </>
             ) : (
-              <><Zap className="w-5 h-5" />الجولة التالية {round + 2}/{config?.totalRounds}</>
+              <>
+                <Zap className="w-5 h-5" />
+                <span>الجولة التالية {round + 2}/{config?.totalRounds}</span>
+              </>
             )}
           </button>
         </div>
