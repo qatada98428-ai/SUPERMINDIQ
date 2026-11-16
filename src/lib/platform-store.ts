@@ -954,11 +954,11 @@ export async function recordRealTrainingSession(params: {
   if (supabase && params.userId && params.userId !== "guest-local" && !params.userId.startsWith("trainer-")) {
     try {
       const dbSessionType =
-        params.type === "flash_anzan" ||
-        params.type === "abacus" ||
-        params.type === "multiplication" ||
-        params.type === "quiz" ||
-        params.type === "teams_battle"
+        params.type === "flash-anzan"
+          ? "flash_anzan"
+          : params.type === "abacus" ||
+            params.type === "multiplication" ||
+            params.type === "quiz"
           ? params.type
           : "quiz";
 
