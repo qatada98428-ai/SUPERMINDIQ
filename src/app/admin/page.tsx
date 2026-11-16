@@ -42,6 +42,8 @@ import {
   getAllAssignments,
   createPlatformAssignment,
   deletePlatformAssignment,
+  syncAllAssignmentsSubmissionsFromCloud,
+  buildShareableAssignmentPath,
   COUNTRIES_WITH_GOVERNORATES,
 } from "@/lib/platform-store";
 import {
@@ -124,6 +126,9 @@ export default function AdminDashboardPage() {
   // Load real data from Supabase + Extended Platform Store
   const loadAdminData = useCallback(async () => {
     setPlatformAssignments(getAllAssignments());
+    syncAllAssignmentsSubmissionsFromCloud().then((syncedAssigns) => {
+      setPlatformAssignments(syncedAssigns);
+    });
     const localExt = getAllExtendedProfiles();
     setExtProfiles(localExt);
 
@@ -1791,13 +1796,49 @@ export default function AdminDashboardPage() {
                   )}
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                  <Link
-                    href={`/mental-arithmetic/competition?assignmentId=${item.id}`}
-                    className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs"
-                  >
-                    معاينة وتجربة المسابقة 🚀
-                  </Link>
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-end gap-2">
+                  {(() => {
+                    const relPath = buildShareableAssignmentPath(item);
+                    const fullShareUrl =
+                      typeof window !== "undefined"
+                        ? `${window.location.origin}${relPath}`
+                        : relPath;
+                    const waShareHref = `https://wa.me/?text=${encodeURIComponent(
+                      `🏆 مسابقة وتحدي رسمي من منصة العقل الخارق (SUPER MIND):\n📌 ${item.title}\n🔢 عدد الأسئلة: ${item.questionsCount} سؤال | الوقت: ${item.timeLimitMinutes} دقائق\n🚀 اضغط هنا لبدء المسابقة فوراً بضغطة زر:\n${fullShareUrl}`
+                    )}`;
+
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (typeof navigator !== "undefined" && navigator.clipboard) {
+                              navigator.clipboard.writeText(fullShareUrl);
+                              alert("تم نسخ رابط المسابقة الذكي! يمكنك إرساله لجميع المشتركين عبر واتساب أو تيليجرام.");
+                            }
+                          }}
+                          className="px-3.5 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-black text-xs"
+                        >
+                          🔗 نسخ رابط المسابقة
+                        </button>
+                        <a
+                          href={waShareHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          <span>مشاركة واتساب</span>
+                        </a>
+                        <Link
+                          href={relPath}
+                          className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs"
+                        >
+                          معاينة وتجربة المسابقة 🚀
+                        </Link>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             ))}

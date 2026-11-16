@@ -38,6 +38,9 @@ import {
   getMonthlyTrialStatus,
   getUserRealSessions,
   getStudentAssignments,
+  syncExtendedProfileFromSupabase,
+  syncAllAssignmentsSubmissionsFromCloud,
+  buildShareableAssignmentPath,
   SUBSCRIPTION_PLANS,
 } from "@/lib/platform-store";
 import ProfileEditorModal from "@/components/profile/ProfileEditorModal";
@@ -72,6 +75,15 @@ export default function StudentDashboardPage() {
 
   useEffect(() => {
     loadStudentDashboard();
+    if (activeUserId && activeUserId !== "guest-local") {
+      syncExtendedProfileFromSupabase(activeUserId).then((synced) => {
+        if (synced) loadStudentDashboard();
+      });
+    }
+    syncAllAssignmentsSubmissionsFromCloud().then(() => {
+      loadStudentDashboard();
+    });
+
     const handleUpdate = () => loadStudentDashboard();
     window.addEventListener("supermind:profile-updated", handleUpdate);
     window.addEventListener("supermind:assignments-updated", handleUpdate);
@@ -79,7 +91,7 @@ export default function StudentDashboardPage() {
       window.removeEventListener("supermind:profile-updated", handleUpdate);
       window.removeEventListener("supermind:assignments-updated", handleUpdate);
     };
-  }, [loadStudentDashboard]);
+  }, [activeUserId, loadStudentDashboard]);
 
   // Prompt logged-in user once per session if profile is incomplete
   useEffect(() => {
@@ -426,7 +438,7 @@ export default function StudentDashboardPage() {
                     )}
 
                     <Link
-                      href={`/mental-arithmetic/competition?assignmentId=${comp.id}`}
+                      href={buildShareableAssignmentPath(comp)}
                       className="px-5 py-2.5 rounded-2xl bg-gradient-to-l from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs shadow-md flex items-center gap-1.5 transition-transform active:scale-95"
                     >
                       <Play className="w-4 h-4 fill-current" />
@@ -465,12 +477,7 @@ export default function StudentDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {trainerHomeworks.map((hw) => {
               const mySub = hw.submissions?.find((s) => s.studentId === activeUserId);
-              const targetHref =
-                hw.exerciseType === "flash_anzan"
-                  ? `/mental-arithmetic/flash-anzan?assignmentId=${hw.id}`
-                  : hw.exerciseType === "abacus"
-                  ? `/mental-arithmetic/abacus?assignmentId=${hw.id}`
-                  : `/mental-arithmetic/competition?assignmentId=${hw.id}`;
+              const targetHref = buildShareableAssignmentPath(hw);
 
               return (
                 <div

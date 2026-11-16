@@ -11,7 +11,11 @@ import {
   migrateGuestProgressToSupabase,
   GuestProgressData,
 } from "@/lib/guest-storage";
-import { recordRealTrainingSession } from "@/lib/platform-store";
+import {
+  recordRealTrainingSession,
+  syncExtendedProfileFromSupabase,
+  unpackProfilePhoneColumn,
+} from "@/lib/platform-store";
 
 interface AuthContextValue {
   user: User | null;
@@ -75,7 +79,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
 
       if (!error && data) {
-        setProfile(data as UserProfile);
+        const rawRow = data as UserProfile;
+        const unpacked = unpackProfilePhoneColumn(rawRow.phone);
+        const syncedExt = await syncExtendedProfileFromSupabase(userId);
+        const effectiveRole: UserRole =
+          rawRow.role === "admin"
+            ? "admin"
+            : unpacked.meta?.role === "trainer" || syncedExt?.role === "trainer"
+            ? "trainer"
+            : rawRow.role;
+
+        setProfile({
+          ...rawRow,
+          role: effectiveRole,
+          phone: unpacked.cleanPhone || null,
+        });
       } else {
         // Fallback default profile if trigger hasn't fired yet
         setProfile({

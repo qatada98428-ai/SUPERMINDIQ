@@ -40,6 +40,9 @@ import {
   getAllAssignments,
   createPlatformAssignment,
   deletePlatformAssignment,
+  syncExtendedProfileFromSupabase,
+  syncAllAssignmentsSubmissionsFromCloud,
+  buildShareableAssignmentPath,
   SUBSCRIPTION_PLANS,
 } from "@/lib/platform-store";
 import ProfileEditorModal from "@/components/profile/ProfileEditorModal";
@@ -118,6 +121,15 @@ export default function TrainerDashboardPage() {
 
   useEffect(() => {
     loadTrainerData();
+    if (activeTrainerId && !activeTrainerId.startsWith("trainer-")) {
+      syncExtendedProfileFromSupabase(activeTrainerId).then((synced) => {
+        if (synced) loadTrainerData();
+      });
+    }
+    syncAllAssignmentsSubmissionsFromCloud().then(() => {
+      loadTrainerData();
+    });
+
     const handleUpdate = () => loadTrainerData();
     window.addEventListener("supermind:profile-updated", handleUpdate);
     window.addEventListener("supermind:assignments-updated", handleUpdate);
@@ -125,7 +137,7 @@ export default function TrainerDashboardPage() {
       window.removeEventListener("supermind:profile-updated", handleUpdate);
       window.removeEventListener("supermind:assignments-updated", handleUpdate);
     };
-  }, [loadTrainerData]);
+  }, [activeTrainerId, loadTrainerData]);
 
   if (!trainerProfile) return null;
 
@@ -534,10 +546,11 @@ export default function TrainerDashboardPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {homeworks.map((hw) => {
+              const relSharePath = buildShareableAssignmentPath(hw);
               const shareUrl =
                 typeof window !== "undefined"
-                  ? `${window.location.origin}/mental-arithmetic/competition?assignmentId=${hw.id}`
-                  : `/mental-arithmetic/competition?assignmentId=${hw.id}`;
+                  ? `${window.location.origin}${relSharePath}`
+                  : relSharePath;
               const whatsappShareHref = `https://wa.me/?text=${encodeURIComponent(
                 `🌟 أبطال الحساب الذهني، إليكم واجب اليوم من (${displayName}):\n📌 ${hw.title}\n🔢 عدد الأسئلة: ${hw.questionsCount} سؤال | الوقت: ${hw.timeLimitMinutes} دقائق\n🚀 اضغط هنا لبدء الحل مباشرة بضغطة زر:\n${shareUrl}`
               )}`;
@@ -585,7 +598,19 @@ export default function TrainerDashboardPage() {
                       عرض كشف الدرجات ({hw.submissions?.length || 0})
                     </button>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (typeof navigator !== "undefined" && navigator.clipboard) {
+                            navigator.clipboard.writeText(shareUrl);
+                            alert("تم نسخ رابط الواجب الذكي! يمكنك لصقه في واتساب أو تيليجرام لطلابك.");
+                          }
+                        }}
+                        className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-black text-xs"
+                      >
+                        🔗 نسخ رابط الواجب
+                      </button>
                       <a
                         href={whatsappShareHref}
                         target="_blank"
@@ -596,7 +621,7 @@ export default function TrainerDashboardPage() {
                         <span>إرسال لكروب الواتساب</span>
                       </a>
                       <Link
-                        href={`/mental-arithmetic/competition?assignmentId=${hw.id}`}
+                        href={relSharePath}
                         className="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs"
                       >
                         معاينة الواجب

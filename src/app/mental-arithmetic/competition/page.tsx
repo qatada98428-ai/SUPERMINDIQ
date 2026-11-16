@@ -44,7 +44,8 @@ import {
   evaluateSubscription,
   getMonthlyTrialStatus,
   consumeMonthlyTrialQuestions,
-  getAssignmentById,
+  parseAssignmentFromSearchParams,
+  syncExtendedProfileFromSupabase,
   recordRealTrainingSession,
   SUBSCRIPTION_PLANS,
   MONTHLY_FREE_QUESTIONS_LIMIT,
@@ -176,6 +177,7 @@ export default function MentalMathCompetitionPage() {
   const [activeAssignment, setActiveAssignment] = useState<PlatformAssignment | null>(null);
   const [showSubPaywallModal, setShowSubPaywallModal] = useState(false);
   const [paywallReason, setPaywallReason] = useState<string>("");
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
 
   // ── Setup Configuration State ──────────────────────────────
   const [timeMode, setTimeMode] = useState<TimeMode>("countdown");
@@ -403,13 +405,15 @@ export default function MentalMathCompetitionPage() {
     }));
   }, [ruleGroups, orderMode, choicesCount]);
 
-  // ── Load Assignment / Admin Competition if ?assignmentId= is in URL ──
+  // ── Load Assignment / Admin Competition if ?assignmentId= is in URL & Sync Cloud Profile ──
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (activeUserId && activeUserId !== "guest-local") {
+      syncExtendedProfileFromSupabase(activeUserId);
+    }
+
     const params = new URLSearchParams(window.location.search);
-    const assignId = params.get("assignmentId");
-    if (!assignId) return;
-    const found = getAssignmentById(assignId);
+    const found = parseAssignmentFromSearchParams(params);
     if (!found) return;
 
     setActiveAssignment(found);
@@ -434,7 +438,7 @@ export default function MentalMathCompetitionPage() {
         allowSubtraction: found.allowSubtraction !== false,
       },
     ]);
-  }, []);
+  }, [activeUserId]);
 
   // ── Launch Competition ─────────────────────────────────────
   const startCompetition = () => {
@@ -2399,6 +2403,15 @@ export default function MentalMathCompetitionPage() {
             <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
               <button
                 type="button"
+                onClick={() => setShowCertificateModal(true)}
+                className="px-7 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-xl transition-all hover:scale-102 flex items-center gap-2"
+              >
+                <Award className="w-5 h-5" />
+                <span>🎓 إصدار وتحميل شهادة التفوق</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={startCompetition}
                 className="px-7 py-3.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm shadow-lg transition-all hover:scale-102 flex items-center gap-2"
               >
@@ -2701,6 +2714,256 @@ export default function MentalMathCompetitionPage() {
           </div>
         </div>
       )}
+
+      {/* Official SUPER MIND Excellence Certificate Modal */}
+      {showCertificateModal && (() => {
+        const extProf = getExtendedProfile(activeUserId, {
+          email: user?.email || authProfile?.email,
+          name: authProfile?.name,
+        });
+        const studentDisplayName =
+          extProf.name && extProf.name !== "بطل العقل الخارق"
+            ? extProf.name
+            : authProfile?.name || "بطل العقل الخارق";
+        const certTitle = activeAssignment
+          ? activeAssignment.title
+          : `اختبار ومسابقة الحساب الذهني (${questions.length} سؤال)`;
+        const dateStr = new Date().toLocaleDateString("ar-IQ", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
+        const handleDownloadCertificatePng = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = 1600;
+          canvas.height = 1130;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return;
+
+          const drawCertificate = (logoImg?: HTMLImageElement) => {
+            // 1. Background
+            const bgGrad = ctx.createLinearGradient(0, 0, 1600, 1130);
+            bgGrad.addColorStop(0, "#090d1a");
+            bgGrad.addColorStop(0.5, "#111936");
+            bgGrad.addColorStop(1, "#090d1a");
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, 1600, 1130);
+
+            // 2. Double Golden Ornamental Borders
+            ctx.strokeStyle = "#f59e0b";
+            ctx.lineWidth = 8;
+            ctx.strokeRect(40, 40, 1520, 1050);
+
+            ctx.strokeStyle = "rgba(251, 191, 36, 0.45)";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(60, 60, 1480, 1010);
+
+            // 3. Top Logo if loaded
+            if (logoImg) {
+              ctx.save();
+              ctx.beginPath();
+              ctx.roundRect(720, 85, 160, 160, 28);
+              ctx.fillStyle = "#ffffff";
+              ctx.fill();
+              ctx.lineWidth = 4;
+              ctx.strokeStyle = "#f59e0b";
+              ctx.stroke();
+              ctx.clip();
+              ctx.drawImage(logoImg, 726, 91, 148, 148);
+              ctx.restore();
+            }
+
+            // 4. Headings
+            ctx.textAlign = "center";
+            ctx.direction = "rtl";
+
+            ctx.fillStyle = "#fbbf24";
+            ctx.font = "bold 28px 'Segoe UI', Tahoma, Arial, sans-serif";
+            ctx.fillText("منصة برنامج العقل الخارق • SUPER MIND PROGRAM", 800, 295);
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "900 58px 'Segoe UI', Tahoma, Arial, sans-serif";
+            ctx.fillText("شهادة تفوق وإنجاز في الحساب الذهني", 800, 375);
+
+            ctx.fillStyle = "#cbd5e1";
+            ctx.font = "bold 30px 'Segoe UI', Tahoma, Arial, sans-serif";
+            ctx.fillText("تشهد إدارة منصة برنامج العقل الخارق بأن البطل / البطلة:", 800, 455);
+
+            // 5. Student Name Box
+            ctx.fillStyle = "rgba(245, 158, 11, 0.14)";
+            ctx.strokeStyle = "#fbbf24";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.roundRect(350, 485, 900, 95, 24);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = "#fde68a";
+            ctx.font = "900 48px 'Segoe UI', Tahoma, Arial, sans-serif";
+            ctx.fillText(studentDisplayName, 800, 550);
+
+            // 6. Achievement Text
+            ctx.fillStyle = "#e2e8f0";
+            ctx.font = "bold 28px 'Segoe UI', Tahoma, Arial, sans-serif";
+            ctx.fillText(`قد اجتاز بنجاح وتفوق: ${certTitle}`, 800, 640);
+
+            // 7. Score & Accuracy Stats Boxes
+            const statsText = `النتيجة: ${correctCount} من ${questions.length}   |   نسبة الدقة: ${accuracyPct}%   |   الزمن: ${formatTime(elapsedSeconds)}`;
+            ctx.fillStyle = "rgba(16, 185, 129, 0.16)";
+            ctx.strokeStyle = "#34d399";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(260, 680, 1080, 80, 20);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = "#6ee7b7";
+            ctx.font = "bold 32px 'Segoe UI', Tahoma, Arial, sans-serif";
+            ctx.fillText(statsText, 800, 732);
+
+            // 8. Wish / Duaa
+            ctx.fillStyle = "#94a3b8";
+            ctx.font = "bold 24px 'Segoe UI', Tahoma, Arial, sans-serif";
+            ctx.fillText("متمنين له/لها دوام التفوق والإبداع في رحلة صناعة العقول الخارقة", 800, 825);
+
+            // 9. Footer Signatures
+            ctx.fillStyle = "#fbbf24";
+            ctx.font = "bold 26px 'Segoe UI', Tahoma, Arial, sans-serif";
+            ctx.fillText("إشراف وتأليف: الأستاذ قتادة كريم", 400, 940);
+            ctx.fillStyle = "#cbd5e1";
+            ctx.font = "22px 'Segoe UI', Tahoma, Arial, sans-serif";
+            ctx.fillText("مؤلف ومؤسس برنامج العقل الخارق", 400, 980);
+
+            ctx.fillStyle = "#fbbf24";
+            ctx.font = "bold 26px 'Segoe UI', Tahoma, Arial, sans-serif";
+            ctx.fillText(`تاريخ الإصدار: ${dateStr}`, 1200, 940);
+            ctx.fillStyle = "#cbd5e1";
+            ctx.font = "22px 'Segoe UI', Tahoma, Arial, sans-serif";
+            ctx.fillText("www.qatada98.com", 1200, 980);
+
+            const dataUrl = canvas.toDataURL("image/png");
+            const link = document.createElement("a");
+            link.download = `شهادة_العقل_الخارق_${studentDisplayName.replace(/\s+/g, "_")}.png`;
+            link.href = dataUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          };
+
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => drawCertificate(img);
+          img.onerror = () => drawCertificate(undefined);
+          img.src = "/images/logo.jpg";
+        };
+
+        return (
+          <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in overflow-y-auto">
+            <div className="relative w-full max-w-3xl rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 text-white border-4 border-amber-400 shadow-2xl p-6 sm:p-10 my-8 text-center space-y-6">
+              {/* Inner Golden Frame */}
+              <div className="border border-amber-400/35 rounded-2xl p-5 sm:p-8 space-y-5">
+                <div className="flex justify-center">
+                  <div className="w-24 h-24 rounded-3xl bg-white border-2 border-amber-400 p-1 shadow-xl overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/images/logo.jpg"
+                      alt="شعار برنامج العقل الخارق"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-xs sm:text-sm font-black text-amber-400 tracking-wide">
+                    منصة برنامج العقل الخارق • SUPER MIND PROGRAM
+                  </div>
+                  <h2 className="text-2xl sm:text-4xl font-black text-white">
+                    شهادة تفوق وإنجاز 🎓
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-300 pt-1">
+                    تشهد إدارة منصة برنامج العقل الخارق بأن البطل / البطلة:
+                  </p>
+                </div>
+
+                <div className="py-3 px-6 rounded-2xl bg-amber-400/15 border-2 border-amber-400/60 max-w-md mx-auto">
+                  <div className="text-xl sm:text-3xl font-black text-amber-300">
+                    {studentDisplayName}
+                  </div>
+                  {extProf.governorate && (
+                    <div className="text-xs text-emerald-300 font-bold mt-1">
+                      {extProf.country || "العراق"} - {extProf.governorate}
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-xs sm:text-base font-bold text-slate-200">
+                  قد أتمّ بنجاح وتفوق: <span className="text-amber-300">{certTitle}</span>
+                </p>
+
+                <div className="grid grid-cols-3 gap-3 max-w-lg mx-auto text-xs sm:text-sm">
+                  <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-400/30">
+                    <div className="text-slate-300 text-[11px]">الدرجة</div>
+                    <div className="font-mono font-black text-base sm:text-xl text-emerald-300">
+                      {correctCount} / {questions.length}
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-400/30">
+                    <div className="text-slate-300 text-[11px]">نسبة الدقة</div>
+                    <div className="font-mono font-black text-base sm:text-xl text-amber-300">
+                      {accuracyPct}%
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-indigo-500/15 border border-indigo-400/30">
+                    <div className="text-slate-300 text-[11px]">الزمن المستغرق</div>
+                    <div className="font-mono font-black text-base sm:text-xl text-indigo-300" dir="ltr">
+                      {formatTime(elapsedSeconds)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-white/15 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-300">
+                  <div>
+                    <div className="font-black text-amber-300">إشراف وتأليف: الأستاذ قتادة كريم</div>
+                    <div className="text-[11px] text-slate-400">مؤسس برنامج العقل الخارق</div>
+                  </div>
+                  <div>
+                    <div className="font-bold text-white">تاريخ الإصدار: {dateStr}</div>
+                    <div className="text-[11px] text-amber-400 font-mono">www.qatada98.com</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Action Buttons */}
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleDownloadCertificatePng}
+                  className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs sm:text-sm shadow-xl flex items-center gap-2"
+                >
+                  <Award className="w-4 h-4" />
+                  <span>📥 تحميل الشهادة كصورة عالية الدقة (PNG)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => typeof window !== "undefined" && window.print()}
+                  className="px-5 py-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs sm:text-sm flex items-center gap-2"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>طباعة</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCertificateModal(false)}
+                  className="px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs sm:text-sm"
+                >
+                  إغلاق ✕
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

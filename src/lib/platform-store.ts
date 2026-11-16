@@ -488,6 +488,65 @@ export function getAllExtendedProfiles(): ExtendedUserProfile[] {
   );
 }
 
+export interface PackedPhoneMetadata {
+  role?: "student" | "trainer" | "admin";
+  sub?: SubscriptionInfo;
+  isVerifiedTrainer?: boolean;
+  showInDirectory?: boolean;
+  trainerId?: string;
+  trainerName?: string;
+}
+
+export function unpackProfilePhoneColumn(rawPhoneField?: string | null): {
+  cleanPhone: string;
+  country: string;
+  governorate: string;
+  meta: PackedPhoneMetadata | null;
+} {
+  if (!rawPhoneField) {
+    return { cleanPhone: "", country: "العراق", governorate: "", meta: null };
+  }
+  const [beforeMeta, metaJson] = rawPhoneField.split("||");
+  let meta: PackedPhoneMetadata | null = null;
+  if (metaJson && metaJson.trim()) {
+    try {
+      meta = JSON.parse(metaJson.trim()) as PackedPhoneMetadata;
+    } catch {
+      meta = null;
+    }
+  }
+
+  const parts = (beforeMeta || "").split("|");
+  const cleanPhone = (parts[0] || "").trim();
+  const locStr = (parts[1] || "").trim();
+  const country = locStr.includes("-")
+    ? locStr.split("-")[0]?.trim() || "العراق"
+    : "العراق";
+  const governorate = locStr.includes("-")
+    ? locStr.split("-").slice(1).join("-").trim()
+    : locStr;
+
+  return { cleanPhone, country, governorate, meta };
+}
+
+export function packProfilePhoneColumn(profile: ExtendedUserProfile): string | null {
+  const cleanPhone = unpackProfilePhoneColumn(profile.phone).cleanPhone;
+  const locationSuffix =
+    profile.country || profile.governorate
+      ? ` | ${profile.country || "العراق"}${profile.governorate ? ` - ${profile.governorate}` : ""}`
+      : "";
+  const metaObj: PackedPhoneMetadata = {
+    role: profile.role,
+    sub: profile.subscription,
+    isVerifiedTrainer: profile.isVerifiedTrainer,
+    showInDirectory: profile.showInDirectory,
+    trainerId: profile.trainerId,
+    trainerName: profile.trainerName,
+  };
+  const base = `${cleanPhone}${locationSuffix}`.trim();
+  return `${base} || ${JSON.stringify(metaObj)}`;
+}
+
 export function getExtendedProfile(
   userId: string,
   fallback?: {
@@ -498,22 +557,32 @@ export function getExtendedProfile(
     avatarUrl?: string | null;
   }
 ): ExtendedUserProfile {
-  const rawPhoneStr = fallback?.phone || "";
-  const parsedPhone = rawPhoneStr.split("|")[0]?.trim() || "";
-  const parsedLoc = rawPhoneStr.includes("|") ? rawPhoneStr.split("|")[1]?.trim() || "" : "";
-  const parsedCountry = parsedLoc.includes("-") ? parsedLoc.split("-")[0]?.trim() || "العراق" : "العراق";
-  const parsedGov = parsedLoc.includes("-") ? parsedLoc.split("-").slice(1).join("-").trim() : parsedLoc;
+  const unpacked = unpackProfilePhoneColumn(fallback?.phone);
+  const parsedPhone = unpacked.cleanPhone;
+  const parsedCountry = unpacked.country;
+  const parsedGov = unpacked.governorate;
+  const cloudMeta = unpacked.meta;
 
   const map = getInitialProfiles();
   if (map[userId]) {
     const existing = map[userId];
-    if (parsedPhone && !existing.phone) existing.phone = parsedPhone;
+    // Always keep existing.phone clean without | or ||
+    existing.phone = unpackProfilePhoneColumn(existing.phone).cleanPhone || parsedPhone;
     if (parsedGov && !existing.governorate) {
       existing.country = parsedCountry || existing.country;
       existing.governorate = parsedGov;
     }
     if (fallback?.avatarUrl && !existing.avatarUrl) existing.avatarUrl = fallback.avatarUrl;
     if (fallback?.name && existing.name === "بطل العقل الخارق") existing.name = fallback.name;
+    if (cloudMeta?.role && existing.role !== "admin") {
+      existing.role = cloudMeta.role;
+    }
+    if (cloudMeta?.sub && cloudMeta.sub.status === "active") {
+      existing.subscription = cloudMeta.sub;
+    }
+    if (cloudMeta?.isVerifiedTrainer !== undefined) {
+      existing.isVerifiedTrainer = cloudMeta.isVerifiedTrainer;
+    }
     // Auto-update effective subscription status if expired
     const evalSub = evaluateSubscription(existing.subscription);
     if (evalSub.effectiveStatus !== existing.subscription.status) {
@@ -530,14 +599,19 @@ export function getExtendedProfile(
     id: userId,
     email: fallback?.email || "",
     name: fallback?.name || "بطل العقل الخارق",
-    role: isAdminEmail ? "admin" : fallback?.role || "student",
+    role: isAdminEmail ? "admin" : cloudMeta?.role || fallback?.role || "student",
     phone: parsedPhone,
     country: parsedCountry || "العراق",
     governorate: parsedGov || "",
     avatarUrl: fallback?.avatarUrl || undefined,
-    trainerId: "trainer-qatada",
-    trainerName: "الأستاذ قتادة كريم",
-    trainerCode: isAdminEmail || fallback?.role === "trainer" ? `TR-${userId.slice(0, 4).toUpperCase()}` : undefined,
+    trainerId: cloudMeta?.trainerId || "trainer-qatada",
+    trainerName: cloudMeta?.trainerName || "الأستاذ قتادة كريم",
+    isVerifiedTrainer: cloudMeta?.isVerifiedTrainer,
+    showInDirectory: cloudMeta?.showInDirectory,
+    trainerCode:
+      isAdminEmail || cloudMeta?.role === "trainer" || fallback?.role === "trainer"
+        ? `TR-${userId.slice(0, 4).toUpperCase()}`
+        : undefined,
     achievements: [],
     subscription: isAdminEmail
       ? {
@@ -548,6 +622,8 @@ export function getExtendedProfile(
           startDate: now,
           endDate: "2030-01-01T00:00:00.000Z",
         }
+      : cloudMeta?.sub
+      ? cloudMeta.sub
       : {
           plan: "free",
           planLabel: "الباقة المجانية",
@@ -573,10 +649,88 @@ export function getExtendedProfile(
   return created;
 }
 
+export async function syncExtendedProfileFromSupabase(
+  userId: string
+): Promise<ExtendedUserProfile | null> {
+  if (!userId || userId === "guest-local" || userId.startsWith("trainer-")) return null;
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  try {
+    const [{ data: profRow }, { data: progRow }] = await Promise.all([
+      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+      supabase.from("user_progress").select("*").eq("user_id", userId).maybeSingle(),
+    ]);
+
+    if (!profRow) return null;
+    const unpacked = unpackProfilePhoneColumn(profRow.phone);
+    const localProf = getExtendedProfile(userId, {
+      email: profRow.email,
+      name: profRow.name,
+      role: profRow.role,
+      phone: profRow.phone,
+      avatarUrl: profRow.avatar_url,
+    });
+
+    const synced: ExtendedUserProfile = {
+      ...localProf,
+      name: profRow.name || localProf.name,
+      email: profRow.email || localProf.email,
+      phone: unpacked.cleanPhone || localProf.phone,
+      country: unpacked.country || localProf.country || "العراق",
+      governorate: unpacked.governorate || localProf.governorate,
+      avatarUrl: profRow.avatar_url || localProf.avatarUrl,
+      role:
+        profRow.role === "admin"
+          ? "admin"
+          : unpacked.meta?.role || profRow.role || localProf.role,
+      subscription: unpacked.meta?.sub || localProf.subscription,
+      isVerifiedTrainer:
+        unpacked.meta?.isVerifiedTrainer ?? localProf.isVerifiedTrainer,
+      showInDirectory:
+        unpacked.meta?.showInDirectory ?? localProf.showInDirectory,
+      totalExercises: Math.max(
+        localProf.totalExercises,
+        progRow?.completed_exercises || 0
+      ),
+      totalQuestionsSolved: Math.max(
+        localProf.totalQuestionsSolved,
+        progRow?.total_answers || 0
+      ),
+      correctAnswers: Math.max(
+        localProf.correctAnswers,
+        progRow?.correct_answers || 0
+      ),
+      wrongAnswers: Math.max(
+        localProf.wrongAnswers,
+        progRow?.wrong_answers || 0
+      ),
+      accuracyRate: progRow?.accuracy_rate
+        ? Math.round(Number(progRow.accuracy_rate))
+        : localProf.accuracyRate,
+    };
+
+    const map = getInitialProfiles();
+    map[userId] = synced;
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(map));
+        window.dispatchEvent(new CustomEvent("supermind:profile-updated", { detail: synced }));
+      } catch {}
+    }
+    return synced;
+  } catch (err) {
+    console.warn("Cloud profile sync warning:", err);
+    return null;
+  }
+}
+
 export async function saveExtendedProfile(profile: ExtendedUserProfile): Promise<ExtendedUserProfile> {
   const map = getInitialProfiles();
+  const cleanPhoneOnly = unpackProfilePhoneColumn(profile.phone).cleanPhone;
   const updated: ExtendedUserProfile = {
     ...profile,
+    phone: cleanPhoneOnly,
     lastActivity: new Date().toISOString(),
   };
   map[profile.id] = updated;
@@ -590,23 +744,17 @@ export async function saveExtendedProfile(profile: ExtendedUserProfile): Promise
     }
   }
 
-  // Also sync basic allowed fields (name, phone, avatar_url) to Supabase profiles
+  // Also sync allowed fields (name, phone with packed metadata, avatar_url) to Supabase profiles
   const supabase = getSupabaseClient();
   if (supabase && profile.id && !profile.id.startsWith("trainer-")) {
     try {
-      const cleanPhoneOnly = (profile.phone || "").split("|")[0].trim();
-      const locationSuffix =
-        profile.country || profile.governorate
-          ? ` | ${profile.country || "العراق"}${profile.governorate ? ` - ${profile.governorate}` : ""}`
-          : "";
-      const packedPhone = cleanPhoneOnly ? `${cleanPhoneOnly}${locationSuffix}` : null;
-
+      const packedPhone = packProfilePhoneColumn(updated);
       await supabase
         .from("profiles")
         .update({
-          name: profile.name,
+          name: updated.name,
           phone: packedPhone,
-          avatar_url: profile.avatarUrl || null,
+          avatar_url: updated.avatarUrl || null,
         })
         .eq("id", profile.id);
     } catch (err) {
@@ -801,7 +949,215 @@ export async function recordRealTrainingSession(params: {
     });
   }
 
+  // Also persist training session & assignment submission in Supabase training_sessions
+  const supabase = getSupabaseClient();
+  if (supabase && params.userId && params.userId !== "guest-local" && !params.userId.startsWith("trainer-")) {
+    try {
+      const dbSessionType =
+        params.type === "flash_anzan" ||
+        params.type === "abacus" ||
+        params.type === "multiplication" ||
+        params.type === "quiz" ||
+        params.type === "teams_battle"
+          ? params.type
+          : "quiz";
+
+      await supabase.from("training_sessions").insert([
+        {
+          user_id: params.userId,
+          session_type: dbSessionType,
+          level: params.level || "المستوى الأول",
+          total_questions: params.totalQuestions,
+          correct_answers: params.correctAnswers,
+          wrong_answers: Math.max(0, params.totalQuestions - params.correctAnswers),
+          accuracy_rate: accuracy,
+          duration_seconds: params.durationSeconds,
+          score: earnedPoints,
+          metadata: {
+            kind: params.type,
+            title: params.title,
+            assignmentId: params.assignmentId || null,
+            studentName: prof.name,
+            governorate: prof.governorate || "",
+          },
+        },
+      ]);
+    } catch (err) {
+      console.warn("Supabase training session sync warning:", err);
+    }
+  }
+
   return session;
+}
+
+export function buildShareableAssignmentPath(assignment: PlatformAssignment): string {
+  const basePath =
+    assignment.exerciseType === "flash_anzan"
+      ? "/mental-arithmetic/flash-anzan"
+      : assignment.exerciseType === "abacus"
+      ? "/mental-arithmetic/abacus"
+      : "/mental-arithmetic/competition";
+
+  const sp = new URLSearchParams();
+  sp.set("assignmentId", assignment.id);
+  sp.set("title", assignment.title);
+  sp.set("kind", assignment.kind);
+  sp.set("q", String(assignment.questionsCount));
+  sp.set("t", String(assignment.timeLimitMinutes));
+  sp.set("lvl", assignment.rulesLevel);
+  sp.set("dig", assignment.digitPlace);
+  sp.set("terms", String(assignment.termsCount));
+  sp.set("sub", assignment.allowSubtraction ? "1" : "0");
+  sp.set("mode", assignment.answerMode);
+  sp.set("ch", String(assignment.choicesCount));
+  sp.set("by", assignment.creatorName);
+  if (assignment.description) {
+    sp.set("desc", assignment.description);
+  }
+  return `${basePath}?${sp.toString()}`;
+}
+
+export function parseAssignmentFromSearchParams(
+  params: URLSearchParams
+): PlatformAssignment | null {
+  const assignId = params.get("assignmentId");
+  if (!assignId) return null;
+
+  const existing = getAssignmentById(assignId);
+  if (existing) return existing;
+
+  const title = params.get("title");
+  if (!title) return null;
+
+  const kind = (params.get("kind") as PlatformAssignment["kind"]) || "trainer_homework";
+  const questionsCount = Math.max(1, Math.min(1000, parseInt(params.get("q") || "20", 10) || 20));
+  const timeLimitMinutes = Math.max(1, Math.min(60, parseInt(params.get("t") || "5", 10) || 5));
+  const rulesLevel =
+    (params.get("lvl") as PlatformAssignment["rulesLevel"]) || "simple";
+  const digitPlace =
+    (params.get("dig") as PlatformAssignment["digitPlace"]) || "units";
+  const termsCount = Math.max(2, Math.min(15, parseInt(params.get("terms") || "4", 10) || 4));
+  const allowSubtraction = params.get("sub") !== "0";
+  const answerMode =
+    (params.get("mode") as PlatformAssignment["answerMode"]) || "typing";
+  const rawChoices = parseInt(params.get("ch") || "4", 10);
+  const choicesCount: 2 | 3 | 4 | 5 =
+    rawChoices === 2 || rawChoices === 3 || rawChoices === 4 || rawChoices === 5
+      ? rawChoices
+      : 4;
+  const creatorName = params.get("by") || "الأستاذ قتادة كريم";
+  const description = params.get("desc") || "تمت مشاركة هذا الواجب عبر الرابط المباشر.";
+
+  const reconstructed: PlatformAssignment = {
+    id: assignId,
+    kind,
+    title,
+    description,
+    creatorId: "shared-link",
+    creatorName,
+    creatorRole: kind === "trainer_homework" ? "trainer" : "admin",
+    targetType: "all_students",
+    exerciseType: "competition",
+    rulesLevel,
+    allowSubtraction,
+    digitPlace,
+    termsCount,
+    questionsCount,
+    timeLimitMinutes,
+    answerMode,
+    choicesCount,
+    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    submissions: [],
+  };
+
+  // Save reconstructed assignment locally so it also appears on the student's dashboard!
+  if (typeof window !== "undefined") {
+    try {
+      const list = getInitialAssignments();
+      if (!list.some((a) => a.id === reconstructed.id)) {
+        list.unshift(reconstructed);
+        localStorage.setItem(STORAGE_KEYS.ASSIGNMENTS, JSON.stringify(list));
+      }
+    } catch {}
+  }
+
+  return reconstructed;
+}
+
+export async function syncAllAssignmentsSubmissionsFromCloud(): Promise<PlatformAssignment[]> {
+  const list = getInitialAssignments();
+  const supabase = getSupabaseClient();
+  if (!supabase) return list;
+
+  try {
+    const { data: sessions } = await supabase
+      .from("training_sessions")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(300);
+
+    if (!sessions || sessions.length === 0) return list;
+
+    let updatedAny = false;
+    for (const row of sessions) {
+      const meta = (row.metadata || {}) as Record<string, unknown>;
+      const assignId = meta.assignmentId as string | undefined;
+      if (!assignId) continue;
+
+      const idx = list.findIndex((a) => a.id === assignId);
+      if (idx === -1) continue;
+
+      const studentId = String(row.user_id || "");
+      const studentName = String(meta.studentName || "بطل العقل الخارق");
+      const governorate = String(meta.governorate || "");
+      const submission: AssignmentSubmission = {
+        studentId,
+        studentName,
+        governorate,
+        score: Number(row.score || 0),
+        totalQuestions: Number(row.total_questions || 0),
+        correctAnswers: Number(row.correct_answers || 0),
+        accuracy: Math.round(Number(row.accuracy_rate || 0)),
+        durationSeconds: Number(row.duration_seconds || 0),
+        completedAt: String(row.created_at || new Date().toISOString()),
+      };
+
+      const existingSubs = list[idx].submissions || [];
+      const subIdx = existingSubs.findIndex((s) => s.studentId === studentId);
+      if (subIdx >= 0) {
+        const prev = existingSubs[subIdx];
+        if (
+          submission.accuracy > prev.accuracy ||
+          (submission.accuracy === prev.accuracy &&
+            submission.durationSeconds < prev.durationSeconds)
+        ) {
+          existingSubs[subIdx] = submission;
+          updatedAny = true;
+        }
+      } else {
+        existingSubs.push(submission);
+        updatedAny = true;
+      }
+
+      existingSubs.sort((a, b) => {
+        if (b.correctAnswers !== a.correctAnswers) return b.correctAnswers - a.correctAnswers;
+        return a.durationSeconds - b.durationSeconds;
+      });
+      list[idx].submissions = existingSubs;
+    }
+
+    if (updatedAny && typeof window !== "undefined") {
+      try {
+        localStorage.setItem(STORAGE_KEYS.ASSIGNMENTS, JSON.stringify(list));
+      } catch {}
+    }
+  } catch (err) {
+    console.warn("Cloud submissions sync warning:", err);
+  }
+
+  return list;
 }
 
 // Assignments & Admin Competitions Store
