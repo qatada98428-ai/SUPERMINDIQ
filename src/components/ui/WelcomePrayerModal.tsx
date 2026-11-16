@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Sparkles, X, HeartHandshake } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 
 const SESSION_STORAGE_KEY = "supermind_welcome_prayer_seen_v1";
 
@@ -62,8 +62,13 @@ export default function WelcomePrayerModal() {
 
         {/* Top Emblem */}
         <div className="relative flex flex-col items-center gap-2 pt-1">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-500/25">
-            <HeartHandshake className="w-7 h-7" />
+          <div className="w-20 h-20 rounded-2xl bg-white border-2 border-amber-400 overflow-hidden flex items-center justify-center shadow-lg shadow-amber-500/25">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/logo.jpg"
+              alt="شعار برنامج العقل الخارق SUPER MIND"
+              className="w-full h-full object-contain p-1"
+            />
           </div>
           <span className="text-[11px] font-black tracking-wide text-amber-300/90 bg-amber-400/10 border border-amber-400/25 px-3 py-0.5 rounded-full">
             منصة برنامج العقل الخارق • SUPER MIND

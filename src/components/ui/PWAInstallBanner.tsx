@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Download, X, Smartphone, Share } from "lucide-react";
+import { Download, X, Share } from "lucide-react";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -71,8 +71,13 @@ export default function PWAInstallBanner() {
       <div className="bg-slate-900/95 backdrop-blur-md text-white p-4 rounded-2xl border border-brand-500/40 shadow-2xl space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center text-white shrink-0 shadow-md">
-              <Smartphone className="w-5 h-5 text-amber-300" />
+            <div className="w-11 h-11 rounded-xl bg-white border border-amber-400/70 overflow-hidden flex items-center justify-center shrink-0 shadow-md">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/logo.jpg"
+                alt="شعار برنامج العقل الخارق"
+                className="w-full h-full object-contain p-0.5"
+              />
             </div>
             <div className="text-right">
               <h4 className="text-sm font-black text-white">تثبيت تطبيق SUPER MIND</h4>

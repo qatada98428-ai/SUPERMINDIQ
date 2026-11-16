@@ -13,42 +13,21 @@ export default function BrandLogo({ size = "md", inverted = false }: BrandLogoPr
   return (
     <Link href="/" className="inline-flex items-center gap-3 group focus:outline-none">
       <div
-        className={`relative flex items-center justify-center rounded-2xl transition-all duration-300 group-hover:scale-105 shadow-md ${
+        className={`relative flex items-center justify-center rounded-2xl overflow-hidden bg-white border-2 border-amber-400/80 transition-all duration-300 group-hover:scale-105 shadow-md ${
           isLarge
-            ? "w-14 h-14 bg-gradient-to-br from-brand-600 via-brand-700 to-indigo-900 shadow-brand-500/20"
+            ? "w-16 h-16 shadow-amber-500/25"
             : isSmall
-            ? "w-9 h-9 bg-gradient-to-br from-brand-600 to-indigo-800"
-            : "w-11 h-11 bg-gradient-to-br from-brand-600 via-brand-700 to-indigo-900 shadow-brand-500/25"
+            ? "w-10 h-10"
+            : "w-12 h-12 sm:w-14 sm:h-14 shadow-amber-500/20"
         }`}
       >
-        {/* Stylized Soroban beads & lightning brain icon */}
-        <svg
-          viewBox="0 0 32 32"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className={isLarge ? "w-8 h-8" : isSmall ? "w-5 h-5" : "w-6 h-6"}
-        >
-          {/* Outer Soroban Frame */}
-          <rect x="4" y="4" width="24" height="24" rx="4" stroke="#EEF2FF" strokeWidth="2" strokeOpacity="0.85" />
-          {/* Reckoning Beam (Horizontal Divider) */}
-          <line x1="4" y1="12" x2="28" y2="12" stroke="#F59E0B" strokeWidth="2.5" strokeLinecap="round" />
-          {/* Rods */}
-          <line x1="11" y1="5" x2="11" y2="27" stroke="#EEF2FF" strokeWidth="1.2" strokeOpacity="0.4" />
-          <line x1="16" y1="5" x2="16" y2="27" stroke="#EEF2FF" strokeWidth="1.2" strokeOpacity="0.4" />
-          <line x1="21" y1="5" x2="21" y2="27" stroke="#EEF2FF" strokeWidth="1.2" strokeOpacity="0.4" />
-          {/* Upper Beads (Value 5) - Active / Inactive */}
-          <ellipse cx="11" cy="9.5" rx="2.5" ry="1.8" fill="#F59E0B" />
-          <ellipse cx="16" cy="7" rx="2.5" ry="1.8" fill="#F8FAFC" fillOpacity="0.8" />
-          <ellipse cx="21" cy="9.5" rx="2.5" ry="1.8" fill="#F59E0B" />
-          {/* Lower Beads (Value 1 each) */}
-          <ellipse cx="11" cy="15" rx="2.5" ry="1.8" fill="#38BDF8" />
-          <ellipse cx="16" cy="18" rx="2.5" ry="1.8" fill="#38BDF8" />
-          <ellipse cx="21" cy="15" rx="2.5" ry="1.8" fill="#38BDF8" />
-          <ellipse cx="21" cy="19" rx="2.5" ry="1.8" fill="#38BDF8" />
-        </svg>
-
-        {/* Glow point */}
-        <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full border-2 border-white dark:border-slate-900 shadow-sm animate-pulse"></span>
+        {/* Official SUPER MIND Program Logo */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/logo.jpg"
+          alt="شعار برنامج العقل الخارق SUPER MIND"
+          className="w-full h-full object-contain p-0.5"
+        />
       </div>
 
       <div className="flex flex-col">

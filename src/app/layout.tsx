@@ -13,6 +13,11 @@ export const metadata: Metadata = {
   title: "منصة برنامج العقل الخارق | SUPER MIND — الحساب الذهني وتنمية القدرات العقلية",
   description: "المنصة الأولى المتخصصة في التدريب على العداد الصيني السوروبان، الفلاش أنزان، وبنك أسئلة الذكاء والتفكير المنطقي — إعداد وتأليف الأستاذ قتادة كريم.",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/images/logo.jpg",
+    shortcut: "/images/logo.jpg",
+    apple: "/images/logo.jpg",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
