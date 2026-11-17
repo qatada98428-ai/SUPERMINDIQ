@@ -1,0 +1,152 @@
+name: Weekly SUPER MIND Backup
+
+on:
+  schedule:
+    # Every Friday at 03:00 AM Baghdad Time (Asia/Baghdad = UTC+3 => 00:00 UTC)
+    - cron: '0 0 * * 5'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    name: Backup Code & Supabase DB to Google Drive
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check required GitHub Secrets
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          RCLONE_GDRIVE_TOKEN: ${{ secrets.RCLONE_GDRIVE_TOKEN }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::Missing secret SUPABASE_DB_URL. Add your Supabase Session Pooler URI in Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+          if [ -z "$RCLONE_GDRIVE_TOKEN" ]; then
+            echo "::error::Missing secret RCLONE_GDRIVE_TOKEN. Add your Google Drive rclone OAuth token JSON in Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+      - name: Checkout full repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: project-repo
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Install zip and rclone
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zip unzip rclone
+
+      - name: Dump Supabase Roles, Schema (with RLS), and Data
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          mkdir -p backup_staging/supabase_db
+
+          echo "Dumping roles..."
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup_staging/supabase_db/roles.sql --role-only
+
+          echo "Dumping schema (tables, enums, functions, triggers, RLS policies)..."
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup_staging/supabase_db/schema.sql
+
+          echo "Dumping data (public + auth tables via COPY)..."
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup_staging/supabase_db/data.sql --use-copy --data-only
+
+          cat << 'EOF' > backup_staging/supabase_db/RESTORE_INSTRUCTIONS.txt
+          SUPER MIND - Supabase Database Restore Guide
+          =============================================
+          To restore into a fresh Supabase / PostgreSQL 17 database:
+
+          psql \
+            --single-transaction \
+            --variable ON_ERROR_STOP=1 \
+            --file roles.sql \
+            --file schema.sql \
+            --command 'SET session_replication_role = replica' \
+            --file data.sql \
+            --dbname "YOUR_TARGET_POSTGRES_CONNECTION_STRING"
+          EOF
+
+      - name: Verify SQL dump includes schema, RLS policies, and data
+        run: |
+          test -s backup_staging/supabase_db/roles.sql
+          test -s backup_staging/supabase_db/schema.sql
+          test -s backup_staging/supabase_db/data.sql
+
+          grep -q "CREATE TABLE" backup_staging/supabase_db/schema.sql
+          grep -q "ENABLE ROW LEVEL SECURITY" backup_staging/supabase_db/schema.sql
+          grep -q "CREATE POLICY" backup_staging/supabase_db/schema.sql
+          grep -q "COPY " backup_staging/supabase_db/data.sql
+
+          echo "Verified: roles.sql, schema.sql (DDL + RLS policies), and data.sql (COPY rows) are present and non-empty."
+          ls -lh backup_staging/supabase_db/
+
+      - name: Package project and database archive & test zip integrity
+        run: |
+          TIMESTAMP=$(TZ="Asia/Baghdad" date +"%Y-%m-%d_%H-%M")
+          ZIP_NAME="supermind-backup-${TIMESTAMP}.zip"
+          echo "ZIP_NAME=${ZIP_NAME}" >> "$GITHUB_ENV"
+
+          # Copy clean repo files excluding any accidental local secrets/build artifacts
+          mkdir -p backup_staging/supermind-app
+          rsync -a \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            --exclude='*.key' \
+            --exclude='*.secret' \
+            --exclude='node_modules' \
+            --exclude='.next' \
+            project-repo/ backup_staging/supermind-app/
+
+          (cd backup_staging && zip -rq "../${ZIP_NAME}" supermind-app supabase_db)
+          unzip -t "${ZIP_NAME}" > /dev/null
+          ls -lh "${ZIP_NAME}"
+
+      - name: Configure rclone for supermindiq@gmail.com Google Drive
+        env:
+          RCLONE_GDRIVE_TOKEN: ${{ secrets.RCLONE_GDRIVE_TOKEN }}
+        run: |
+          mkdir -p ~/.config/rclone
+          TOKEN_COMPACT=$(printf '%s' "$RCLONE_GDRIVE_TOKEN" | jq -c . 2>/dev/null || printf '%s' "$RCLONE_GDRIVE_TOKEN" | tr -d '\r\n')
+          cat << EOF > ~/.config/rclone/rclone.conf
+          [gdrive]
+          type = drive
+          scope = drive
+          root_folder_id = 150dnM0McORVPNqtZHOunQG4qxBHmBGQv
+          token = ${TOKEN_COMPACT}
+          EOF
+          chmod 600 ~/.config/rclone/rclone.conf
+
+      - name: Upload backup to Google Drive (SUPERMIND_Backups)
+        run: |
+          rclone copyto "${ZIP_NAME}" "gdrive:${ZIP_NAME}"
+          rclone lsl "gdrive:${ZIP_NAME}"
+
+      - name: Keep only the latest 4 weekly backups in Google Drive
+        run: |
+          OLD_BACKUPS=$(rclone lsf "gdrive:" --files-only --include "supermind-backup-*.zip" | sort -r | tail -n +5 || true)
+          if [ -n "$OLD_BACKUPS" ]; then
+            echo "$OLD_BACKUPS" | while IFS= read -r old_file; do
+              if [ -n "$old_file" ]; then
+                echo "Moving old backup to Drive Trash: $old_file"
+                rclone deletefile "gdrive:${old_file}"
+              fi
+            done
+          else
+            echo "Retention OK: 4 or fewer backups exist in SUPERMIND_Backups."
+          fi
+          echo "Current backups in Google Drive:"
+          rclone lsl "gdrive:" --include "supermind-backup-*.zip"
+
+      - name: Cleanup runner workspace credentials
+        if: always()
+        run: |
+          rm -rf ~/.config/rclone backup_staging "${ZIP_NAME:-}" || true
