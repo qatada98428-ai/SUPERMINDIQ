@@ -14,6 +14,10 @@ import {
   Sparkles,
   Building2,
   FileText,
+  Copy,
+  Check,
+  Crown,
+  Send,
 } from "lucide-react";
 import {
   ExtendedUserProfile,
@@ -21,6 +25,10 @@ import {
   compressAvatarImage,
   saveExtendedProfile,
   getVerifiedTrainersForDirectory,
+  fetchApprovedDirectoryFromCloud,
+  getUserMembershipCode,
+  submitTrainerDirectoryCardToCloud,
+  submitSchoolDirectoryCardToCloud,
 } from "@/lib/platform-store";
 
 interface ProfileEditorModalProps {
@@ -40,6 +48,7 @@ export default function ProfileEditorModal({
 }: ProfileEditorModalProps) {
   const effectiveRole = forceRole || profile.role;
   const isTrainer = effectiveRole === "trainer" || effectiveRole === "admin";
+  const memberCode = profile.memberCode || getUserMembershipCode(profile.id);
 
   const [name, setName] = useState(profile.name === "بطل العقل الخارق" ? "" : profile.name);
   const [phone, setPhone] = useState(profile.phone || "");
@@ -49,8 +58,18 @@ export default function ProfileEditorModal({
   const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl || "");
   const [ageOrGrade, setAgeOrGrade] = useState(profile.ageOrGrade || "");
   const [trainerId, setTrainerId] = useState(profile.trainerId || "trainer-qatada");
+  const [customTrainerQuery, setCustomTrainerQuery] = useState("");
 
-  // Trainer extra fields
+  // Flexible Account Mode & Directory Application
+  const [accountMode, setAccountMode] = useState<
+    "free_student" | "pro_student" | "trainer" | "school"
+  >(
+    profile.requestedAccountMode ||
+      (effectiveRole === "trainer" ? "trainer" : "free_student")
+  );
+  const [submitDirectoryCard, setSubmitDirectoryCard] = useState(false);
+
+  // Trainer / School extra fields
   const [trainerTitle, setTrainerTitle] = useState(
     profile.trainerTitle || "مدرب حساب ذهني معتمد"
   );
@@ -60,11 +79,14 @@ export default function ProfileEditorModal({
   const [centerOrSchool, setCenterOrSchool] = useState(profile.centerOrSchool || "");
   const [bio, setBio] = useState(profile.bio || "");
 
+  const [availableTrainers, setAvailableTrainers] = useState<ExtendedUserProfile[]>(() =>
+    getVerifiedTrainersForDirectory()
+  );
+  const [copiedCode, setCopiedCode] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const availableTrainers = getVerifiedTrainersForDirectory();
   const governoratesForCountry = COUNTRIES_WITH_GOVERNORATES[country] || ["مدينة أخرى"];
 
   useEffect(() => {
@@ -78,16 +100,42 @@ export default function ProfileEditorModal({
       );
       setAvatarUrl(profile.avatarUrl || "");
       setAgeOrGrade(profile.ageOrGrade || "");
-      setTrainerId(profile.trainerId || "trainer-qatada");
+      const initTrainer = profile.trainerId || "trainer-qatada";
+      setTrainerId(initTrainer);
+      if (initTrainer === "custom" && profile.trainerName) {
+        setCustomTrainerQuery(profile.trainerName);
+      } else {
+        setCustomTrainerQuery("");
+      }
+      setAccountMode(
+        profile.requestedAccountMode ||
+          (effectiveRole === "trainer" ? "trainer" : "free_student")
+      );
+      setSubmitDirectoryCard(false);
       setTrainerTitle(profile.trainerTitle || "مدرب حساب ذهني معتمد");
       setExperienceYears(String(profile.experienceYears || 3));
       setCenterOrSchool(profile.centerOrSchool || "");
       setBio(profile.bio || "");
       setError(null);
+
+      // Load dynamic verified trainers from Supabase cloud
+      fetchApprovedDirectoryFromCloud().then(({ trainers }) => {
+        if (trainers && trainers.length > 0) {
+          setAvailableTrainers(trainers);
+        }
+      });
     }
-  }, [isOpen, profile]);
+  }, [isOpen, profile, effectiveRole]);
 
   if (!isOpen) return null;
+
+  const handleCopyCode = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(memberCode);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    }
+  };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -132,28 +180,77 @@ export default function ProfileEditorModal({
       return;
     }
 
+    const wantsTrainerOrSchool =
+      isTrainer || accountMode === "trainer" || accountMode === "school";
+
     setSaving(true);
     try {
       const selectedTrainerObj = availableTrainers.find((t) => t.id === trainerId);
+      const resolvedTrainerName = isTrainer
+        ? name.trim()
+        : trainerId === "self-study"
+        ? "تدريب حر مباشر على المنصة"
+        : trainerId === "custom"
+        ? customTrainerQuery.trim() || "مدرب خاص"
+        : selectedTrainerObj?.name || profile.trainerName || "الأستاذ قتادة كريم";
+
+      const resolvedTrainerId = isTrainer
+        ? profile.id
+        : trainerId === "custom" && customTrainerQuery.trim()
+        ? `custom_${customTrainerQuery.trim()}`
+        : trainerId;
+
       const updated: ExtendedUserProfile = {
         ...profile,
+        memberCode,
         name: name.trim(),
         phone: phone.trim(),
         country,
         governorate: finalGov,
         avatarUrl: avatarUrl || profile.avatarUrl,
         ageOrGrade: ageOrGrade.trim(),
-        trainerId: isTrainer ? profile.id : trainerId,
-        trainerName: isTrainer
-          ? name.trim()
-          : selectedTrainerObj?.name || "الأستاذ قتادة كريم",
-        trainerTitle: isTrainer ? trainerTitle.trim() : profile.trainerTitle,
-        experienceYears: isTrainer ? Number(experienceYears) || 1 : profile.experienceYears,
-        centerOrSchool: isTrainer ? centerOrSchool.trim() : profile.centerOrSchool,
-        bio: isTrainer ? bio.trim() : profile.bio,
+        requestedAccountMode: profile.role === "admin" ? profile.requestedAccountMode : accountMode,
+        trainerId: resolvedTrainerId,
+        trainerName: resolvedTrainerName,
+        trainerTitle: wantsTrainerOrSchool ? trainerTitle.trim() : profile.trainerTitle,
+        experienceYears: wantsTrainerOrSchool
+          ? Number(experienceYears) || 1
+          : profile.experienceYears,
+        centerOrSchool: wantsTrainerOrSchool ? centerOrSchool.trim() : profile.centerOrSchool,
+        bio: wantsTrainerOrSchool ? bio.trim() : profile.bio,
       };
 
       const saved = await saveExtendedProfile(updated);
+
+      // Submit directory listing card for Admin review if requested
+      if (submitDirectoryCard && (accountMode === "trainer" || accountMode === "school" || isTrainer)) {
+        if (accountMode === "school") {
+          await submitSchoolDirectoryCardToCloud({
+            name: centerOrSchool.trim() || name.trim(),
+            phone: phone.trim(),
+            email: profile.email,
+            country,
+            governorate: finalGov,
+            address: `${country} - ${finalGov}`,
+            curriculumStage: trainerTitle.trim() || "جميع المراحل الدراسية",
+            bio: bio.trim() || "مدرسة / مركز معتمد لبرنامج العقل الخارق.",
+            logoUrl: avatarUrl || undefined,
+          });
+        } else {
+          await submitTrainerDirectoryCardToCloud({
+            name: name.trim(),
+            phone: phone.trim(),
+            email: profile.email,
+            country,
+            governorate: finalGov,
+            trainerTitle: trainerTitle.trim(),
+            centerOrSchool: centerOrSchool.trim(),
+            bio: bio.trim() || "مدرب حساب ذهني وسوروبان.",
+            photoUrl: avatarUrl || undefined,
+          });
+        }
+      }
+
       onSaved(saved);
       onClose();
     } catch {
@@ -198,6 +295,105 @@ export default function ProfileEditorModal({
           {error && (
             <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold">
               {error}
+            </div>
+          )}
+
+          {/* Unique Member ID Card */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-l from-indigo-50 via-brand-50/70 to-amber-50/50 dark:from-indigo-950/40 dark:via-slate-800 dark:to-amber-950/20 border border-brand-200/80 dark:border-brand-800/50">
+            <div className="space-y-0.5">
+              <div className="text-xs font-black text-brand-700 dark:text-brand-300 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>معرّف حسابك الموحّد (لتسهيل الربط مع المدربين والإدارة):</span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                أعطِ هذا المعرّف لمدربك أو للمدرسة أو الإدارة لإضافتك وتفعيل صلاحياتك فوراً
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                dir="ltr"
+                className="px-3.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-brand-300 dark:border-brand-700 font-mono font-black text-sm text-brand-700 dark:text-brand-300 shadow-sm tracking-wider"
+              >
+                {memberCode}
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-sm transition-colors"
+              >
+                {copiedCode ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>تم النسخ</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>نسخ</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Account Mode & Upgrade Selector */}
+          {profile.role !== "admin" && (
+            <div className="space-y-2.5">
+              <label className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <Crown className="w-4 h-4 text-amber-500" />
+                <span>اختر وضع الحساب / نوع الطلب:</span>
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {[
+                  {
+                    id: "free_student" as const,
+                    title: "وضع مجاني",
+                    desc: "تدريب مجاني للطالب",
+                  },
+                  {
+                    id: "pro_student" as const,
+                    title: "طالب احترافي",
+                    desc: "طلب اشتراك المحاكي الكامل",
+                  },
+                  {
+                    id: "trainer" as const,
+                    title: "اعتماد مدرب",
+                    desc: "إدارة طلابك وظهور بالدليل",
+                  },
+                  {
+                    id: "school" as const,
+                    title: "مدرسة / مركز",
+                    desc: "اعتماد مؤسسة تعليمية",
+                  },
+                ].map((opt) => {
+                  const selected = accountMode === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setAccountMode(opt.id)}
+                      className={`p-3 rounded-2xl border text-right transition-all ${
+                        selected
+                          ? "bg-brand-50 dark:bg-brand-950/50 border-brand-500 ring-2 ring-brand-500/30 shadow-sm"
+                          : "bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-brand-300"
+                      }`}
+                    >
+                      <div
+                        className={`text-xs font-black ${
+                          selected
+                            ? "text-brand-700 dark:text-brand-300"
+                            : "text-slate-800 dark:text-slate-200"
+                        }`}
+                      >
+                        {opt.title}
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                        {opt.desc}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -339,57 +535,83 @@ export default function ProfileEditorModal({
           )}
 
           {/* Student Specific Fields */}
-          {!isTrainer && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <GraduationCap className="w-3.5 h-3.5 text-amber-500" />
-                  <span>العمر أو المرحلة الدراسية</span>
-                </label>
-                <input
-                  type="text"
-                  value={ageOrGrade}
-                  onChange={(e) => setAgeOrGrade(e.target.value)}
-                  placeholder="مثال: 9 سنوات - الصف الرابع الابتدائي"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white"
-                />
+          {!isTrainer && accountMode !== "trainer" && accountMode !== "school" && (
+            <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <GraduationCap className="w-3.5 h-3.5 text-amber-500" />
+                    <span>العمر أو المرحلة الدراسية</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={ageOrGrade}
+                    onChange={(e) => setAgeOrGrade(e.target.value)}
+                    placeholder="مثال: 9 سنوات - الصف الرابع الابتدائي"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Award className="w-3.5 h-3.5 text-brand-600" />
+                    <span>المدرب المشرف عليك (لاستلام الواجبات)</span>
+                  </label>
+                  <select
+                    value={trainerId}
+                    onChange={(e) => setTrainerId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white"
+                  >
+                    {availableTrainers.map((tr) => (
+                      <option key={tr.id} value={tr.id}>
+                        {tr.name} ({tr.governorate || "العراق"})
+                      </option>
+                    ))}
+                    <option value="self-study">تدريب حر مباشر على المنصة</option>
+                    <option value="custom">إدخال معرّف أو اسم مدرب آخر يدوياً...</option>
+                  </select>
+                </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Award className="w-3.5 h-3.5 text-brand-600" />
-                  <span>المدرب المشرف عليك (لاستلام الواجبات)</span>
-                </label>
-                <select
-                  value={trainerId}
-                  onChange={(e) => setTrainerId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white"
-                >
-                  {availableTrainers.map((tr) => (
-                    <option key={tr.id} value={tr.id}>
-                      {tr.name} ({tr.governorate || "العراق"})
-                    </option>
-                  ))}
-                  <option value="self-study">تدريب حر مباشر على المنصة</option>
-                </select>
-              </div>
+              {trainerId === "custom" && (
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-brand-200 dark:border-brand-800 space-y-1.5">
+                  <label className="text-xs font-bold text-brand-700 dark:text-brand-300">
+                    اكتب اسم المدرب أو معرّفه (مثل SM-XXXX) أو رقم هاتفه:
+                  </label>
+                  <input
+                    type="text"
+                    value={customTrainerQuery}
+                    onChange={(e) => setCustomTrainerQuery(e.target.value)}
+                    placeholder="مثال: الأستاذ علي حسن / SM-82A1"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white"
+                  />
+                </div>
+              )}
             </div>
           )}
 
-          {/* Trainer Specific Fields */}
-          {isTrainer && (
+          {/* Trainer / School Specific Fields */}
+          {(isTrainer || accountMode === "trainer" || accountMode === "school") && (
             <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                     <Award className="w-3.5 h-3.5 text-amber-500" />
-                    <span>اللقب التدريبي / الاختصاص</span>
+                    <span>
+                      {accountMode === "school"
+                        ? "المراحل المعتمدة بالمدرسة"
+                        : "اللقب التدريبي / الاختصاص"}
+                    </span>
                   </label>
                   <input
                     type="text"
                     value={trainerTitle}
                     onChange={(e) => setTrainerTitle(e.target.value)}
-                    placeholder="مثال: مدرب حساب ذهني وفلاش أنزان معتمد"
+                    placeholder={
+                      accountMode === "school"
+                        ? "مثال: الصفوف التمهيدية والابتدائية"
+                        : "مثال: مدرب حساب ذهني وفلاش أنزان معتمد"
+                    }
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white"
                   />
                 </div>
@@ -397,7 +619,11 @@ export default function ProfileEditorModal({
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                     <Building2 className="w-3.5 h-3.5 text-brand-600" />
-                    <span>المدرسة أو المركز التدريبي</span>
+                    <span>
+                      {accountMode === "school"
+                        ? "اسم المدرسة أو المركز التعليمي *"
+                        : "المدرسة أو المركز التدريبي"}
+                    </span>
                   </label>
                   <input
                     type="text"
@@ -412,16 +638,35 @@ export default function ProfileEditorModal({
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <FileText className="w-3.5 h-3.5 text-brand-600" />
-                  <span>نبذة تعريفية عن المدرب (تظهر للطلاب والأهالي في الدليل)</span>
+                  <span>
+                    {accountMode === "school"
+                      ? "نبذة عن المدرسة أو المركز (تظهر في دليل المدارس)"
+                      : "نبذة تعريفية عن المدرب (تظهر للطلاب والأهالي في الدليل)"}
+                  </span>
                 </label>
                 <textarea
                   rows={3}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  placeholder="اكتب نبذة مختصرة عن خبراتك في تدريب الحساب الذهني والسوروبان..."
+                  placeholder="اكتب نبذة مختصرة عن خبراتك وبرامجك التدريبية..."
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white"
                 />
               </div>
+
+              <label className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={submitDirectoryCard}
+                  onChange={(e) => setSubmitDirectoryCard(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded accent-brand-600"
+                />
+                <span className="text-xs font-bold text-amber-900 dark:text-amber-200 leading-relaxed flex items-center gap-1.5">
+                  <Send className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                  <span>
+                    إرسال بياناتي للمراجعة الإدارية لإدراجها في الدليل العام للمنصة (بعد موافقة الإدارة)
+                  </span>
+                </span>
+              </label>
             </div>
           )}
 

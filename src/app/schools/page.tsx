@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -14,15 +14,27 @@ import {
 } from "lucide-react";
 import {
   SCHOOLS_DIRECTORY,
-  getSchoolApplicationLink,
   SchoolProfile,
 } from "@/lib/constants";
 import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
+import {
+  ApprovedSchoolDirectoryEntry,
+  fetchApprovedDirectoryFromCloud,
+} from "@/lib/platform-store";
+import DirectoryApplicationModal from "@/components/directory/DirectoryApplicationModal";
 
 export default function SchoolsDirectoryPage() {
   const { playFx } = useApp();
+  const { user, profile } = useAuth();
+  const [cloudSchools, setCloudSchools] = useState<ApprovedSchoolDirectoryEntry[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
 
-  const schoolApplicationLink = getSchoolApplicationLink();
+  useEffect(() => {
+    fetchApprovedDirectoryFromCloud().then(({ schools }) => {
+      if (schools) setCloudSchools(schools);
+    });
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-12">
@@ -46,16 +58,17 @@ export default function SchoolsDirectoryPage() {
           </p>
 
           <div className="pt-2 flex flex-wrap items-center gap-3">
-            <a
-              href={schoolApplicationLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => playFx("click")}
+            <button
+              type="button"
+              onClick={() => {
+                playFx("click");
+                setModalOpen(true);
+              }}
               className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2"
             >
-              <MessageCircle className="w-4 h-4 text-slate-950" />
-              <span>أدرج مدرستك وافتح مميزات المنصة (الاشتراك السنوي: 150,000 د.ع)</span>
-            </a>
+              <School className="w-4 h-4 text-slate-950" />
+              <span>أدرج مدرستك في الدليل مباشرة (مراجعة واعتماد)</span>
+            </button>
 
             <Link
               href="/trainers"
@@ -80,6 +93,62 @@ export default function SchoolsDirectoryPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {cloudSchools.map((cs) => {
+            const csWhatsapp = cs.phone
+              ? `https://wa.me/${cs.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+                  `مرحباً إدارة ${cs.name}، أود الاستفسار عن منهاج العقل الخارق المعتمد لديكم.`
+                )}`
+              : null;
+            return (
+              <div
+                key={cs.id}
+                className="bg-white dark:bg-slate-900 rounded-3xl p-6 border-2 border-emerald-500/70 shadow-xl flex flex-col justify-between space-y-5"
+              >
+                <div className="space-y-4">
+                  <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-emerald-400/70 flex items-center justify-center">
+                    {cs.logoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={cs.logoUrl} alt={cs.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Building2 className="w-14 h-14 text-emerald-500" />
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950">
+                      مدرسة / مركز معتمد ✅
+                    </span>
+                    <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
+                      {cs.name}
+                    </h3>
+                    <div className="text-xs font-bold text-brand-600 dark:text-brand-400">
+                      {cs.curriculumStage}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-400 font-semibold">
+                      <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                      <span>{cs.address}</span>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed pt-1">
+                      {cs.bio}
+                    </p>
+                  </div>
+                </div>
+                {csWhatsapp && (
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <a
+                      href={csWhatsapp}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>اضغط للتواصل مع {cs.name}</span>
+                    </a>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
           {SCHOOLS_DIRECTORY.map((school: SchoolProfile) => {
             if (school.isPlaceholder) {
               return (
@@ -111,16 +180,17 @@ export default function SchoolsDirectoryPage() {
                     </div>
                   </div>
 
-                  <a
-                    href={schoolApplicationLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => playFx("click")}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playFx("click");
+                      setModalOpen(true);
+                    }}
                     className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 shadow-sm"
                   >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>قدّم طلب إدراج مدرستك عبر واتساب</span>
-                  </a>
+                    <School className="w-4 h-4" />
+                    <span>أضف بيانات مدرستك للدليل مباشرة</span>
+                  </button>
                 </div>
               );
             }
@@ -206,6 +276,15 @@ export default function SchoolsDirectoryPage() {
           </p>
         </div>
       </section>
+
+      <DirectoryApplicationModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        defaultType="school"
+        defaultName={profile?.name || ""}
+        defaultEmail={user?.email || profile?.email || ""}
+        defaultPhone={profile?.phone || ""}
+      />
     </div>
   );
 }

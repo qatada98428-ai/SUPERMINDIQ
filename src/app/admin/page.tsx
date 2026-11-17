@@ -45,6 +45,8 @@ import {
   syncAllAssignmentsSubmissionsFromCloud,
   buildShareableAssignmentPath,
   COUNTRIES_WITH_GOVERNORATES,
+  getUserMembershipCode,
+  unpackProfilePhoneColumn,
 } from "@/lib/platform-store";
 import {
   UserProfile,
@@ -261,10 +263,13 @@ export default function AdminDashboardPage() {
   // Filtered Users List
   const filteredUsers = useMemo(() => {
     return usersList.filter((u) => {
+      const code = getUserMembershipCode(u.id).toLowerCase();
+      const q = userSearch.toLowerCase();
       const matchesSearch =
-        (u.name || "").toLowerCase().includes(userSearch.toLowerCase()) ||
-        (u.email || "").toLowerCase().includes(userSearch.toLowerCase()) ||
-        (u.phone || "").includes(userSearch);
+        (u.name || "").toLowerCase().includes(q) ||
+        (u.email || "").toLowerCase().includes(q) ||
+        (u.phone || "").includes(userSearch) ||
+        code.includes(q);
       const matchesRole = roleFilter === "all" || u.role === roleFilter;
       return matchesSearch && matchesRole;
     });
@@ -777,15 +782,20 @@ export default function AdminDashboardPage() {
                       const prog = progressList.find((p) => p.user_id === u.id);
                       const extProf = extProfiles.find((ep) => ep.id === u.id);
                       const rawPhoneField = u.phone || extProf?.phone || "";
-                      const cleanPhone = rawPhoneField.split("|")[0]?.trim() || "";
-                      const locationFromPhone = rawPhoneField.includes("|")
-                        ? rawPhoneField.split("|")[1]?.trim() || ""
-                        : "";
+                      const unpacked = unpackProfilePhoneColumn(rawPhoneField);
+                      const cleanPhone = unpacked.cleanPhone || extProf?.phone || "";
+                      const memberCode =
+                        unpacked.meta?.memberCode ||
+                        extProf?.memberCode ||
+                        getUserMembershipCode(u.id);
+                      const requestedMode =
+                        unpacked.meta?.requestedAccountMode || extProf?.requestedAccountMode;
                       const displayLocation =
-                        locationFromPhone ||
-                        (extProf?.governorate
+                        unpacked.governorate
+                          ? `${unpacked.country || "العراق"} - ${unpacked.governorate}`
+                          : extProf?.governorate
                           ? `${extProf.country || "العراق"} - ${extProf.governorate}`
-                          : "");
+                          : "";
                       const avatarSrc = u.avatar_url || extProf?.avatarUrl || "";
 
                       return (
@@ -805,7 +815,24 @@ export default function AdminDashboardPage() {
                                 )}
                               </div>
                               <div>
-                                <div className="font-bold text-slate-900 dark:text-white">{u.name}</div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-slate-900 dark:text-white">{u.name}</span>
+                                  <span
+                                    dir="ltr"
+                                    className="px-1.5 py-0.5 rounded bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 font-mono text-[10px] font-black border border-brand-200/70 dark:border-brand-800/60"
+                                  >
+                                    {memberCode}
+                                  </span>
+                                </div>
+                                {requestedMode && requestedMode !== "free_student" && (
+                                  <div className="text-[10px] font-black text-amber-600 dark:text-amber-400 mt-0.5">
+                                    {requestedMode === "pro_student"
+                                      ? "🌟 طلب ترقية: طالب احترافي"
+                                      : requestedMode === "trainer"
+                                      ? "👨‍🏫 طلب ترقية: مدرب معتمد"
+                                      : "🏫 طلب ترقية: مدرسة معتمدة"}
+                                  </div>
+                                )}
                                 {displayLocation && (
                                   <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
                                     <MapPin className="w-3 h-3" />
@@ -941,15 +968,17 @@ export default function AdminDashboardPage() {
             const prog = selectedUserDetail.progress;
             const extProf = extProfiles.find((ep) => ep.id === u.id);
             const rawPhoneField = u.phone || extProf?.phone || "";
-            const cleanPhone = rawPhoneField.split("|")[0]?.trim() || "";
-            const locationFromPhone = rawPhoneField.includes("|")
-              ? rawPhoneField.split("|")[1]?.trim() || ""
-              : "";
-            const displayLocation =
-              locationFromPhone ||
-              (extProf?.governorate
-                ? `${extProf.country || "العراق"} - ${extProf.governorate}`
-                : "غير محدد بعد");
+            const unpacked = unpackProfilePhoneColumn(rawPhoneField);
+            const cleanPhone = unpacked.cleanPhone || extProf?.phone || "";
+            const memberCode =
+              unpacked.meta?.memberCode ||
+              extProf?.memberCode ||
+              getUserMembershipCode(u.id);
+            const displayLocation = unpacked.governorate
+              ? `${unpacked.country || "العراق"} - ${unpacked.governorate}`
+              : extProf?.governorate
+              ? `${extProf.country || "العراق"} - ${extProf.governorate}`
+              : "غير محدد بعد";
             const avatarSrc = u.avatar_url || extProf?.avatarUrl || "";
             const subEval = extProf ? evaluateSubscription(extProf.subscription) : null;
 
@@ -976,6 +1005,12 @@ export default function AdminDashboardPage() {
                           <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
                             {u.name}
                           </h3>
+                          <span
+                            dir="ltr"
+                            className="px-2 py-0.5 rounded-md bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 font-mono text-[11px] font-black border border-brand-200 dark:border-brand-800"
+                          >
+                            {memberCode}
+                          </span>
                           <span
                             className={`px-2.5 py-0.5 rounded-full text-[11px] font-black ${
                               u.role === "admin"
@@ -1522,17 +1557,20 @@ export default function AdminDashboardPage() {
                     return false;
                   if (subSearch.trim()) {
                     const q = subSearch.toLowerCase();
+                    const code = (p.memberCode || getUserMembershipCode(p.id)).toLowerCase();
                     return (
                       p.name.toLowerCase().includes(q) ||
                       (p.phone || "").includes(q) ||
                       (p.governorate || "").toLowerCase().includes(q) ||
-                      (p.email || "").toLowerCase().includes(q)
+                      (p.email || "").toLowerCase().includes(q) ||
+                      code.includes(q)
                     );
                   }
                   return true;
                 })
                 .map((p) => {
                   const evalSub = evaluateSubscription(p.subscription);
+                  const pCode = p.memberCode || getUserMembershipCode(p.id);
                   const activatePlan = async (planId: SubscriptionPlanId) => {
                     const newSub = createSubscriptionForPlan(planId);
                     await saveExtendedProfile({
@@ -1568,6 +1606,12 @@ export default function AdminDashboardPage() {
                               {p.name}
                             </span>
                             <span
+                              dir="ltr"
+                              className="px-2 py-0.5 rounded-md bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 font-mono text-[10px] font-black border border-brand-200/70 dark:border-brand-800/60"
+                            >
+                              {pCode}
+                            </span>
+                            <span
                               className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
                                 p.role === "trainer"
                                   ? "bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300"
@@ -1576,6 +1620,15 @@ export default function AdminDashboardPage() {
                             >
                               {p.role === "trainer" ? "مدرب" : p.role === "admin" ? "مشرف عام" : "طالب"}
                             </span>
+                            {p.requestedAccountMode && p.requestedAccountMode !== "free_student" && (
+                              <span className="px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/70 text-indigo-800 dark:text-indigo-300 text-[10px] font-black">
+                                {p.requestedAccountMode === "pro_student"
+                                  ? "طلب: طالب احترافي"
+                                  : p.requestedAccountMode === "trainer"
+                                  ? "طلب: مدرب"
+                                  : "طلب: مدرسة"}
+                              </span>
+                            )}
                             {evalSub.isActive ? (
                               <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 text-[10px] font-black">
                                 فعال ({p.subscription.planLabel}) • متبقي {evalSub.daysRemaining} يوم

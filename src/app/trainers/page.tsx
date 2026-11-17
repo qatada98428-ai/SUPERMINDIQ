@@ -18,28 +18,44 @@ import {
 import {
   TRAINERS_DIRECTORY,
   SCHOOLS_DIRECTORY,
-  getTrainerApplicationLink,
-  getSchoolApplicationLink,
   TrainerProfile,
   SchoolProfile,
 } from "@/lib/constants";
 import { useApp } from "@/context/AppContext";
-import { ExtendedUserProfile, getVerifiedTrainersForDirectory } from "@/lib/platform-store";
+import { useAuth } from "@/context/AuthContext";
+import {
+  ExtendedUserProfile,
+  ApprovedSchoolDirectoryEntry,
+  getVerifiedTrainersForDirectory,
+  fetchApprovedDirectoryFromCloud,
+} from "@/lib/platform-store";
+import DirectoryApplicationModal from "@/components/directory/DirectoryApplicationModal";
 
 export default function AccreditationsAndPartnersPage() {
   const { language, dir, playFx } = useApp();
+  const { user, profile } = useAuth();
   const isEn = language === "en";
   const ArrowIcon = dir === "rtl" ? ArrowLeft : ArrowRight;
 
   const [activeTab, setActiveTab] = useState<"all" | "trainers" | "schools">("all");
   const [dynamicTrainers, setDynamicTrainers] = useState<ExtendedUserProfile[]>([]);
+  const [cloudSchools, setCloudSchools] = useState<ApprovedSchoolDirectoryEntry[]>([]);
+  const [dirModalOpen, setDirModalOpen] = useState(false);
+  const [dirModalType, setDirModalType] = useState<"trainer" | "school">("trainer");
 
   useEffect(() => {
     setDynamicTrainers(getVerifiedTrainersForDirectory());
+    fetchApprovedDirectoryFromCloud().then(({ trainers, schools }) => {
+      if (trainers) setDynamicTrainers(trainers);
+      if (schools) setCloudSchools(schools);
+    });
   }, []);
 
-  const trainerApplicationLink = getTrainerApplicationLink();
-  const schoolApplicationLink = getSchoolApplicationLink();
+  const openApplyModal = (type: "trainer" | "school") => {
+    playFx("click");
+    setDirModalType(type);
+    setDirModalOpen(true);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-12">
@@ -69,40 +85,36 @@ export default function AccreditationsAndPartnersPage() {
           {/* Quick Dual Action Box */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             {/* Trainer listing action */}
-            <a
-              href={trainerApplicationLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => playFx("click")}
-              className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-amber-400/40 transition-all flex items-center justify-between gap-3 group"
+            <button
+              type="button"
+              onClick={() => openApplyModal("trainer")}
+              className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-amber-400/40 transition-all flex items-center justify-between gap-3 group text-right"
             >
               <div className="space-y-0.5 text-right">
                 <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
                   <UserPlus className="w-4 h-4 text-amber-400" />
-                  <span>توثيق المدربين (25 ألف شهري / 50 ألف 3 أشهر / 100 ألف سنوي)</span>
+                  <span>أضف بياناتك كمدرب معتمد في الدليل مباشرة</span>
                 </div>
-                <div className="text-[11px] text-slate-300">وثّق حسابك وأدرج بياناتك وإنجازاتك في الدليل</div>
+                <div className="text-[11px] text-slate-300">املأ بطاقتك ليتم اعتمادها ونشرها فور موافقة الإدارة</div>
               </div>
               <ArrowIcon className="w-4 h-4 text-amber-400 transition-transform group-hover:scale-110" />
-            </a>
+            </button>
 
             {/* School listing action */}
-            <a
-              href={schoolApplicationLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => playFx("click")}
-              className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-emerald-400/40 transition-all flex items-center justify-between gap-3 group"
+            <button
+              type="button"
+              onClick={() => openApplyModal("school")}
+              className="p-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-emerald-400/40 transition-all flex items-center justify-between gap-3 group text-right"
             >
               <div className="space-y-0.5 text-right">
                 <div className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
                   <Building2 className="w-4 h-4 text-emerald-400" />
-                  <span>اعتماد المدارس (150 ألف د.ع/سنة شامل المميزات)</span>
+                  <span>أضف مدرستك أو مركزك في الدليل (اعتماد رسمي)</span>
                 </div>
-                <div className="text-[11px] text-slate-300">أدرج مدرستك مع إتاحة كل مميزات المنصة</div>
+                <div className="text-[11px] text-slate-300">أدرج بيانات مدرستك وصورتها وتنشر بعد المراجعة</div>
               </div>
               <ArrowIcon className="w-4 h-4 text-emerald-400 transition-transform group-hover:scale-110" />
-            </a>
+            </button>
           </div>
         </div>
       </section>
@@ -170,20 +182,18 @@ export default function AccreditationsAndPartnersPage() {
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {isEn
                   ? "Certified trainers with supervisor profile and open reservation slots for verified instructors."
-                  : "ملف المشرف العام للأستاذ قتادة كريم ومساحات الحجز المخصصة للمدربين المعتمدين."}
+                  : "ملف المشرف العام للأستاذ قتادة كريم والمدربون المعتمدون والمساحات المفتوحة للإدراج."}
               </p>
             </div>
 
-            <a
-              href={trainerApplicationLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => playFx("click")}
+            <button
+              type="button"
+              onClick={() => openApplyModal("trainer")}
               className="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-transform active:scale-95"
             >
               <UserPlus className="w-4 h-4" />
-              <span>وثّق حسابك كمدرب معتمد (25 / 50 / 100 ألف د.ع)</span>
-            </a>
+              <span>أدرج بطاقتك كمدرب معتمد في الدليل</span>
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -311,16 +321,14 @@ export default function AccreditationsAndPartnersPage() {
                       </div>
                     </div>
 
-                    <a
-                      href={trainerApplicationLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => playFx("click")}
+                    <button
+                      type="button"
+                      onClick={() => openApplyModal("trainer")}
                       className="w-full py-2.5 rounded-xl bg-white dark:bg-slate-800 border-2 border-brand-500 text-brand-600 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-950 font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
                     >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      <span>أدرج اسمك الآن عبر واتساب</span>
-                    </a>
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>أضف معلوماتك للدليل مباشرة</span>
+                    </button>
                   </div>
                 );
               }
@@ -418,20 +426,78 @@ export default function AccreditationsAndPartnersPage() {
               </p>
             </div>
 
-            <a
-              href={schoolApplicationLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => playFx("click")}
+            <button
+              type="button"
+              onClick={() => openApplyModal("school")}
               className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-transform active:scale-95"
             >
               <School className="w-4 h-4" />
-              <span>أدرج مدرستك في المنصة (150,000 د.ع سنوياً)</span>
-            </a>
+              <span>أدرج مدرستك في الدليل للمراجعة الإدارية</span>
+            </button>
           </div>
 
           {/* Partner Schools Grid with Big Official Book Photos in Front of Each Card */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {cloudSchools.map((cs) => {
+              const csWhatsapp = cs.phone
+                ? `https://wa.me/${cs.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+                    `مرحباً إدارة ${cs.name}، أود الاستفسار عن منهاج العقل الخارق المعتمد لديكم.`
+                  )}`
+                : null;
+              return (
+                <div
+                  key={cs.id}
+                  className="bg-white dark:bg-slate-900 rounded-3xl p-6 border-2 border-emerald-500/70 shadow-xl flex flex-col justify-between space-y-5"
+                >
+                  <div className="space-y-4">
+                    <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-emerald-400/70 flex items-center justify-center">
+                      {cs.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={cs.logoUrl}
+                          alt={cs.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Building2 className="w-14 h-14 text-emerald-500" />
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950">
+                        مدرسة / مركز معتمد ✅
+                      </span>
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
+                        {cs.name}
+                      </h3>
+                      <div className="text-xs font-bold text-brand-600 dark:text-brand-400">
+                        {cs.curriculumStage}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-400 font-semibold">
+                        <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                        <span>{cs.address}</span>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed pt-1">
+                        {cs.bio}
+                      </p>
+                    </div>
+                  </div>
+                  {csWhatsapp && (
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <a
+                        href={csWhatsapp}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>اضغط للتواصل مع {cs.name}</span>
+                      </a>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
             {SCHOOLS_DIRECTORY.map((school: SchoolProfile) => {
               if (school.isPlaceholder) {
                 return (
@@ -464,16 +530,14 @@ export default function AccreditationsAndPartnersPage() {
                       </div>
                     </div>
 
-                    <a
-                      href={schoolApplicationLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => playFx("click")}
+                    <button
+                      type="button"
+                      onClick={() => openApplyModal("school")}
                       className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 shadow-sm"
                     >
-                      <MessageCircle className="w-4 h-4" />
-                      <span>قدّم طلب إدراج مدرستك عبر واتساب</span>
-                    </a>
+                      <School className="w-4 h-4" />
+                      <span>أضف بيانات مدرستك للدليل مباشرة</span>
+                    </button>
                   </div>
                 );
               }
@@ -560,6 +624,15 @@ export default function AccreditationsAndPartnersPage() {
           </p>
         </div>
       </section>
+
+      <DirectoryApplicationModal
+        isOpen={dirModalOpen}
+        onClose={() => setDirModalOpen(false)}
+        defaultType={dirModalType}
+        defaultName={profile?.name || ""}
+        defaultEmail={user?.email || profile?.email || ""}
+        defaultPhone={profile?.phone || ""}
+      />
     </div>
   );
 }

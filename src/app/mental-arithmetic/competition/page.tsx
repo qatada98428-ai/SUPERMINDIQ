@@ -2840,7 +2840,7 @@ export default function MentalMathCompetitionPage() {
             ctx.fillText(`تاريخ الإصدار: ${dateStr}`, 1200, 940);
             ctx.fillStyle = "#cbd5e1";
             ctx.font = "22px 'Segoe UI', Tahoma, Arial, sans-serif";
-            ctx.fillText("www.qatada98.com", 1200, 980);
+            ctx.fillText("supermindiq.com", 1200, 980);
 
             const dataUrl = canvas.toDataURL("image/png");
             const link = document.createElement("a");
@@ -2929,7 +2929,7 @@ export default function MentalMathCompetitionPage() {
                   </div>
                   <div>
                     <div className="font-bold text-white">تاريخ الإصدار: {dateStr}</div>
-                    <div className="text-[11px] text-amber-400 font-mono">www.qatada98.com</div>
+                    <div className="text-[11px] text-amber-400 font-mono">supermindiq.com</div>
                   </div>
                 </div>
               </div>

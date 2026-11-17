@@ -26,6 +26,7 @@ import {
   Crown,
   Share2,
   ExternalLink,
+  UserPlus,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getWhatsAppLink } from "@/lib/constants";
@@ -43,6 +44,8 @@ import {
   syncExtendedProfileFromSupabase,
   syncAllAssignmentsSubmissionsFromCloud,
   buildShareableAssignmentPath,
+  linkStudentToTrainerByCodeOrPhone,
+  getUserMembershipCode,
   SUBSCRIPTION_PLANS,
 } from "@/lib/platform-store";
 import ProfileEditorModal from "@/components/profile/ProfileEditorModal";
@@ -59,11 +62,17 @@ export default function TrainerDashboardPage() {
     "students" | "homeworks" | "achievements" | "packages"
   >("homeworks");
 
-  // Modals
+  // Modals & Linking Student
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showCreateHwModal, setShowCreateHwModal] = useState(false);
   const [showAddAchievementModal, setShowAddAchievementModal] = useState(false);
   const [selectedHwForGrades, setSelectedHwForGrades] = useState<PlatformAssignment | null>(null);
+  const [linkStudentQuery, setLinkStudentQuery] = useState("");
+  const [linkingStudent, setLinkingStudent] = useState(false);
+  const [linkStudentFeedback, setLinkStudentFeedback] = useState<{
+    ok: boolean;
+    msg: string;
+  } | null>(null);
 
   // New Homework Form State
   const [hwTitle, setHwTitle] = useState("");
@@ -148,12 +157,39 @@ export default function TrainerDashboardPage() {
       ? trainerProfile.name
       : "الأستاذ قتادة كريم";
 
-  const filteredStudents = studentsList.filter(
-    (st) =>
-      st.name.includes(searchQuery) ||
-      (st.governorate && st.governorate.includes(searchQuery)) ||
-      st.currentLevel.includes(searchQuery)
-  );
+  const filteredStudents = studentsList.filter((st) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    const code = (st.memberCode || getUserMembershipCode(st.id)).toLowerCase();
+    return (
+      st.name.toLowerCase().includes(q) ||
+      (st.governorate && st.governorate.toLowerCase().includes(q)) ||
+      st.currentLevel.toLowerCase().includes(q) ||
+      code.includes(q) ||
+      (st.phone && st.phone.includes(searchQuery.trim()))
+    );
+  });
+
+  const handleLinkStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!linkStudentQuery.trim()) return;
+    setLinkingStudent(true);
+    setLinkStudentFeedback(null);
+    try {
+      const res = await linkStudentToTrainerByCodeOrPhone(
+        activeTrainerId,
+        displayName,
+        linkStudentQuery
+      );
+      setLinkStudentFeedback({ ok: res.success, msg: res.message });
+      if (res.success) {
+        setLinkStudentQuery("");
+        loadTrainerData();
+      }
+    } finally {
+      setLinkingStudent(false);
+    }
+  };
 
   const formatDateAr = (iso?: string) => {
     if (!iso) return "—";
@@ -391,12 +427,12 @@ export default function TrainerDashboardPage() {
 
           {/* Digital Trainer ID & Quick Actions */}
           <div className="bg-slate-800/90 border border-amber-400/40 rounded-2xl p-4 sm:p-5 text-right min-w-[250px] space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] font-black text-amber-400 uppercase">
                 بطاقة عضوية المدرب
               </span>
-              <span className="font-mono text-xs bg-slate-900 px-2.5 py-0.5 rounded-lg text-emerald-400 font-bold">
-                كود المدرب: {trainerProfile.trainerCode || "QK-100"}
+              <span dir="ltr" className="font-mono text-xs bg-slate-900 px-2.5 py-0.5 rounded-lg text-emerald-400 font-bold">
+                {trainerProfile.memberCode || getUserMembershipCode(activeTrainerId)}
               </span>
             </div>
             <div className="text-xs text-slate-300 space-y-1">
@@ -644,7 +680,7 @@ export default function TrainerDashboardPage() {
                 👥 قائمة طلابك وتقدمهم الفعلي
               </h3>
               <p className="text-xs text-slate-500">
-                تابع دقة كل طالب وعدد التمارين المحلولة وتواصل مع ولي أمره عبر الواتساب بضغطة زر
+                تابع دقة كل طالب وعدد التمارين المحلولة وأضف طلابك بالمعرّف (SM-XXXX) أو الهاتف
               </p>
             </div>
 
@@ -652,7 +688,7 @@ export default function TrainerDashboardPage() {
               <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="ابحث باسم الطالب أو المحافظة..."
+                placeholder="ابحث بالاسم أو المعرّف أو المحافظة..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pr-10 pl-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -660,13 +696,52 @@ export default function TrainerDashboardPage() {
             </div>
           </div>
 
+          {/* Quick Link/Add Student by Member Code, Phone, or Name */}
+          <form
+            onSubmit={handleLinkStudent}
+            className="p-4 rounded-2xl bg-gradient-to-l from-brand-50 via-indigo-50/50 to-slate-50 dark:from-brand-950/40 dark:via-slate-800/80 dark:to-slate-800/50 border border-brand-200/80 dark:border-brand-800/40 space-y-3"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-2 text-xs font-black text-brand-700 dark:text-brand-300 shrink-0">
+                <UserPlus className="w-4 h-4" />
+                <span>إضافة أو ربط طالب بقائمتك:</span>
+              </div>
+              <input
+                type="text"
+                value={linkStudentQuery}
+                onChange={(e) => setLinkStudentQuery(e.target.value)}
+                placeholder="أدخل معرّف الطالب (مثل SM-48A2) أو رقم هاتفه أو اسمه الثلاثي..."
+                className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+              <button
+                type="submit"
+                disabled={linkingStudent || !linkStudentQuery.trim()}
+                className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white text-xs font-black shadow-sm flex items-center justify-center gap-1.5 shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{linkingStudent ? "جارٍ الربط..." : "ربط الطالب"}</span>
+              </button>
+            </div>
+            {linkStudentFeedback && (
+              <div
+                className={`text-xs font-bold px-3 py-2 rounded-xl ${
+                  linkStudentFeedback.ok
+                    ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                    : "bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
+                }`}
+              >
+                {linkStudentFeedback.msg}
+              </div>
+            )}
+          </form>
+
           {filteredStudents.length === 0 ? (
             <div className="p-8 rounded-2xl bg-slate-50 dark:bg-slate-800/40 text-center space-y-2">
               <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
                 لا يوجد طلاب مسجلون مطابقون للبحث حالياً.
               </p>
               <p className="text-xs text-slate-500">
-                عندما يسجل طلابك في المنصة ويختارون اسمك كمدرب مشرف، سيظهرون هنا تلقائياً مع إحصائياتهم الحقيقية!
+                عندما يسجل طلابك في المنصة ويختارون اسمك كمدرب مشرف، أو تضيفهم بمعرّفهم هنا، سيظهرون فوراً!
               </p>
             </div>
           ) : (
@@ -674,7 +749,7 @@ export default function TrainerDashboardPage() {
               <table className="w-full text-right border-collapse">
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-slate-800 text-xs text-slate-400 font-bold">
-                    <th className="py-3 px-4">الطالب</th>
+                    <th className="py-3 px-4">الطالب والمعرّف</th>
                     <th className="py-3 px-4">الدولة والمحافظة</th>
                     <th className="py-3 px-4">المستوى الحالي</th>
                     <th className="py-3 px-4">التمارين والأسئلة</th>
@@ -684,6 +759,7 @@ export default function TrainerDashboardPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
                   {filteredStudents.map((st) => {
+                    const stCode = st.memberCode || getUserMembershipCode(st.id);
                     const parentReportLink = st.phone
                       ? getWhatsAppLink(
                           `السلام عليكم ولي أمر البطل (${st.name})، تقرير تقدم الطالب في منصة العقل الخارق مع (${displayName}):\n✅ التمارين المنجزة: ${st.totalExercises}\n🎯 إجمالي الأسئلة المحلولة: ${st.totalQuestionsSolved}\n📊 نسبة الدقة: ${st.accuracyRate}%\n🏆 نقاط التميز: ${st.points} نقطة.\nبارك الله بجهوده المستمرة!`,
@@ -704,7 +780,15 @@ export default function TrainerDashboardPage() {
                               )}
                             </div>
                             <div>
-                              <div className="font-black text-slate-900 dark:text-white">{st.name}</div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-black text-slate-900 dark:text-white">{st.name}</span>
+                                <span
+                                  dir="ltr"
+                                  className="px-2 py-0.5 rounded-md bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 font-mono text-[10px] font-black border border-brand-200/70 dark:border-brand-800/60"
+                                >
+                                  {stCode}
+                                </span>
+                              </div>
                               <div className="text-[11px] text-slate-400">{st.ageOrGrade || "بطل السوروبان"}</div>
                             </div>
                           </div>

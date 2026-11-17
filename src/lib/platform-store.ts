@@ -30,9 +30,12 @@ export interface TrainerAchievement {
 
 export interface ExtendedUserProfile {
   id: string;
+  memberCode?: string; // Unique short membership ID e.g. SM-48A2
   email: string;
   name: string;
   role: "student" | "trainer" | "admin";
+  requestedAccountMode?: "free_student" | "pro_student" | "trainer" | "school";
+  requestedPlanId?: SubscriptionPlanId;
   avatarUrl?: string;
   phone?: string; // WhatsApp phone
   country: string;
@@ -488,8 +491,22 @@ export function getAllExtendedProfiles(): ExtendedUserProfile[] {
   );
 }
 
+export function getUserMembershipCode(userId?: string): string {
+  if (!userId || userId === "guest-local") return "SM-GUEST";
+  if (userId === "trainer-qatada") return "SM-QAT1";
+  const cleaned = userId.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  if (cleaned.length >= 4) {
+    // Take first 2 and last 2 characters for uniqueness
+    return `SM-${cleaned.slice(0, 2)}${cleaned.slice(-2)}`;
+  }
+  return `SM-${cleaned.padEnd(4, "0")}`;
+}
+
 export interface PackedPhoneMetadata {
+  memberCode?: string;
   role?: "student" | "trainer" | "admin";
+  requestedAccountMode?: "free_student" | "pro_student" | "trainer" | "school";
+  requestedPlanId?: SubscriptionPlanId;
   sub?: SubscriptionInfo;
   isVerifiedTrainer?: boolean;
   showInDirectory?: boolean;
@@ -536,7 +553,10 @@ export function packProfilePhoneColumn(profile: ExtendedUserProfile): string | n
       ? ` | ${profile.country || "العراق"}${profile.governorate ? ` - ${profile.governorate}` : ""}`
       : "";
   const metaObj: PackedPhoneMetadata = {
+    memberCode: profile.memberCode || getUserMembershipCode(profile.id),
     role: profile.role,
+    requestedAccountMode: profile.requestedAccountMode,
+    requestedPlanId: profile.requestedPlanId,
     sub: profile.subscription,
     isVerifiedTrainer: profile.isVerifiedTrainer,
     showInDirectory: profile.showInDirectory,
@@ -566,6 +586,7 @@ export function getExtendedProfile(
   const map = getInitialProfiles();
   if (map[userId]) {
     const existing = map[userId];
+    existing.memberCode = existing.memberCode || getUserMembershipCode(userId);
     // Always keep existing.phone clean without | or ||
     existing.phone = unpackProfilePhoneColumn(existing.phone).cleanPhone || parsedPhone;
     if (parsedGov && !existing.governorate) {
@@ -576,6 +597,18 @@ export function getExtendedProfile(
     if (fallback?.name && existing.name === "بطل العقل الخارق") existing.name = fallback.name;
     if (cloudMeta?.role && existing.role !== "admin") {
       existing.role = cloudMeta.role;
+    }
+    if (cloudMeta?.requestedAccountMode) {
+      existing.requestedAccountMode = cloudMeta.requestedAccountMode;
+    }
+    if (cloudMeta?.requestedPlanId) {
+      existing.requestedPlanId = cloudMeta.requestedPlanId;
+    }
+    if (cloudMeta?.trainerId) {
+      existing.trainerId = cloudMeta.trainerId;
+    }
+    if (cloudMeta?.trainerName) {
+      existing.trainerName = cloudMeta.trainerName;
     }
     if (cloudMeta?.sub && cloudMeta.sub.status === "active") {
       existing.subscription = cloudMeta.sub;
@@ -597,9 +630,12 @@ export function getExtendedProfile(
 
   const created: ExtendedUserProfile = {
     id: userId,
+    memberCode: getUserMembershipCode(userId),
     email: fallback?.email || "",
     name: fallback?.name || "بطل العقل الخارق",
     role: isAdminEmail ? "admin" : cloudMeta?.role || fallback?.role || "student",
+    requestedAccountMode: cloudMeta?.requestedAccountMode || "free_student",
+    requestedPlanId: cloudMeta?.requestedPlanId,
     phone: parsedPhone,
     country: parsedCountry || "العراق",
     governorate: parsedGov || "",
@@ -674,6 +710,7 @@ export async function syncExtendedProfileFromSupabase(
 
     const synced: ExtendedUserProfile = {
       ...localProf,
+      memberCode: unpacked.meta?.memberCode || localProf.memberCode || getUserMembershipCode(userId),
       name: profRow.name || localProf.name,
       email: profRow.email || localProf.email,
       phone: unpacked.cleanPhone || localProf.phone,
@@ -684,6 +721,11 @@ export async function syncExtendedProfileFromSupabase(
         profRow.role === "admin"
           ? "admin"
           : unpacked.meta?.role || profRow.role || localProf.role,
+      requestedAccountMode:
+        unpacked.meta?.requestedAccountMode || localProf.requestedAccountMode,
+      requestedPlanId: unpacked.meta?.requestedPlanId || localProf.requestedPlanId,
+      trainerId: unpacked.meta?.trainerId || localProf.trainerId,
+      trainerName: unpacked.meta?.trainerName || localProf.trainerName,
       subscription: unpacked.meta?.sub || localProf.subscription,
       isVerifiedTrainer:
         unpacked.meta?.isVerifiedTrainer ?? localProf.isVerifiedTrainer,
@@ -1343,4 +1385,273 @@ export function getVerifiedTrainersForDirectory(): ExtendedUserProfile[] {
     const evalSub = evaluateSubscription(p.subscription);
     return (p.isVerifiedTrainer || evalSub.isActive) && p.showInDirectory !== false;
   });
+}
+
+export interface ApprovedSchoolDirectoryEntry {
+  id: string;
+  name: string;
+  phone: string;
+  country: string;
+  governorate: string;
+  address: string;
+  curriculumStage: string;
+  bio: string;
+  logoUrl?: string | null;
+}
+
+export async function fetchApprovedDirectoryFromCloud(): Promise<{
+  trainers: ExtendedUserProfile[];
+  schools: ApprovedSchoolDirectoryEntry[];
+}> {
+  const localTrainers = getVerifiedTrainersForDirectory();
+  const schools: ApprovedSchoolDirectoryEntry[] = [];
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return { trainers: localTrainers, schools };
+  }
+
+  try {
+    const [{ data: tApps }, { data: sApps }] = await Promise.all([
+      supabase
+        .from("trainer_applications")
+        .select("*")
+        .eq("status", "active")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("school_applications")
+        .select("*")
+        .eq("status", "active")
+        .order("created_at", { ascending: false }),
+    ]);
+
+    const mergedTrainers = [...localTrainers];
+    if (tApps && tApps.length > 0) {
+      for (const app of tApps) {
+        const cleanPh = unpackProfilePhoneColumn(app.phone).cleanPhone;
+        const alreadyIn = mergedTrainers.some(
+          (t) =>
+            t.id === app.id ||
+            (cleanPh && t.phone === cleanPh) ||
+            t.name.trim() === String(app.name || "").trim()
+        );
+        if (!alreadyIn) {
+          const item: ExtendedUserProfile = {
+            id: `cloud_tr_${app.id}`,
+            memberCode: getUserMembershipCode(String(app.id)),
+            email: app.email || "",
+            name: app.name,
+            role: "trainer",
+            phone: cleanPh,
+            country: app.country || "العراق",
+            governorate: app.governorate || "العراق",
+            avatarUrl: app.photo_url || undefined,
+            trainerTitle: "مدرب حساب ذهني وسوروبان معتمد",
+            bio: app.bio || "",
+            isVerifiedTrainer: true,
+            showInDirectory: true,
+            subscription: {
+              plan: "yearly_100k",
+              planLabel: "مدرب معتمد في الدليل",
+              priceIqd: app.annual_fee_iqd || 100000,
+              status: "active",
+            },
+            totalExercises: 0,
+            totalQuestionsSolved: 0,
+            correctAnswers: 0,
+            wrongAnswers: 0,
+            accuracyRate: 100,
+            points: 0,
+            streakDays: 1,
+            currentLevel: "مدرب معتمد",
+            lastActivity: app.updated_at || app.created_at,
+            createdAt: app.created_at,
+          };
+          mergedTrainers.push(item);
+        }
+      }
+    }
+
+    if (sApps && sApps.length > 0) {
+      for (const s of sApps) {
+        schools.push({
+          id: String(s.id),
+          name: String(s.name || ""),
+          phone: unpackProfilePhoneColumn(s.phone).cleanPhone || String(s.phone || ""),
+          country: String(s.country || "العراق"),
+          governorate: String(s.governorate || ""),
+          address: String(s.address || `${s.country || "العراق"} — ${s.governorate || ""}`),
+          curriculumStage: String(s.curriculum_stage || "المستوى التمهيدي والمستوى الأول"),
+          bio: String(s.bio || ""),
+          logoUrl: s.logo_url || null,
+        });
+      }
+    }
+
+    return { trainers: mergedTrainers, schools };
+  } catch (err) {
+    console.warn("Failed fetching cloud directory:", err);
+    return { trainers: localTrainers, schools };
+  }
+}
+
+export async function submitTrainerDirectoryCardToCloud(params: {
+  name: string;
+  phone: string;
+  email?: string;
+  country: string;
+  governorate: string;
+  trainerTitle?: string;
+  centerOrSchool?: string;
+  bio: string;
+  photoUrl?: string;
+  annualFeeIqd?: number;
+}): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return { success: false, error: "الاتصال بقاعدة البيانات غير متاح حالياً." };
+  }
+
+  try {
+    const richBio = [
+      params.trainerTitle ? `اللقب التدريبي: ${params.trainerTitle}` : "",
+      params.centerOrSchool ? `المركز / المدرسة: ${params.centerOrSchool}` : "",
+      params.bio,
+    ]
+      .filter(Boolean)
+      .join(" — ");
+
+    const { error } = await supabase.from("trainer_applications").insert([
+      {
+        name: params.name.trim(),
+        phone: params.phone.trim(),
+        email: params.email?.trim() || null,
+        country: params.country || "العراق",
+        governorate: params.governorate || "بغداد",
+        bio: richBio || "مدرب حساب ذهني وسوروبان",
+        photo_url: params.photoUrl || null,
+        annual_fee_iqd: params.annualFeeIqd || 25000,
+        status: "pending",
+      },
+    ]);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (e: unknown) {
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "تعذر إرسال طلب الإدراج.",
+    };
+  }
+}
+
+export async function submitSchoolDirectoryCardToCloud(params: {
+  name: string;
+  phone: string;
+  email?: string;
+  country: string;
+  governorate: string;
+  address: string;
+  curriculumStage: string;
+  bio: string;
+  logoUrl?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return { success: false, error: "الاتصال بقاعدة البيانات غير متاح حالياً." };
+  }
+
+  try {
+    const { error } = await supabase.from("school_applications").insert([
+      {
+        name: params.name.trim(),
+        phone: params.phone.trim(),
+        email: params.email?.trim() || null,
+        country: params.country || "العراق",
+        governorate: params.governorate || "بغداد",
+        address: params.address.trim() || `${params.country} — ${params.governorate}`,
+        curriculum_stage: params.curriculumStage.trim() || "جميع المراحل الدراسية",
+        bio: params.bio.trim() || "مؤسسة تعليمية معتمدة لبرنامج العقل الخارق.",
+        logo_url: params.logoUrl || null,
+        annual_fee_iqd: 150000,
+        status: "pending",
+      },
+    ]);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (e: unknown) {
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "تعذر إرسال طلب المدرسة.",
+    };
+  }
+}
+
+export async function linkStudentToTrainerByCodeOrPhone(
+  trainerId: string,
+  trainerName: string,
+  query: string
+): Promise<{ success: boolean; studentName?: string; message: string }> {
+  const q = query.trim();
+  if (!q) {
+    return { success: false, message: "يرجى إدخال معرّف الطالب (مثل SM-XXXX) أو اسمه أو رقم هاتفه." };
+  }
+
+  const map = getInitialProfiles();
+  const normalizedQ = q.toUpperCase();
+
+  let matched: ExtendedUserProfile | undefined = Object.values(map).find((p) => {
+    const code = (p.memberCode || getUserMembershipCode(p.id)).toUpperCase();
+    return (
+      code === normalizedQ ||
+      code.replace("SM-", "") === normalizedQ ||
+      (p.phone && p.phone.includes(q)) ||
+      p.name.trim().toLowerCase() === q.toLowerCase()
+    );
+  });
+
+  if (!matched) {
+    // If student is on another device and trainer enters their name/code, create a linked student entry for tracking!
+    const syntheticId = `student_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const isCode = normalizedQ.startsWith("SM-");
+    const isPhone = /^[0-9+]+$/.test(q);
+    matched = {
+      id: syntheticId,
+      memberCode: isCode ? normalizedQ : getUserMembershipCode(syntheticId),
+      email: "",
+      name: isCode ? `طالب (${normalizedQ})` : isPhone ? `طالب (${q})` : q,
+      role: "student",
+      phone: isPhone ? q : "",
+      country: "العراق",
+      governorate: "",
+      trainerId,
+      trainerName,
+      subscription: {
+        plan: "free",
+        planLabel: "الباقة المجانية",
+        priceIqd: 0,
+        status: "free",
+      },
+      totalExercises: 0,
+      totalQuestionsSolved: 0,
+      correctAnswers: 0,
+      wrongAnswers: 0,
+      accuracyRate: 0,
+      points: 0,
+      streakDays: 1,
+      currentLevel: "المستوى الأول",
+      lastActivity: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    };
+  } else {
+    matched.trainerId = trainerId;
+    matched.trainerName = trainerName;
+  }
+
+  await saveExtendedProfile(matched);
+  return {
+    success: true,
+    studentName: matched.name,
+    message: `✅ تم ربط وإضافة الطالب (${matched.name} - المعرّف: ${matched.memberCode || getUserMembershipCode(matched.id)}) إلى قائمة طلابك بنجاح!`,
+  };
 }
