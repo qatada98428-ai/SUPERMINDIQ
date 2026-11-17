@@ -1363,7 +1363,7 @@ export default function BalloonPopPage() {
       `}</style>
 
       {/* ── HUD ── */}
-      <div className="relative z-20 flex items-center justify-between px-4 py-3 bg-black/30 backdrop-blur-sm border-b border-white/5">
+      <div className="relative z-20 flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-black/30 backdrop-blur-sm border-b border-white/5">
         <div className="flex items-center gap-2">
           <button
             onClick={handleRestart}

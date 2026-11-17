@@ -339,7 +339,7 @@ export default function StudentDashboardPage() {
 
           {/* Quick Streak & Points & Profile Edit */}
           <div className="flex flex-wrap items-center gap-3 self-stretch lg:self-auto justify-end">
-            <div className="bg-white/15 backdrop-blur-md border border-white/20 rounded-2xl p-4 text-center min-w-[100px]">
+            <div className="flex-1 sm:flex-initial bg-white/15 backdrop-blur-md border border-white/20 rounded-2xl p-4 text-center min-w-[100px]">
               <div className="flex items-center justify-center gap-1 text-amber-300 mb-1">
                 <Flame className="w-5 h-5 fill-amber-300" />
                 <span className="font-black font-mono text-xl">{extProfile.streakDays || 1}</span>
@@ -347,7 +347,7 @@ export default function StudentDashboardPage() {
               <div className="text-xs text-slate-200 font-medium">أيام الحماس</div>
             </div>
 
-            <div className="bg-white/15 backdrop-blur-md border border-white/20 rounded-2xl p-4 text-center min-w-[100px]">
+            <div className="flex-1 sm:flex-initial bg-white/15 backdrop-blur-md border border-white/20 rounded-2xl p-4 text-center min-w-[100px]">
               <div className="flex items-center justify-center gap-1 text-sky-300 mb-1">
                 <Trophy className="w-5 h-5" />
                 <span className="font-black font-mono text-xl">{points}</span>
@@ -361,7 +361,7 @@ export default function StudentDashboardPage() {
       {/* 4. Official Admin Competitions & Challenges Section */}
       {adminCompetitions.length > 0 && (
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
               <Trophy className="w-6 h-6 text-amber-500" />
               <span>🏆 المسابقات والتحديات الرسمية من إدارة المنصة</span>

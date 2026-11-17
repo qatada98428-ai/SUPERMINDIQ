@@ -8,7 +8,7 @@ export default function HeroIllustration() {
   const [clickedEquation, setClickedEquation] = useState(false);
 
   return (
-    <div className="relative w-full max-w-lg mx-auto flex items-center justify-center p-4 select-none">
+    <div className="relative w-full max-w-lg mx-auto flex items-center justify-center px-3 py-5 sm:p-4 select-none">
       {/* Decorative Lilac/Purple Backdrop Shape matching user screenshot */}
       <div className="absolute -inset-4 sm:-inset-8 bg-indigo-100/70 rounded-[3.5rem] -rotate-3 scale-95 pointer-events-none -z-10" />
       <div className="absolute -inset-2 bg-gradient-to-tr from-brand-300/30 via-purple-200/40 to-pink-100/30 rounded-[3rem] rotate-2 pointer-events-none -z-10 blur-xs" />
@@ -41,22 +41,22 @@ export default function HeroIllustration() {
         </div>
 
         {/* Floating Badge 1: Top Right [- +] (Matches user screenshot) */}
-        <div className="absolute -top-3 -right-3 sm:-top-5 sm:-right-4 animate-float z-20">
-          <div className="bg-white/95 backdrop-blur-md px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl shadow-xl border border-indigo-100 flex items-center justify-center text-indigo-600 font-black text-lg sm:text-xl font-mono transform hover:scale-110 transition-transform">
+        <div className="absolute -top-2 right-1 sm:-top-5 sm:-right-4 animate-float z-20">
+          <div className="bg-white/95 backdrop-blur-md px-3 py-2 sm:px-4 sm:py-3 rounded-2xl shadow-xl border border-indigo-100 flex items-center justify-center text-indigo-600 font-black text-base sm:text-xl font-mono transform hover:scale-110 transition-transform">
             <span>−+</span>
           </div>
         </div>
 
         {/* Floating Badge 2: Center Left [÷] (Matches user screenshot) */}
-        <div className="absolute top-1/2 -left-4 sm:-left-6 -translate-y-1/2 animate-float-delayed z-20">
-          <div className="bg-white/95 backdrop-blur-md px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl shadow-xl border border-blue-100 flex items-center justify-center text-blue-600 font-black text-lg sm:text-xl font-mono transform hover:scale-110 transition-transform">
+        <div className="absolute top-1/2 left-1 sm:-left-6 -translate-y-1/2 animate-float-delayed z-20">
+          <div className="bg-white/95 backdrop-blur-md px-3 py-2 sm:px-4 sm:py-3 rounded-2xl shadow-xl border border-blue-100 flex items-center justify-center text-blue-600 font-black text-base sm:text-xl font-mono transform hover:scale-110 transition-transform">
             <span>÷</span>
           </div>
         </div>
 
         {/* Floating Badge 3: Bottom Left [∞] (Matches user screenshot) */}
-        <div className="absolute -bottom-3 -left-3 sm:-bottom-4 sm:-left-5 animate-float z-20">
-          <div className="bg-white/95 backdrop-blur-md px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl shadow-xl border border-purple-100 flex items-center justify-center text-purple-600 font-black text-xl sm:text-2xl font-mono transform hover:scale-110 transition-transform">
+        <div className="absolute -bottom-2 left-1 sm:-bottom-4 sm:-left-5 animate-float z-20">
+          <div className="bg-white/95 backdrop-blur-md px-3 py-2 sm:px-4 sm:py-3 rounded-2xl shadow-xl border border-purple-100 flex items-center justify-center text-purple-600 font-black text-lg sm:text-2xl font-mono transform hover:scale-110 transition-transform">
             <span>∞</span>
           </div>
         </div>
@@ -64,7 +64,7 @@ export default function HeroIllustration() {
         {/* Interactive Floating Equation Pill (Matching the whiteboard in the photo: 34 + 58 = 92) */}
         <div
           onClick={() => setClickedEquation(!clickedEquation)}
-          className="absolute -bottom-5 right-6 sm:right-10 animate-float-delayed z-20 cursor-pointer"
+          className="absolute -bottom-4 right-2 sm:-bottom-5 sm:right-10 animate-float-delayed z-20 cursor-pointer"
         >
           <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white px-4 py-2 rounded-2xl shadow-2xl border-2 border-amber-400/80 flex items-center gap-2 transform hover:scale-105 active:scale-95 transition-all">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />

@@ -35,7 +35,7 @@ export default function Footer() {
             © {new Date().getFullYear()} منصة العقل الخارق (SUPER MIND) — إشراف{" "}
             <span className="text-amber-400 font-bold">الأستاذ قتادة كريم</span>
           </p>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-center">
             <button
               type="button"
               onClick={() => window.dispatchEvent(new Event("supermind:open-prayer"))}
@@ -124,12 +124,12 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 text-center sm:text-right">
           <p>
             © {new Date().getFullYear()} العقل الخارق (SUPER MIND) — إشراف وتدريب{" "}
             <span className="text-amber-400 font-bold">الأستاذ قتادة كريم</span>
           </p>
-          <div className="flex items-center gap-5">
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-5">
             <button
               type="button"
               onClick={() => window.dispatchEvent(new Event("supermind:open-prayer"))}

@@ -37,9 +37,9 @@ export default function HomePage() {
   );
 
   return (
-    <div className="space-y-24 sm:space-y-32">
+    <div className="space-y-16 sm:space-y-28 overflow-x-clip">
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-8 pb-16 lg:pt-16 lg:pb-24">
+      <section className="relative overflow-hidden pt-6 pb-12 sm:pt-8 sm:pb-16 lg:pt-16 lg:pb-24">
         {/* Soft decorative background circles */}
         <div className="absolute top-1/4 right-5 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl -z-10" />
         <div className="absolute bottom-10 left-5 w-80 h-80 bg-amber-400/10 rounded-full blur-3xl -z-10" />
@@ -68,13 +68,13 @@ export default function HomePage() {
               </div>
 
               {/* Main title */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.25]">
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.25]">
                 {isEn ? "SUPER MIND Platform" : "منصة برنامج "}{" "}
                 <span className="text-gradient">
                   {isEn ? "Mental Math" : "العقل الخارق"}
                 </span>
                 <br />
-                <span className="text-3xl sm:text-4xl lg:text-5xl text-slate-800 dark:text-slate-200 font-extrabold">
+                <span className="text-2xl sm:text-4xl lg:text-5xl text-slate-800 dark:text-slate-200 font-extrabold">
                   SUPER MIND
                 </span>
               </h1>
@@ -103,12 +103,12 @@ export default function HomePage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-wrap items-center gap-3.5 pt-2">
+              <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 pt-2">
                 {/* PROMINENT FREE TRAINING BUTTON */}
                 <Link
                   href="/dashboard"
                   onClick={() => playFx("click")}
-                  className="px-7 py-4 rounded-2xl bg-gradient-to-r from-brand-600 via-indigo-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 text-white font-black text-base shadow-xl shadow-brand-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2.5 ring-4 ring-brand-500/20 group"
+                  className="w-full sm:w-auto justify-center px-6 sm:px-7 py-3.5 sm:py-4 rounded-2xl bg-gradient-to-r from-brand-600 via-indigo-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 text-white font-black text-sm sm:text-base shadow-xl shadow-brand-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2.5 ring-4 ring-brand-500/20 group"
                 >
                   <PlayCircle className="w-5 h-5 text-amber-300 group-hover:scale-110 transition-transform" />
                   <span>{isEn ? "Start Training Free 🚀" : "ابدأ التدريب مجاناً 🚀"}</span>
@@ -118,7 +118,7 @@ export default function HomePage() {
                 <Link
                   href="/mental-arithmetic/teams-battle"
                   onClick={() => playFx("click")}
-                  className="px-6 py-4 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm shadow-lg shadow-amber-400/25 transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2 border border-amber-500/30"
+                  className="w-full sm:w-auto justify-center px-5 sm:px-6 py-3.5 sm:py-4 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm shadow-lg shadow-amber-400/25 transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2 border border-amber-500/30"
                 >
                   <Trophy className="w-4 h-4 text-slate-950" />
                   <span>{isEn ? "Teams Battle 🏆" : "حلبة تحدي الفرق 🏆"}</span>
@@ -129,7 +129,7 @@ export default function HomePage() {
                   href={whatsappHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-5 py-4 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 font-bold text-sm border-2 border-slate-200 dark:border-slate-700 transition-all flex items-center gap-2 shadow-xs"
+                  className="w-full sm:w-auto justify-center px-5 py-3.5 sm:py-4 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 font-bold text-sm border-2 border-slate-200 dark:border-slate-700 transition-all flex items-center gap-2 shadow-xs"
                 >
                   <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span>{isEn ? "WhatsApp Contact" : "تواصل عبر واتساب"}</span>
@@ -138,7 +138,7 @@ export default function HomePage() {
                 <Link
                   href="/mental-arithmetic"
                   onClick={() => playFx("click")}
-                  className="px-4 py-4 rounded-2xl text-brand-700 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-950/50 font-bold text-sm transition-colors flex items-center gap-1.5"
+                  className="w-full sm:w-auto justify-center px-4 py-3 sm:py-4 rounded-2xl text-brand-700 dark:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-950/50 font-bold text-sm transition-colors flex items-center gap-1.5"
                 >
                   <span>{isEn ? "Explore Mental Math" : "استعراض أقسام الحساب الذهني"}</span>
                   <ArrowIcon className="w-4 h-4" />
@@ -146,22 +146,22 @@ export default function HomePage() {
               </div>
 
               {/* Trust Indicators */}
-              <div className="pt-6 border-t border-slate-200/80 dark:border-slate-800 grid grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">+10,000</div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              <div className="pt-6 border-t border-slate-200/80 dark:border-slate-800 grid grid-cols-3 gap-2 sm:gap-4">
+                <div className="space-y-1 min-w-0">
+                  <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white font-mono">+10,000</div>
+                  <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium leading-snug">
                     {isEn ? "Interactive Exercises" : "تمرين ومسألة تفاعلية"}
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">0.3s - 2.0s</div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                <div className="space-y-1 min-w-0">
+                  <div dir="ltr" className="text-base sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono text-right">0.3s - 2.0s</div>
+                  <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium leading-snug">
                     {isEn ? "Customizable Speeds" : "سرعات فلاش قابلة للتخصيص"}
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <div className="text-2xl font-black text-brand-600 font-mono">100%</div>
-                  <div className="text-xs text-slate-500 font-medium">بيئة تدريبية عربية آمنة</div>
+                <div className="space-y-1 min-w-0">
+                  <div className="text-base sm:text-2xl font-black text-brand-600 font-mono">100%</div>
+                  <div className="text-[11px] sm:text-xs text-slate-500 font-medium leading-snug">بيئة تدريبية عربية آمنة</div>
                 </div>
               </div>
             </div>
@@ -548,8 +548,8 @@ export default function HomePage() {
 
       {/* Official WhatsApp Contact Callout */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 rounded-3xl p-8 sm:p-12 text-white shadow-xl">
-          <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+        <div className="relative overflow-hidden bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 rounded-3xl p-6 sm:p-12 text-white shadow-xl">
+          <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-6 sm:gap-8">
             <div className="space-y-3 text-center lg:text-right">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-600/50 border border-emerald-400/30 text-emerald-100 text-xs font-bold">
                 <MessageCircle className="w-4 h-4" />
@@ -564,19 +564,19 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto shrink-0">
               <a
                 href={whatsappHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-8 py-4 rounded-2xl bg-white hover:bg-emerald-50 text-emerald-800 font-black text-base shadow-lg transition-transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+                className="px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-white hover:bg-emerald-50 text-emerald-800 font-black text-sm sm:text-base shadow-lg transition-transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2 text-center"
               >
-                <MessageCircle className="w-5 h-5 text-emerald-600" />
+                <MessageCircle className="w-5 h-5 text-emerald-600 shrink-0" />
                 <span>اضغط للتواصل مع إدارة المنصة</span>
               </a>
               <Link
                 href="/subscriptions"
-                className="px-6 py-4 rounded-2xl bg-emerald-900/60 hover:bg-emerald-900 text-white font-bold text-base border border-emerald-500/40 transition-colors flex items-center justify-center"
+                className="px-6 py-3.5 sm:py-4 rounded-2xl bg-emerald-900/60 hover:bg-emerald-900 text-white font-bold text-sm sm:text-base border border-emerald-500/40 transition-colors flex items-center justify-center text-center"
               >
                 عرض باقات الاشتراك
               </Link>

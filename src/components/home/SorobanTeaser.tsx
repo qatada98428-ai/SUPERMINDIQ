@@ -45,26 +45,26 @@ export default function SorobanTeaser() {
   const placeLabels = ["آلاف", "مئات", "عشرات", "الآحاد"];
 
   return (
-    <div className="relative bg-gradient-to-b from-slate-900 to-slate-950 p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl overflow-hidden">
+    <div className="relative bg-gradient-to-b from-slate-900 to-slate-950 p-4 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl overflow-hidden">
       {/* Background ambient lighting */}
       <div className="absolute top-0 right-1/4 w-72 h-72 bg-brand-600/20 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-1/4 w-72 h-72 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header bar */}
-      <div className="relative z-10 flex items-center justify-between pb-6 border-b border-slate-800">
-        <div className="flex items-center gap-3">
-          <span className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 pb-5 sm:pb-6 border-b border-slate-800">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <span className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
             <Sparkles className="w-5 h-5" />
           </span>
-          <div>
-            <h3 className="text-white font-bold text-base sm:text-lg">العداد الياباني التفاعلي (تجربة حية)</h3>
-            <p className="text-slate-400 text-xs">الآحاد في أقصى اليمين وتتدرج المنازل يساراً</p>
+          <div className="min-w-0">
+            <h3 className="text-white font-bold text-sm sm:text-lg">العداد الياباني التفاعلي (تجربة حية)</h3>
+            <p className="text-slate-400 text-[11px] sm:text-xs">الآحاد في أقصى اليمين وتتدرج المنازل يساراً</p>
           </div>
         </div>
 
         <button
           onClick={resetRods}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition-colors shrink-0"
           title="تصفير العداد"
         >
           <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
@@ -73,12 +73,12 @@ export default function SorobanTeaser() {
       </div>
 
       {/* Value Readout Display */}
-      <div className="relative z-10 my-6 bg-slate-950/80 rounded-2xl p-4 border border-slate-800/80 flex items-center justify-between">
+      <div className="relative z-10 my-4 sm:my-6 bg-slate-950/80 rounded-2xl p-3.5 sm:p-4 border border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
         <div className="text-xs text-slate-400 font-medium">
           القيمة المحسوبة الحالية:
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-baseline gap-1 text-emerald-400 font-mono font-bold text-2xl sm:text-3xl">
+          <div className="flex items-baseline gap-1 text-emerald-400 font-mono font-bold text-xl sm:text-3xl">
             <span>{totalValue.toLocaleString("en-US")}</span>
             <span className="text-xs text-slate-500 font-normal">({toArabicNumerals(totalValue)})</span>
           </div>
@@ -88,9 +88,9 @@ export default function SorobanTeaser() {
       {/* Soroban Frame (Enforce dir="ltr" so left is thousands and right is units) */}
       <div
         dir="ltr"
-        className="relative z-10 bg-[#2A1810] p-4 sm:p-6 rounded-2xl border-4 border-[#3D2317] shadow-inner"
+        className="relative z-10 bg-[#2A1810] p-2.5 sm:p-6 rounded-2xl border-4 border-[#3D2317] shadow-inner"
       >
-        <div className="grid grid-cols-4 gap-3 sm:gap-6 relative">
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-6 relative">
           {rods.map((rod, rIdx) => {
             const rodVal = (rod.upper ? 5 : 0) + rod.lowers;
             return (
@@ -112,7 +112,7 @@ export default function SorobanTeaser() {
                   <div className="relative z-10 w-full flex justify-center">
                     <button
                       onClick={() => toggleUpper(rIdx)}
-                      className={`w-12 sm:w-16 h-7 rounded-full shadow-md transition-all duration-150 cursor-pointer flex items-center justify-center border-2 ${
+                      className={`w-10 sm:w-16 h-7 rounded-full shadow-md transition-all duration-150 cursor-pointer flex items-center justify-center border-2 ${
                         rod.upper
                           ? "translate-y-7 bg-gradient-to-b from-amber-400 to-amber-600 border-amber-300 text-amber-950 font-bold text-xs"
                           : "translate-y-0 bg-gradient-to-b from-slate-300 to-slate-400 border-slate-200 text-slate-700 font-medium text-xs opacity-85 hover:opacity-100"
@@ -142,7 +142,7 @@ export default function SorobanTeaser() {
                         <button
                           key={beadNum}
                           onClick={() => setLowerCount(rIdx, beadNum)}
-                          className={`w-12 sm:w-16 h-7 rounded-full shadow-md transition-all duration-150 cursor-pointer flex items-center justify-center border-2 ${
+                          className={`w-10 sm:w-16 h-7 rounded-full shadow-md transition-all duration-150 cursor-pointer flex items-center justify-center border-2 ${
                             isActive
                               ? "-translate-y-1 bg-gradient-to-b from-sky-400 to-sky-600 border-sky-200 text-sky-950 font-bold text-xs shadow-sky-500/20"
                               : "translate-y-4 bg-gradient-to-b from-slate-300 to-slate-400 border-slate-200 text-slate-700 font-medium text-xs opacity-75 hover:opacity-95"

@@ -71,17 +71,17 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-3">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 min-w-0">
         {/* Brand Logo + Back Button on non-home pages */}
-        <div className="shrink-0 flex items-center gap-2 sm:gap-3">
+        <div className="min-w-0 flex items-center gap-1.5 sm:gap-3">
           {!isHomePage && (
             <button
               type="button"
               onClick={handleGoBack}
-              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm flex items-center gap-1.5 border border-slate-200/80 dark:border-slate-700 transition-all active:scale-95 shadow-2xs"
+              className="shrink-0 px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-[11px] sm:text-sm flex items-center gap-1 border border-slate-200/80 dark:border-slate-700 transition-all active:scale-95 shadow-2xs"
               title={isEn ? "Go Back" : "رجوع للصفحة السابقة"}
             >
-              {isEn ? <ArrowLeft className="w-4 h-4 text-brand-600" /> : <ArrowRight className="w-4 h-4 text-brand-600" />}
+              {isEn ? <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-600" /> : <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-600" />}
               <span>{isEn ? "Back" : "رجوع"}</span>
             </button>
           )}
@@ -133,7 +133,7 @@ export default function Navbar() {
         </nav>
 
         {/* Action Controls: Quiet and Uncluttered */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Language, Day/Night Mode & Sound Controls */}
           <div className="hidden sm:flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100/80 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
             {isHomePage && (
@@ -185,21 +185,22 @@ export default function Navbar() {
 
           {/* Auth Action Controls */}
           {!isGuest && user ? (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 sm:gap-1.5">
               {role === "admin" && (
                 <Link
                   href="/admin"
                   onClick={() => playFx("click")}
-                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs shadow-sm flex items-center gap-1.5 transition-transform hover:scale-102"
+                  className="px-2 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs shadow-sm flex items-center gap-1.5 transition-transform hover:scale-102"
+                  title="لوحة الإدارة"
                 >
-                  <ShieldCheck className="w-4 h-4" />
+                  <ShieldCheck className="w-4 h-4 shrink-0" />
                   <span className="hidden sm:inline">لوحة الإدارة</span>
                 </Link>
               )}
               <Link
                 href={role === "trainer" ? "/trainer" : "/dashboard"}
                 onClick={() => playFx("click")}
-                className="px-3 py-1.5 rounded-xl bg-brand-50 dark:bg-brand-950/80 border border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 font-bold text-xs flex items-center gap-1.5 max-w-[130px]"
+                className="px-2 sm:px-3 py-1.5 rounded-xl bg-brand-50 dark:bg-brand-950/80 border border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 font-bold text-[11px] sm:text-xs flex items-center gap-1 sm:gap-1.5 max-w-[88px] sm:max-w-[130px]"
                 title={profile?.name || user.email || "حسابي"}
               >
                 <User className="w-3.5 h-3.5 shrink-0" />
@@ -211,7 +212,7 @@ export default function Navbar() {
                   playFx("click");
                 }}
                 title={isEn ? "Sign Out" : "تسجيل الخروج"}
-                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                className="hidden sm:inline-flex p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
               >
                 <LogOut className="w-3.5 h-3.5" />
               </button>
@@ -220,7 +221,7 @@ export default function Navbar() {
             <Link
               href="/login"
               onClick={() => playFx("click")}
-              className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs sm:text-sm shadow-sm transition-all"
+              className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-[11px] sm:text-sm shadow-sm transition-all whitespace-nowrap"
             >
               {isEn ? "Sign In" : "تسجيل الدخول"}
             </Link>
@@ -239,7 +240,7 @@ export default function Navbar() {
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md px-4 pt-4 pb-8 space-y-4 animate-in slide-in-from-top duration-200">
+        <div className="lg:hidden max-h-[calc(100vh-4rem)] overflow-y-auto border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md px-4 pt-4 pb-8 space-y-4 animate-in slide-in-from-top duration-200">
           {/* Toggles inside Mobile Menu */}
           <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
             <div className="flex items-center gap-2">

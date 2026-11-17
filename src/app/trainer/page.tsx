@@ -426,7 +426,7 @@ export default function TrainerDashboardPage() {
           </div>
 
           {/* Digital Trainer ID & Quick Actions */}
-          <div className="bg-slate-800/90 border border-amber-400/40 rounded-2xl p-4 sm:p-5 text-right min-w-[250px] space-y-3">
+          <div className="bg-slate-800/90 border border-amber-400/40 rounded-2xl p-4 sm:p-5 text-right w-full lg:w-auto lg:min-w-[250px] space-y-3">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] font-black text-amber-400 uppercase">
                 بطاقة عضوية المدرب

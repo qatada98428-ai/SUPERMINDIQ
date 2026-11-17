@@ -37,6 +37,8 @@ html {
   scroll-behavior: smooth;
   direction: rtl;
   text-align: right;
+  overflow-x: clip;
+  max-width: 100%;
   font-family: 'Alexandria', 'IBM Plex Sans Arabic', system-ui, -apple-system, sans-serif;
 }
 
@@ -44,7 +46,8 @@ body {
   color: var(--foreground);
   background-color: var(--background);
   min-height: 100vh;
-  overflow-x: hidden;
+  max-width: 100%;
+  overflow-x: clip;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

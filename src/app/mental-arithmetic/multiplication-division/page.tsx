@@ -981,7 +981,7 @@ export default function MultiplicationDivisionPage() {
                 <label className="text-xs font-bold text-slate-700 block">
                   مراتب المضروب (العدد الأول): <strong className="text-brand-600 font-mono text-sm">{multDigitsA} مراتب</strong>
                 </label>
-                <div className="grid grid-cols-5 gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
                   {[1, 2, 3, 4, 5].map((d) => (
                     <button
                       key={d}
@@ -1008,7 +1008,7 @@ export default function MultiplicationDivisionPage() {
                 <label className="text-xs font-bold text-slate-700 block">
                   مراتب المضروب به (العدد الثاني): <strong className="text-brand-600 font-mono text-sm">{multDigitsB} مراتب</strong>
                 </label>
-                <div className="grid grid-cols-5 gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
                   {[1, 2, 3, 4, 5].map((d) => (
                     <button
                       key={d}
@@ -1246,7 +1246,7 @@ export default function MultiplicationDivisionPage() {
                 <label className="text-xs font-bold text-slate-700 block">
                   مراتب المقسوم (العدد الأكبر): <strong className="text-emerald-600 font-mono text-sm">{divDigitsDividend} مراتب</strong>
                 </label>
-                <div className="grid grid-cols-5 gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
                   {[1, 2, 3, 4, 5].map((d) => (
                     <button
                       key={d}
@@ -1273,7 +1273,7 @@ export default function MultiplicationDivisionPage() {
                 <label className="text-xs font-bold text-slate-700 block">
                   مراتب المقسوم عليه: <strong className="text-emerald-600 font-mono text-sm">{divDigitsDivisor} مراتب</strong>
                 </label>
-                <div className="grid grid-cols-5 gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 bg-slate-100 p-1.5 rounded-2xl">
                   {[1, 2, 3, 4, 5].map((d) => (
                     <button
                       key={d}

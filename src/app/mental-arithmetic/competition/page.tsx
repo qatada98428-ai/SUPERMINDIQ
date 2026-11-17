@@ -1131,7 +1131,7 @@ export default function MentalMathCompetitionPage() {
                   <div className="text-xs font-black text-slate-700 dark:text-slate-200">
                     اختر عدد الاختيارات لكل سؤال (2 أو 3 أو 4 أو 5):
                   </div>
-                  <div className="grid grid-cols-4 gap-2.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                     {CHOICES_COUNT_OPTIONS.map((cnt) => (
                       <button
                         key={cnt}
@@ -1168,11 +1168,11 @@ export default function MentalMathCompetitionPage() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 self-start sm:self-auto">
+                <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
                   <button
                     type="button"
                     onClick={applyMultiRuleExamplePreset}
-                    className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/70 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-black transition-colors"
+                    className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/70 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-black transition-colors text-right"
                     title="تطبيق نموذج: آحاد 100 + عشرات بسيط 50 + مركب 5 قاعدة 4 (50)"
                   >
                     ✨ نموذج جاهز (آحاد 100 + عشرات 50 + مركب 5 ق4 50)
@@ -1444,7 +1444,7 @@ export default function MentalMathCompetitionPage() {
                           <label className="text-[11px] font-black text-slate-600 dark:text-slate-400 block">
                             عدد الأرقام (الطوابق) في كل سؤال:
                           </label>
-                          <div className="grid grid-cols-5 gap-1.5">
+                          <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
                             {[3, 4, 5, 7, 10].map((t) => (
                               <button
                                 key={t}
@@ -1771,7 +1771,7 @@ export default function MentalMathCompetitionPage() {
             </div>
 
             {/* Display Mode Switcher, Settings & Submit Button */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() =>
@@ -1835,7 +1835,7 @@ export default function MentalMathCompetitionPage() {
                   </div>
 
                   {/* Quick Prev / Speak / Next in Top Header so always visible */}
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <button
                       type="button"
                       disabled={activeQuestionIdx === 0}
@@ -1914,7 +1914,7 @@ export default function MentalMathCompetitionPage() {
                             choicesCount === 2
                               ? "grid-cols-2"
                               : choicesCount === 3
-                              ? "grid-cols-3"
+                              ? "grid-cols-2 sm:grid-cols-3"
                               : choicesCount === 4
                               ? "grid-cols-2"
                               : "grid-cols-2 sm:grid-cols-3"
@@ -2246,7 +2246,7 @@ export default function MentalMathCompetitionPage() {
 
               {/* Bottom Pagination Bar if > 100 questions */}
               {totalSheetPages > 1 && (
-                <div className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                <div className="flex flex-wrap items-center justify-between gap-2 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
                   <button
                     type="button"
                     disabled={sheetPage === 0}
@@ -2901,7 +2901,7 @@ export default function MentalMathCompetitionPage() {
                   قد أتمّ بنجاح وتفوق: <span className="text-amber-300">{certTitle}</span>
                 </p>
 
-                <div className="grid grid-cols-3 gap-3 max-w-lg mx-auto text-xs sm:text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 max-w-lg mx-auto text-xs sm:text-sm">
                   <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-400/30">
                     <div className="text-slate-300 text-[11px]">الدرجة</div>
                     <div className="font-mono font-black text-base sm:text-xl text-emerald-300">

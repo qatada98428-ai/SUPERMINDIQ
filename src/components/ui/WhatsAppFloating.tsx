@@ -31,7 +31,7 @@ export default function WhatsAppFloating() {
   return (
     <div className="fixed bottom-5 left-5 z-40 flex flex-col items-start gap-2.5">
       {isOpen && (
-        <div className="w-72 p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 animate-in fade-in slide-in-from-bottom-3 duration-200">
+        <div className="w-[calc(100vw-2.5rem)] max-w-72 p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 animate-in fade-in slide-in-from-bottom-3 duration-200">
           <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold shadow-xs">

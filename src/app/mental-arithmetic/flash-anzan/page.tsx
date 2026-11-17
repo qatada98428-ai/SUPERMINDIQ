@@ -292,16 +292,16 @@ export default function FlashAnzanPage() {
         </div>
 
         {/* Tab switcher: Flash Simulator vs Flash Cards */}
-        <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+        <div className="flex flex-wrap items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-full sm:w-auto">
           <button
             onClick={() => setTabMode("flash")}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 ${
+            className={`flex-1 sm:flex-initial justify-center px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 ${
               tabMode === "flash"
                 ? "bg-white text-brand-700 shadow-sm"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <Zap className="w-4 h-4" />
+            <Zap className="w-4 h-4 shrink-0" />
             <span>تدريب وميض الأرقام</span>
           </button>
 
@@ -310,13 +310,13 @@ export default function FlashAnzanPage() {
               setTabMode("cards");
               if (!cardTargetNumber) generateNewCard();
             }}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 ${
+            className={`flex-1 sm:flex-initial justify-center px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 ${
               tabMode === "cards"
                 ? "bg-white text-brand-700 shadow-sm"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <Layers className="w-4 h-4" />
+            <Layers className="w-4 h-4 shrink-0" />
             <span>بطاقات الفلاش (Flash Cards)</span>
           </button>
         </div>
@@ -325,14 +325,14 @@ export default function FlashAnzanPage() {
       {tabMode === "flash" ? (
         <>
           {/* Main Flash Screen */}
-          <div className="bg-slate-950 rounded-3xl p-6 sm:p-14 text-white text-center shadow-2xl relative overflow-hidden min-h-[440px] flex flex-col items-center justify-center border-4 border-slate-800">
+          <div className="bg-slate-950 rounded-3xl p-4 sm:p-10 text-white text-center shadow-2xl relative overflow-hidden min-h-[380px] sm:min-h-[440px] flex flex-col items-center justify-between border-4 border-slate-800">
             {/* Ambient Background Glow */}
             <div className="absolute top-0 right-1/4 w-96 h-96 bg-brand-600/15 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
             {/* Top Toolbar */}
-            <div className="absolute top-6 left-6 right-6 flex items-center justify-between text-xs text-slate-400 z-20">
-              <div className="flex items-center gap-3">
+            <div className="relative w-full flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 z-20 mb-4">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => setSoundEnabled(!soundEnabled)}
                   className={`p-2 rounded-xl border transition-colors flex items-center gap-1.5 ${
@@ -347,31 +347,32 @@ export default function FlashAnzanPage() {
                 </button>
 
                 {streak > 0 && (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300 font-bold animate-in fade-in">
-                    <Flame className="w-4 h-4 fill-amber-400 animate-bounce" />
+                  <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300 font-bold animate-in fade-in text-[11px] sm:text-xs">
+                    <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-amber-400 animate-bounce shrink-0" />
                     <span>{streak} إجابات صحيحة متتالية!</span>
                   </div>
                 )}
               </div>
 
               {sessionState === "showing" || sessionState === "blank" ? (
-                <div className="bg-slate-900/80 px-3.5 py-1.5 rounded-xl border border-slate-800 font-mono text-emerald-400 font-bold text-sm">
+                <div className="bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800 font-mono text-emerald-400 font-bold text-xs sm:text-sm">
                   {currentIndex} / {terms} عملية
                 </div>
               ) : (
-                <div className="text-slate-400 text-xs font-semibold bg-slate-900/60 px-3 py-1 rounded-lg border border-slate-800">
+                <div className="text-slate-400 text-[11px] sm:text-xs font-semibold bg-slate-900/60 px-2.5 sm:px-3 py-1 rounded-lg border border-slate-800">
                   السلسلة: {terms} أرقام • {digits} {digits === 1 ? "خانة" : "خانات"}
                 </div>
               )}
             </div>
 
+            <div className="flex-1 flex flex-col items-center justify-center w-full py-2 z-10">
             {/* State: IDLE */}
             {sessionState === "idle" && (
               <div className="space-y-5 max-w-lg z-10 animate-in fade-in duration-300">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-indigo-700 text-white flex items-center justify-center mx-auto shadow-lg shadow-brand-500/25">
                   <Zap className="w-8 h-8 fill-white" />
                 </div>
-                <h3 className="text-2xl sm:text-3xl font-black">
+                <h3 className="text-xl sm:text-3xl font-black">
                   جاهز لبدء تمرين وميض الأرقام؟
                 </h3>
                 <p className="text-slate-400 text-xs sm:text-sm leading-relaxed">
@@ -381,9 +382,9 @@ export default function FlashAnzanPage() {
                 </p>
                 <button
                   onClick={startTraining}
-                  className="px-10 py-4 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-black text-base shadow-xl shadow-brand-500/30 transition-all hover:scale-105 active:scale-95 inline-flex items-center gap-2"
+                  className="px-6 sm:px-10 py-3.5 sm:py-4 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-black text-sm sm:text-base shadow-xl shadow-brand-500/30 transition-all hover:scale-105 active:scale-95 inline-flex items-center gap-2"
                 >
-                  <Play className="w-5 h-5 fill-white" />
+                  <Play className="w-5 h-5 fill-white shrink-0" />
                   <span>ابدأ التمرين الآن (عد تنازلي 3 ثوانٍ)</span>
                 </button>
               </div>
@@ -393,7 +394,7 @@ export default function FlashAnzanPage() {
             {sessionState === "countdown" && (
               <div className="space-y-4 z-10 animate-in zoom-in-75 duration-200">
                 <div
-                  className="text-9xl sm:text-[11rem] font-black text-amber-400 drop-shadow-[0_12px_28px_rgba(245,158,11,0.5)] select-none"
+                  className="text-7xl sm:text-9xl md:text-[11rem] font-black text-amber-400 drop-shadow-[0_12px_28px_rgba(245,158,11,0.5)] select-none"
                   style={{ fontFamily: "'Fredoka', 'Baloo Bhaijaan 2', 'Alexandria', sans-serif" }}
                 >
                   {countdown}
@@ -406,9 +407,16 @@ export default function FlashAnzanPage() {
 
             {/* State: SHOWING NUMBER (Child-friendly wide rounded font & badge) */}
             {sessionState === "showing" && currentNumber !== null && (
-              <div className="z-10 animate-in zoom-in-95 fade-in duration-75 flex flex-col items-center justify-center">
+              <div className="z-10 animate-in zoom-in-95 fade-in duration-75 flex flex-col items-center justify-center max-w-full">
                 <div
-                  className={`text-9xl sm:text-[11rem] md:text-[13rem] font-black tracking-widest select-none leading-none px-8 py-4 rounded-[3.5rem] bg-slate-900/80 border-4 border-amber-400/40 shadow-2xl backdrop-blur-sm transition-all ${
+                  dir="ltr"
+                  className={`${
+                    digits >= 4
+                      ? "text-5xl sm:text-8xl md:text-[10rem]"
+                      : digits === 3
+                      ? "text-6xl sm:text-9xl md:text-[11rem]"
+                      : "text-7xl sm:text-[11rem] md:text-[13rem]"
+                  } font-black tracking-normal sm:tracking-widest select-none leading-none px-5 sm:px-8 py-3 sm:py-4 rounded-3xl sm:rounded-[3.5rem] bg-slate-900/80 border-4 border-amber-400/40 shadow-2xl backdrop-blur-sm transition-all max-w-full ${
                     currentNumber < 0
                       ? "text-rose-400 drop-shadow-[0_14px_35px_rgba(244,63,94,0.45)]"
                       : "text-emerald-400 drop-shadow-[0_14px_35px_rgba(16,185,129,0.45)]"
@@ -522,10 +530,10 @@ export default function FlashAnzanPage() {
                   </div>
                 </div>
 
-                <div className="flex gap-3 justify-center">
+                <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
                   <button
                     onClick={startTraining}
-                    className="px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm inline-flex items-center gap-2 shadow-md transition-transform active:scale-95"
+                    className="px-5 sm:px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs sm:text-sm inline-flex items-center gap-2 shadow-md transition-transform active:scale-95"
                   >
                     <RotateCcw className="w-4 h-4" />
                     <span>تمرين جديد بنفس الإعدادات</span>
@@ -533,18 +541,19 @@ export default function FlashAnzanPage() {
 
                   <button
                     onClick={() => setSessionState("idle")}
-                    className="px-4 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm"
+                    className="px-4 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs sm:text-sm"
                   >
                     تغيير الإعدادات
                   </button>
                 </div>
               </div>
             )}
+            </div>
           </div>
 
           {/* Configuration Panel with Flexible Terms up to 50 & Digits up to 5 */}
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div className="bg-white p-5 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
               <div className="flex items-center gap-2">
                 <Settings2 className="w-5 h-5 text-brand-600" />
                 <h3 className="font-bold text-lg text-slate-900">
@@ -726,7 +735,7 @@ export default function FlashAnzanPage() {
               <label className="text-xs font-bold text-slate-700 block">
                 عدد الخانات (Digits):
               </label>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                 {[1, 2, 3, 4, 5].map((d) => (
                   <button
                     key={d}
@@ -965,7 +974,7 @@ export default function FlashAnzanPage() {
 
           {/* Guess choices */}
           <div className="max-w-md mx-auto space-y-4">
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
               {[
                 cardTargetNumber,
                 (cardTargetNumber + 5) % 100,

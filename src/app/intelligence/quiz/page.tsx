@@ -488,19 +488,19 @@ function QuizContent() {
 
       {/* Results Summary Modal / Card */}
       {results && (
-        <div className="bg-slate-900 text-white rounded-3xl p-8 border border-slate-800 space-y-6 text-center animate-in zoom-in-95 duration-300">
+        <div className="bg-slate-900 text-white rounded-3xl p-5 sm:p-8 border border-slate-800 space-y-6 text-center animate-in zoom-in-95 duration-300">
           <div className="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mx-auto">
             <Trophy className="w-8 h-8 text-amber-400" />
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-2xl sm:text-3xl font-black">نتيجة اختبار أسئلة الذكاء</h3>
+            <h3 className="text-xl sm:text-3xl font-black">نتيجة اختبار أسئلة الذكاء</h3>
             <p className="text-slate-400 text-sm">
               أداء رائع! إليك ملخص درجاتك وإجاباتك
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 max-w-md mx-auto pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 max-w-md mx-auto pt-2">
             <div className="bg-slate-800 p-3.5 rounded-2xl">
               <span className="text-xs text-slate-400 block">الدرجة المحققة</span>
               <span className="font-mono font-black text-2xl text-emerald-400">

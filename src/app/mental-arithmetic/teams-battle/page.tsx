@@ -571,7 +571,7 @@ export default function TeamsBattlePage() {
               {/* Optional sub-rule picker if trainer selects complex_5 or complex_10 */}
               {(rulesLevel === "complex_5" || rulesLevel === "complex_10") && (
                 <div className="col-span-full p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-slate-300">
                     <span>تخصيص القاعدة الفرعية للمدرب (اختياري — اتركه للكل):</span>
                     <button
                       type="button"
@@ -613,7 +613,7 @@ export default function TeamsBattlePage() {
               {/* Numbers Count per turn */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-300 block">عدد الأرقام في المسألة:</label>
-                <div className="grid grid-cols-4 gap-1 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
                   {[3, 4, 5, 7].map((num) => (
                     <button
                       key={num}
@@ -632,7 +632,7 @@ export default function TeamsBattlePage() {
               {/* Flash Speed */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-300 block">سرعة الوميض (ثانية/رقم):</label>
-                <div className="grid grid-cols-4 gap-1 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
                   {[
                     { ms: 500, label: "0.5s" },
                     { ms: 700, label: "0.7s ⭐" },
@@ -814,13 +814,13 @@ export default function TeamsBattlePage() {
                     <div className="animate-in zoom-in-95 fade-in duration-75 flex flex-col items-center justify-center">
                       <div
                         dir="ltr"
-                        className={`font-black tracking-wider select-none leading-none px-8 sm:px-12 py-5 sm:py-6 rounded-[3rem] bg-slate-900/95 border-4 border-amber-400/50 shadow-2xl transition-all ${
+                        className={`font-black tracking-normal sm:tracking-wider select-none leading-none px-5 sm:px-12 py-4 sm:py-6 rounded-3xl sm:rounded-[3rem] bg-slate-900/95 border-4 border-amber-400/50 shadow-2xl transition-all max-w-full ${
                           currentSeries[currentFlashIdx] < 0
                             ? "text-rose-400 drop-shadow-[0_14px_35px_rgba(244,63,94,0.5)]"
                             : "text-emerald-400 drop-shadow-[0_14px_35px_rgba(16,185,129,0.5)]"
                         }`}
                         style={{
-                          fontSize: "clamp(5.5rem, 25vw, 13rem)",
+                          fontSize: "clamp(3.2rem, 18vw, 11rem)",
                           fontFamily: "'Fredoka', 'Baloo Bhaijaan 2', 'Alexandria', sans-serif",
                         }}
                       >
