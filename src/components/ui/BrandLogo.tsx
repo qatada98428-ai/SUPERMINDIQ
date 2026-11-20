@@ -4,54 +4,74 @@ import Link from "next/link";
 interface BrandLogoProps {
   size?: "sm" | "md" | "lg";
   inverted?: boolean;
+  compactOnTablet?: boolean;
 }
 
-export default function BrandLogo({ size = "md", inverted = false }: BrandLogoProps) {
+export default function BrandLogo({
+  size = "md",
+  inverted = false,
+}: BrandLogoProps) {
   const isLarge = size === "lg";
   const isSmall = size === "sm";
 
+  const textColorClass = inverted
+    ? "text-white"
+    : "text-[#2E2759] dark:text-[#F5F4FD]";
+
   return (
-    <Link href="/" className="inline-flex items-center gap-2 sm:gap-3 group focus:outline-none min-w-0">
+    <Link
+      href="/"
+      dir="rtl"
+      className="inline-flex items-center gap-2 sm:gap-2.5 group focus:outline-none shrink-0"
+      aria-label="SUPER MIND - منصة العقل الخارق"
+    >
+      {/* Official SM Superhero Logo on the right side */}
       <div
-        className={`relative shrink-0 flex items-center justify-center rounded-2xl overflow-hidden bg-white border-2 border-amber-400/80 transition-all duration-300 group-hover:scale-105 shadow-md ${
+        className={`relative shrink-0 flex items-center justify-center overflow-hidden bg-white border-2 border-[#E6DFFF] dark:border-[#3A356B] shadow-clay-sm transition-transform duration-300 group-hover:scale-105 ${
           isLarge
-            ? "w-14 h-14 sm:w-16 sm:h-16 shadow-amber-500/25"
+            ? "w-12 h-12 sm:w-14 sm:h-14 rounded-[18px]"
             : isSmall
-            ? "w-9 h-9 sm:w-10 sm:h-10"
-            : "w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 shadow-amber-500/20"
+            ? "w-8 h-8 sm:w-9 sm:h-9 rounded-xl"
+            : "w-9 h-9 sm:w-10 sm:h-10 xl:w-11 xl:h-11 rounded-[14px] sm:rounded-[16px]"
         }`}
       >
-        {/* Official SUPER MIND Program Logo */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/images/logo.jpg"
-          alt="شعار برنامج العقل الخارق SUPER MIND"
+          alt="شعار الطفل الخارق SM - SUPER MIND"
           className="w-full h-full object-contain p-0.5"
         />
       </div>
 
-      <div className="flex flex-col min-w-0">
-        <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
-          <span
-            className={`font-black tracking-tight truncate ${
-              inverted ? "text-white" : "text-slate-900 dark:text-white"
-            } ${isLarge ? "text-xl sm:text-2xl" : isSmall ? "text-sm sm:text-base" : "text-sm sm:text-lg md:text-xl"}`}
-          >
-            العقل الخارق
-          </span>
-          <span className="hidden sm:inline-block shrink-0 text-[10px] sm:text-xs font-bold tracking-widest px-1.5 py-0.5 rounded-md bg-brand-50 dark:bg-brand-950/80 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
-            SUPER MIND
-          </span>
-        </div>
-        {!isSmall && (
-          <span
-            className={`hidden sm:block text-[11px] leading-tight font-medium truncate ${
-              inverted ? "text-slate-300" : "text-slate-500 dark:text-slate-400"
-            }`}
-          >
-            منصة برنامج العقل الخارق
-          </span>
-        )}
+      {/* Unified two-line identity: same font family & color, English slightly larger/bolder */}
+      <div
+        className="flex flex-col items-start text-right shrink-0 leading-none"
+        style={{
+          fontFamily: "'Alexandria', 'IBM Plex Sans Arabic', system-ui, sans-serif",
+        }}
+      >
+        <span
+          className={`${textColorClass} font-black tracking-tight whitespace-nowrap ${
+            isLarge
+              ? "text-lg sm:text-2xl leading-tight"
+              : isSmall
+              ? "text-sm sm:text-base leading-tight"
+              : "text-[15px] sm:text-base xl:text-[18px] leading-tight"
+          }`}
+        >
+          SUPER MIND
+        </span>
+        <span
+          className={`${textColorClass} font-semibold whitespace-nowrap ${
+            isLarge
+              ? "text-xs sm:text-sm mt-0.5 leading-tight"
+              : isSmall
+              ? "text-[10px] sm:text-[11px] mt-0.5 leading-tight"
+              : "text-[11px] sm:text-xs xl:text-[13px] mt-0.5 leading-tight"
+          }`}
+        >
+          منصة العقل الخارق
+        </span>
       </div>
     </Link>
   );

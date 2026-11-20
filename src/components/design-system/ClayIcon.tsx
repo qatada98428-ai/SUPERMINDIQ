@@ -1,0 +1,617 @@
+"use client";
+
+import React, { useId } from "react";
+
+export type ClayIconName =
+  | "math123"
+  | "soroban"
+  | "flash"
+  | "plusMinus"
+  | "shapes"
+  | "brain"
+  | "trophy"
+  | "star"
+  | "flame"
+  | "book"
+  | "crown"
+  | "heart"
+  | "users"
+  | "graduation"
+  | "rocket"
+  | "gift"
+  | "target"
+  | "shield"
+  | "game"
+  | "footprint"
+  | "compass"
+  | "sparkles"
+  | "chat"
+  | "school"
+  | "medal"
+  | "lock"
+  | "user3d"
+  | "search"
+  | "chart";
+
+export type ClayBadgeTone =
+  | "lavender"
+  | "mint"
+  | "peach"
+  | "pink"
+  | "sky"
+  | "gold"
+  | "purple"
+  | "emerald"
+  | "indigo"
+  | "teal"
+  | "none";
+
+interface ClayIconProps {
+  name: ClayIconName;
+  tone?: ClayBadgeTone;
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
+  shape?: "squircle" | "circle";
+  className?: string;
+}
+
+const TONE_CLASSES: Record<ClayBadgeTone, string> = {
+  lavender:
+    "bg-gradient-to-br from-[#F4F0FF] to-[#DDD2FF] dark:from-[#2F2860] dark:to-[#201B46] border border-white/80 dark:border-[#493E8E]/60 shadow-[0_10px_18px_-6px_rgba(99,68,245,0.26),inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-3px_5px_rgba(166,152,240,0.35)]",
+  mint: "bg-gradient-to-br from-[#E9FCF8] to-[#B7EFE5] dark:from-[#16413E] dark:to-[#0F2E2B] border border-white/80 dark:border-[#246660]/60 shadow-[0_10px_18px_-6px_rgba(44,181,163,0.28),inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-3px_5px_rgba(88,214,196,0.32)]",
+  peach:
+    "bg-gradient-to-br from-[#FFF7E8] to-[#FFDCAC] dark:from-[#472D14] dark:to-[#321F0D] border border-white/85 dark:border-[#6F4821]/60 shadow-[0_10px_18px_-6px_rgba(245,158,11,0.28),inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-3px_5px_rgba(245,178,86,0.32)]",
+  pink: "bg-gradient-to-br from-[#FFF1F6] to-[#FFD0E0] dark:from-[#4A1B33] dark:to-[#331123] border border-white/85 dark:border-[#782C53]/60 shadow-[0_10px_18px_-6px_rgba(244,63,94,0.26),inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-3px_5px_rgba(244,142,174,0.32)]",
+  sky: "bg-gradient-to-br from-[#EEF7FF] to-[#C8E4FF] dark:from-[#163458] dark:to-[#0F243F] border border-white/85 dark:border-[#25558D]/60 shadow-[0_10px_18px_-6px_rgba(59,130,246,0.26),inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-3px_5px_rgba(120,180,245,0.32)]",
+  gold: "bg-gradient-to-br from-[#FFFADF] to-[#FFE285] dark:from-[#4B3710] dark:to-[#35260B] border border-white/90 dark:border-[#7A591C]/60 shadow-[0_10px_18px_-6px_rgba(234,179,8,0.3),inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-3px_5px_rgba(234,179,8,0.34)]",
+  emerald:
+    "bg-gradient-to-br from-[#EAFCF1] to-[#B7F2D1] dark:from-[#13422B] dark:to-[#0C2D1D] border border-white/85 dark:border-[#206B47]/60 shadow-[0_10px_18px_-6px_rgba(16,185,129,0.28),inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-3px_5px_rgba(52,211,153,0.32)]",
+  indigo:
+    "bg-gradient-to-br from-[#EEF2FF] to-[#C9D5FF] dark:from-[#222B5C] dark:to-[#171E42] border border-white/85 dark:border-[#394794]/60 shadow-[0_10px_18px_-6px_rgba(79,70,229,0.28),inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-3px_5px_rgba(129,140,248,0.32)]",
+  teal: "bg-gradient-to-br from-[#EBFBFD] to-[#BAEAF4] dark:from-[#123D48] dark:to-[#0C2A32] border border-white/85 dark:border-[#1E6273]/60 shadow-[0_10px_18px_-6px_rgba(6,182,212,0.26),inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-3px_5px_rgba(34,211,238,0.32)]",
+  purple:
+    "bg-gradient-to-b from-[#8B6EFF] to-[#6344F5] shadow-[0_10px_20px_-6px_rgba(99,68,245,0.45),inset_0_2px_3px_rgba(255,255,255,0.5),inset_0_-3px_0_rgba(48,25,140,0.3)]",
+  none: "",
+};
+
+const SIZE_CLASSES: Record<"xs" | "sm" | "md" | "lg" | "xl", { box: string; svg: string }> = {
+  xs: { box: "w-8 h-8", svg: "w-5 h-5" },
+  sm: { box: "w-10 h-10", svg: "w-6 h-6" },
+  md: { box: "w-12 h-12", svg: "w-8 h-8" },
+  lg: { box: "w-14 h-14", svg: "w-9 h-9" },
+  xl: { box: "w-16 h-16", svg: "w-11 h-11" },
+};
+
+export default function ClayIcon({
+  name,
+  tone = "lavender",
+  size = "md",
+  shape = "squircle",
+  className = "",
+}: ClayIconProps) {
+  const uid = useId().replace(/:/g, "");
+  const sz = SIZE_CLASSES[size];
+  const radiusClass = shape === "circle" ? "rounded-full" : "rounded-[18px]";
+
+  const renderSvg = () => {
+    switch (name) {
+      case "math123":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-n1`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FF8FB1" />
+                <stop offset="100%" stopColor="#E11D64" />
+              </linearGradient>
+              <linearGradient id={`${uid}-n2`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FFE066" />
+                <stop offset="100%" stopColor="#F59E0B" />
+              </linearGradient>
+              <linearGradient id={`${uid}-n3`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#6EE7B7" />
+                <stop offset="100%" stopColor="#10B981" />
+              </linearGradient>
+            </defs>
+            {/* 1 */}
+            <rect x="9" y="18" width="10" height="28" rx="5" fill={`url(#${uid}-n1)`} />
+            <circle cx="14" cy="23" r="2.2" fill="#FFF" fillOpacity="0.45" />
+            {/* 2 */}
+            <path
+              d="M23 23c0-4.4 3.6-7 8-7s8 2.6 8 7c0 3.2-2.2 5.4-5.4 8l-4.2 3.5H39c1.8 0 3.2 1.4 3.2 3.2S40.8 41 39 41H25c-1.8 0-3-1.3-3-3.2 0-1.2.6-2.4 1.6-3.3l7.3-6.1c1.4-1.2 2-2.1 2-3.4 0-1.5-1.1-2.5-2.6-2.5-1.4 0-2.5.9-2.8 2.2-.3 1.4-1.5 2.3-2.9 2.3-1.7 0-2.6-1.3-2.6-4z"
+              fill={`url(#${uid}-n2)`}
+            />
+            {/* 3 */}
+            <path
+              d="M42 22.5c0-3.6 3-6.5 7.2-6.5 4 0 7 2.5 7 6 0 2.1-1.2 4-3 4.8 2.2.9 3.6 2.9 3.6 5.4 0 4-3.3 7-7.8 7-4.2 0-7.4-2.5-7.6-6-.1-1.7 1.2-3 2.9-3 1.5 0 2.6.9 3 2.2.3 1 1.2 1.6 2.4 1.6 1.5 0 2.6-1 2.6-2.5 0-1.5-1.1-2.4-2.8-2.4h-1c-1.5 0-2.6-1-2.6-2.4s1.1-2.4 2.6-2.4h.7c1.4 0 2.4-.8 2.4-2s-1-2-2.3-2c-1.2 0-2 .6-2.3 1.6-.4 1.2-1.5 2-2.8 2-1.5 0-2.2-1.2-2.2-2.4z"
+              fill={`url(#${uid}-n3)`}
+            />
+          </svg>
+        );
+
+      case "soroban":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-frame`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#9A6BFF" />
+                <stop offset="100%" stopColor="#5B3AE8" />
+              </linearGradient>
+              <linearGradient id={`${uid}-bead`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#FDE047" />
+                <stop offset="100%" stopColor="#EA580C" />
+              </linearGradient>
+              <linearGradient id={`${uid}-beadTop`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#FF7EB3" />
+                <stop offset="100%" stopColor="#E11D48" />
+              </linearGradient>
+            </defs>
+            <rect x="8" y="11" width="48" height="42" rx="10" fill={`url(#${uid}-frame)`} />
+            <rect x="13" y="16" width="38" height="32" rx="6" fill="#FAF8FF" />
+            <rect x="13" y="25" width="38" height="3.5" rx="1.5" fill="#7C5CFC" />
+            {[21, 32, 43].map((cx) => (
+              <rect key={cx} x={cx - 1} y="16" width="2" height="32" fill="#D2CCF7" />
+            ))}
+            {/* Upper beads */}
+            <rect x="17" y="17.5" width="8" height="5.5" rx="2.75" fill={`url(#${uid}-beadTop)`} />
+            <rect x="28" y="19" width="8" height="5.5" rx="2.75" fill={`url(#${uid}-beadTop)`} />
+            <rect x="39" y="17.5" width="8" height="5.5" rx="2.75" fill={`url(#${uid}-beadTop)`} />
+            {/* Lower beads */}
+            <rect x="17" y="31" width="8" height="5.5" rx="2.75" fill={`url(#${uid}-bead)`} />
+            <rect x="17" y="38" width="8" height="5.5" rx="2.75" fill={`url(#${uid}-bead)`} />
+            <rect x="28" y="33" width="8" height="5.5" rx="2.75" fill={`url(#${uid}-bead)`} />
+            <rect x="39" y="31" width="8" height="5.5" rx="2.75" fill={`url(#${uid}-bead)`} />
+            <rect x="39" y="39" width="8" height="5.5" rx="2.75" fill={`url(#${uid}-bead)`} />
+          </svg>
+        );
+
+      case "plusMinus":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-tl`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#6EE7B7" />
+                <stop offset="100%" stopColor="#10B981" />
+              </linearGradient>
+              <linearGradient id={`${uid}-tr`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FCD34D" />
+                <stop offset="100%" stopColor="#F59E0B" />
+              </linearGradient>
+              <linearGradient id={`${uid}-bl`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#93C5FD" />
+                <stop offset="100%" stopColor="#3B82F6" />
+              </linearGradient>
+              <linearGradient id={`${uid}-br`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FDA4AF" />
+                <stop offset="100%" stopColor="#F43F5E" />
+              </linearGradient>
+            </defs>
+            <rect x="8" y="8" width="22" height="22" rx="7" fill={`url(#${uid}-tl)`} />
+            <rect x="34" y="8" width="22" height="22" rx="7" fill={`url(#${uid}-tr)`} />
+            <rect x="8" y="34" width="22" height="22" rx="7" fill={`url(#${uid}-bl)`} />
+            <rect x="34" y="34" width="22" height="22" rx="7" fill={`url(#${uid}-br)`} />
+            {/* + */}
+            <path d="M19 14v10M14 19h10" stroke="#FFF" strokeWidth="3.2" strokeLinecap="round" />
+            {/* - */}
+            <path d="M40 19h10" stroke="#FFF" strokeWidth="3.2" strokeLinecap="round" />
+            {/* x */}
+            <path d="M15.5 41.5l7 7M22.5 41.5l-7 7" stroke="#FFF" strokeWidth="3" strokeLinecap="round" />
+            {/* = */}
+            <path d="M40 42.5h10M40 47.5h10" stroke="#FFF" strokeWidth="3" strokeLinecap="round" />
+          </svg>
+        );
+
+      case "flash":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-bolt`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FEF08A" />
+                <stop offset="55%" stopColor="#FACC15" />
+                <stop offset="100%" stopColor="#EA580C" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M35.5 7L14 35.5h16.5L26 57l24-30H33.5L35.5 7z"
+              fill={`url(#${uid}-bolt)`}
+              stroke="#FFFBEB"
+              strokeWidth="2"
+              strokeLinejoin="round"
+            />
+          </svg>
+        );
+
+      case "shapes":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <radialGradient id={`${uid}-cir`} cx="35%" cy="30%" r="70%">
+                <stop offset="0%" stopColor="#93C5FD" />
+                <stop offset="100%" stopColor="#2563EB" />
+              </radialGradient>
+              <linearGradient id={`${uid}-tri`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#F9A8D4" />
+                <stop offset="100%" stopColor="#EC4899" />
+              </linearGradient>
+              <linearGradient id={`${uid}-sq`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FDBA74" />
+                <stop offset="100%" stopColor="#EA580C" />
+              </linearGradient>
+            </defs>
+            <circle cx="21" cy="24" r="12" fill={`url(#${uid}-cir)`} />
+            <path d="M44 10l12 21H32L44 10z" fill={`url(#${uid}-tri)`} strokeLinejoin="round" />
+            <rect x="22" y="34" width="22" height="22" rx="6" fill={`url(#${uid}-sq)`} />
+          </svg>
+        );
+
+      case "brain":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-brL`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#C4B5FD" />
+                <stop offset="100%" stopColor="#7C3AED" />
+              </linearGradient>
+              <linearGradient id={`${uid}-brR`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#F9A8D4" />
+                <stop offset="100%" stopColor="#EC4899" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M31 14c-4.5 0-8 2.8-9.2 6.8C17 21.4 13 25.4 13 30.8c0 3 1.3 5.7 3.4 7.5-.3 1-.4 2-.4 3 0 5.5 4.5 9.7 10 9.7 2.2 0 4.2-.7 5-1.8V14z"
+              fill={`url(#${uid}-brL)`}
+            />
+            <path
+              d="M33 14c4.5 0 8 2.8 9.2 6.8C47 21.4 51 25.4 51 30.8c0 3-1.3 5.7-3.4 7.5.3 1 .4 2 .4 3 0 5.5-4.5 9.7-10 9.7-2.2 0-4.2-.7-5-1.8V14z"
+              fill={`url(#${uid}-brR)`}
+            />
+            <circle cx="24" cy="27" r="2.2" fill="#FFF" fillOpacity="0.65" />
+            <circle cx="40" cy="27" r="2.2" fill="#FFF" fillOpacity="0.65" />
+          </svg>
+        );
+
+      case "trophy":
+      case "medal":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-cup`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FEF08A" />
+                <stop offset="45%" stopColor="#FBBF24" />
+                <stop offset="100%" stopColor="#D97706" />
+              </linearGradient>
+              <linearGradient id={`${uid}-base`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#F97316" />
+                <stop offset="100%" stopColor="#B45309" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M18 14h-6c-1.7 0-3 1.3-3 3v5c0 5.5 4 10 9.5 10.7M46 14h6c1.7 0 3 1.3 3 3v5c0 5.5-4 10-9.5 10.7"
+              stroke="#F59E0B"
+              strokeWidth="4.5"
+              strokeLinecap="round"
+            />
+            <path
+              d="M17 11h30v15c0 9.4-6.7 16-15 16s-15-6.6-15-16V11z"
+              fill={`url(#${uid}-cup)`}
+            />
+            <rect x="28" y="40" width="8" height="10" rx="2" fill={`url(#${uid}-cup)`} />
+            <rect x="20" y="48" width="24" height="7" rx="3.5" fill={`url(#${uid}-base)`} />
+            <path
+              d="M32 18l2.2 4.4 4.8.7-3.5 3.4.8 4.8-4.3-2.3-4.3 2.3.8-4.8-3.5-3.4 4.8-.7L32 18z"
+              fill="#FFFBEB"
+            />
+          </svg>
+        );
+
+      case "star":
+      case "sparkles":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <radialGradient id={`${uid}-st`} cx="35%" cy="30%" r="75%">
+                <stop offset="0%" stopColor="#FEF08A" />
+                <stop offset="55%" stopColor="#FACC15" />
+                <stop offset="100%" stopColor="#F59E0B" />
+              </radialGradient>
+            </defs>
+            <path
+              d="M32 8l6.8 14.2 15.6 2.1-11.4 10.9 2.8 15.5L32 43.2l-13.8 7.5 2.8-15.5L9.6 24.3l15.6-2.1L32 8z"
+              fill={`url(#${uid}-st)`}
+              stroke="#FDE047"
+              strokeWidth="2"
+              strokeLinejoin="round"
+            />
+            <circle cx="27" cy="29" r="2" fill="#78350F" />
+            <circle cx="37" cy="29" r="2" fill="#78350F" />
+            <path d="M29 34c1.6 1.6 4.4 1.6 6 0" stroke="#78350F" strokeWidth="2.2" strokeLinecap="round" />
+          </svg>
+        );
+
+      case "flame":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-fl`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#FDE047" />
+                <stop offset="50%" stopColor="#FB923C" />
+                <stop offset="100%" stopColor="#EA580C" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M34 8c2 8.5-4.5 13-4.5 13s4.5 1 6.5 5.5c2.2-2.6 3.5-6.2 3.5-6.2C46.5 25 50 32.2 50 39c0 9.9-8.1 17-18 17s-18-7.1-18-17c0-9.2 6.8-17.8 20-31z"
+              fill={`url(#${uid}-fl)`}
+            />
+            <path
+              d="M32 34c4 4.2 6.5 8.1 6.5 12 0 4-2.9 7-6.5 7s-6.5-3-6.5-7c0-3.9 2.5-7.8 6.5-12z"
+              fill="#FEF08A"
+            />
+          </svg>
+        );
+
+      case "book":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-bk`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#A78BFA" />
+                <stop offset="100%" stopColor="#6D28D9" />
+              </linearGradient>
+            </defs>
+            <rect x="11" y="13" width="42" height="38" rx="9" fill={`url(#${uid}-bk)`} />
+            <path
+              d="M16 17h14v30H16a2 2 0 0 1-2-2V19a2 2 0 0 1 2-2zM34 17h14a2 2 0 0 1 2 2v26a2 2 0 0 1-2 2H34V17z"
+              fill="#FFFDF8"
+            />
+            <path d="M19 24h7M19 30h7M38 24h7M38 30h7" stroke="#A78BFA" strokeWidth="2.5" strokeLinecap="round" />
+          </svg>
+        );
+
+      case "crown":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-cr`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FEF08A" />
+                <stop offset="100%" stopColor="#F59E0B" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M11 45l-3-22 14 10 10-16 10 16 14-10-3 22H11z"
+              fill={`url(#${uid}-cr)`}
+              stroke="#FBBF24"
+              strokeWidth="2"
+              strokeLinejoin="round"
+            />
+            <rect x="11" y="45" width="42" height="7" rx="3.5" fill="#EA580C" />
+            <circle cx="32" cy="14" r="3.5" fill="#EC4899" />
+            <circle cx="8" cy="21" r="3" fill="#6366F1" />
+            <circle cx="56" cy="21" r="3" fill="#10B981" />
+          </svg>
+        );
+
+      case "heart":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <radialGradient id={`${uid}-ht`} cx="35%" cy="30%" r="75%">
+                <stop offset="0%" stopColor="#FDA4AF" />
+                <stop offset="55%" stopColor="#FB7185" />
+                <stop offset="100%" stopColor="#E11D48" />
+              </radialGradient>
+            </defs>
+            <path
+              d="M32 52S11 38.6 11 23.8C11 16.7 16.6 11 23.5 11c4 0 7.5 1.9 8.5 4.8C33 12.9 36.5 11 40.5 11 47.4 11 53 16.7 53 23.8 53 38.6 32 52 32 52z"
+              fill={`url(#${uid}-ht)`}
+            />
+            <ellipse cx="22" cy="21" rx="4" ry="2.2" transform="rotate(-25 22 21)" fill="#FFF" fillOpacity="0.45" />
+          </svg>
+        );
+
+      case "graduation":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-gr`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#60A5FA" />
+                <stop offset="100%" stopColor="#4F46E5" />
+              </linearGradient>
+            </defs>
+            <path d="M32 14L8 25l24 11 24-11-24-11z" fill={`url(#${uid}-gr)`} />
+            <path d="M18 31v11c0 4 6.3 8 14 8s14-4 14-8V31l-14 6.4L18 31z" fill="#4338CA" />
+            <path d="M51 27v14" stroke="#FBBF24" strokeWidth="3" strokeLinecap="round" />
+            <circle cx="51" cy="43" r="3.5" fill="#F59E0B" />
+          </svg>
+        );
+
+      case "users":
+      case "user3d":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <radialGradient id={`${uid}-hd`} cx="35%" cy="30%" r="70%">
+                <stop offset="0%" stopColor="#A5B4FC" />
+                <stop offset="100%" stopColor="#4F46E5" />
+              </radialGradient>
+            </defs>
+            <circle cx="32" cy="22" r="11" fill={`url(#${uid}-hd)`} />
+            <path d="M14 50c0-8.8 8.1-15 18-15s18 6.2 18 15a3 3 0 0 1-3 3H17a3 3 0 0 1-3-3z" fill={`url(#${uid}-hd)`} />
+          </svg>
+        );
+
+      case "rocket":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-rk`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#A78BFA" />
+                <stop offset="100%" stopColor="#6344F5" />
+              </linearGradient>
+            </defs>
+            <path d="M32 9c10 7 14 19 14 31H18c0-12 4-24 14-31z" fill={`url(#${uid}-rk)`} />
+            <circle cx="32" cy="27" r="5.5" fill="#E0F2FE" stroke="#FFF" strokeWidth="2" />
+            <path d="M18 33l-7 8h9v-8h-2zM46 33l7 8h-9v-8h2z" fill="#FB7185" />
+            <path d="M27 40h10l-5 12-5-12z" fill="#FBBF24" />
+          </svg>
+        );
+
+      case "gift":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-gf`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#F9A8D4" />
+                <stop offset="100%" stopColor="#EC4899" />
+              </linearGradient>
+            </defs>
+            <rect x="13" y="25" width="38" height="28" rx="7" fill={`url(#${uid}-gf)`} />
+            <rect x="10" y="19" width="44" height="9" rx="4.5" fill="#F472B6" />
+            <rect x="29" y="19" width="6" height="34" fill="#8B5CF6" />
+            <path d="M32 19c-4-7-12-7-12-2s8 4 12 2zm0 0c4-7 12-7 12-2s-8 4-12 2z" fill="#A78BFA" />
+          </svg>
+        );
+
+      case "target":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <circle cx="32" cy="32" r="22" fill="#FB7185" />
+            <circle cx="32" cy="32" r="15" fill="#FFF" />
+            <circle cx="32" cy="32" r="8" fill="#6344F5" />
+            <circle cx="32" cy="32" r="3.5" fill="#FACC15" />
+          </svg>
+        );
+
+      case "shield":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-sh`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#6EE7B7" />
+                <stop offset="100%" stopColor="#059669" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M32 9L13 17v14c0 12.6 8 22.8 19 25 11-2.2 19-12.4 19-25V17L32 9z"
+              fill={`url(#${uid}-sh)`}
+            />
+            <path d="M24 32l5.5 5.5 11-11" stroke="#FFF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        );
+
+      case "game":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-gm`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#818CF8" />
+                <stop offset="100%" stopColor="#4F46E5" />
+              </linearGradient>
+            </defs>
+            <rect x="9" y="18" width="46" height="28" rx="14" fill={`url(#${uid}-gm)`} />
+            <path d="M22 26v12M16 32h12" stroke="#FFF" strokeWidth="3.5" strokeLinecap="round" />
+            <circle cx="43" cy="28" r="2.8" fill="#FDE047" />
+            <circle cx="48" cy="34" r="2.8" fill="#4ADE80" />
+            <circle cx="39" cy="35" r="2.8" fill="#FB7185" />
+          </svg>
+        );
+
+      case "footprint":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <ellipse cx="32" cy="37" rx="10" ry="14" fill="#7C5CFC" />
+            <circle cx="21" cy="20" r="3.2" fill="#8B6EFF" />
+            <circle cx="27" cy="15.5" r="3.5" fill="#8B6EFF" />
+            <circle cx="34" cy="14.5" r="3.5" fill="#8B6EFF" />
+            <circle cx="41" cy="17.5" r="3" fill="#8B6EFF" />
+          </svg>
+        );
+
+      case "chat":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-ch`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#6EE7B7" />
+                <stop offset="100%" stopColor="#10B981" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M32 11c12.7 0 22 8.2 22 18.5S44.7 48 32 48c-3 0-5.8-.5-8.4-1.4L14 52l2.6-8.4C12.5 40.1 10 35.1 10 29.5 10 19.2 19.3 11 32 11z"
+              fill={`url(#${uid}-ch)`}
+            />
+            <circle cx="24" cy="29.5" r="2.8" fill="#FFF" />
+            <circle cx="32" cy="29.5" r="2.8" fill="#FFF" />
+            <circle cx="40" cy="29.5" r="2.8" fill="#FFF" />
+          </svg>
+        );
+
+      case "school":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <path d="M10 28l22-14 22 14v24H10V28z" fill="#6344F5" />
+            <path d="M32 14l22 14H10l22-14z" fill="#F59E0B" />
+            <rect x="26" y="37" width="12" height="15" rx="3" fill="#FEF08A" />
+            <circle cx="32" cy="26" r="4" fill="#FFF" />
+          </svg>
+        );
+
+      case "compass":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <circle cx="32" cy="32" r="22" fill="#60A5FA" />
+            <circle cx="32" cy="32" r="16" fill="#F8FAFC" />
+            <path d="M39 25l-4 10-10 4 4-10 10-4z" fill="#F43F5E" />
+            <circle cx="32" cy="32" r="2.5" fill="#1E1B3A" />
+          </svg>
+        );
+
+      case "lock":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <path d="M21 26v-6a11 11 0 0 1 22 0v6" stroke="#8B6EFF" strokeWidth="5.5" strokeLinecap="round" />
+            <rect x="14" y="25" width="36" height="28" rx="8" fill="#6344F5" />
+            <circle cx="32" cy="37" r="4" fill="#FDE047" />
+            <rect x="30" y="39" width="4" height="7" rx="2" fill="#FDE047" />
+          </svg>
+        );
+
+      case "search":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <circle cx="28" cy="28" r="15" stroke="#FFF" strokeWidth="5.5" fill="#A78BFA" fillOpacity="0.3" />
+            <path d="M39 39l12 12" stroke="#FFF" strokeWidth="6" strokeLinecap="round" />
+          </svg>
+        );
+
+      case "chart":
+      default:
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <rect x="12" y="32" width="10" height="20" rx="5" fill="#60A5FA" />
+            <rect x="27" y="22" width="10" height="30" rx="5" fill="#7C5CFC" />
+            <rect x="42" y="12" width="10" height="40" rx="5" fill="#34D399" />
+          </svg>
+        );
+    }
+  };
+
+  if (tone === "none") {
+    return (
+      <span className={`inline-flex items-center justify-center shrink-0 ${className}`}>
+        {renderSvg()}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={`relative overflow-hidden inline-flex items-center justify-center shrink-0 ${sz.box} ${radiusClass} ${TONE_CLASSES[tone]} transition-transform duration-300 ease-out ${className}`}
+    >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute top-[6%] inset-x-[14%] h-[28%] rounded-full bg-white/55 dark:bg-white/15 blur-[0.5px]"
+      />
+      <span className="relative z-10 inline-flex items-center justify-center drop-shadow-[0_3px_4px_rgba(30,27,58,0.16)]">
+        {renderSvg()}
+      </span>
+    </span>
+  );
+}

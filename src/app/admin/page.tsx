@@ -56,6 +56,7 @@ import {
   SupporterRecord,
   AdminAuditLogRecord,
 } from "@/lib/supabase/types";
+import AdminTrafficSection from "@/components/admin/AdminTrafficSection";
 
 export default function AdminDashboardPage() {
   const { user, profile, role, isLoading: authLoading } = useAuth();
@@ -64,6 +65,7 @@ export default function AdminDashboardPage() {
 
   const [activeTab, setActiveTab] = useState<
     | "overview"
+    | "traffic"
     | "subscriptions"
     | "competitions"
     | "users"
@@ -562,7 +564,7 @@ export default function AdminDashboardPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Top Admin Header */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white p-6 sm:p-10 border border-indigo-800/40 shadow-2xl">
+      <div className="clay-banner-lavender relative overflow-hidden text-white p-6 sm:p-10">
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold border border-amber-400/30">
@@ -596,6 +598,7 @@ export default function AdminDashboardPage() {
         <div className="mt-8 pt-4 border-t border-slate-800 flex items-center gap-2 overflow-x-auto no-scrollbar">
           {[
             { id: "overview", label: "نظرة عامة وإحصائيات", icon: BarChart3 },
+            { id: "traffic", label: "إحصاءات الزيارات", icon: Activity },
             { id: "subscriptions", label: `👑 الاشتراكات والمدربون (${extProfiles.length})`, icon: Crown },
             { id: "competitions", label: `🏆 المسابقات والواجبات العامة (${platformAssignments.length})`, icon: Trophy },
             { id: "users", label: `المستخدمون (${stats.totalUsers})`, icon: Users },
@@ -701,6 +704,8 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       )}
+
+      {activeTab === "traffic" && <AdminTrafficSection />}
 
       {/* =========================================================================
           TAB 2: USERS MANAGEMENT

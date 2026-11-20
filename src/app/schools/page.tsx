@@ -39,21 +39,21 @@ export default function SchoolsDirectoryPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-12">
       {/* Header Banner */}
-      <section className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-slate-950 via-emerald-950 to-slate-900 text-white p-8 sm:p-12 lg:p-14 border border-emerald-800/40 shadow-2xl">
-        <div className="absolute -top-16 -right-16 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-16 w-96 h-96 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
+      <section className="clay-banner-mint relative overflow-hidden text-[#0F2F2E] p-8 sm:p-12 lg:p-14">
+        <div className="absolute -top-16 -right-16 w-96 h-96 bg-white/30 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-96 h-96 bg-amber-300/20 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 max-w-3xl space-y-5">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-400/20 border border-emerald-400/30 text-emerald-300 text-xs sm:text-sm font-bold">
-            <School className="w-4 h-4 text-emerald-400" />
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/85 text-[#0F766E] text-xs sm:text-sm font-black shadow-sm">
+            <School className="w-4 h-4 text-[#0F766E]" />
             <span>المؤسسات والمدارس التي تعتمد برنامج العقل الخارق رسمياً</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0F2F2E] leading-tight">
             المدارس والمؤسسات التي تعتمد برنامج العقل الخارق
           </h1>
 
-          <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
+          <p className="text-[#114542] text-sm sm:text-base font-medium leading-relaxed">
             المدارس الأهلية المعتمدة التي تعتمد وتتبنى رسمياً مناهج وحقائب برنامج العقل الخارق وتدريس السوروبان والفلاش أنزان بإشراف وتأليف الأستاذ قتادة كريم.
           </p>
 
@@ -61,20 +61,20 @@ export default function SchoolsDirectoryPage() {
             <button
               type="button"
               onClick={() => {
-                playFx("click");
+                playFx("pop");
                 setModalOpen(true);
               }}
-              className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2"
+              className="clay-btn-purple px-6 py-3.5 font-black text-xs sm:text-sm flex items-center gap-2"
             >
-              <School className="w-4 h-4 text-slate-950" />
+              <School className="w-4 h-4" />
               <span>أدرج مدرستك في الدليل مباشرة (مراجعة واعتماد)</span>
             </button>
 
             <Link
               href="/trainers"
-              className="px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm border border-white/20 transition-colors flex items-center gap-2"
+              className="clay-btn-secondary px-5 py-3.5 font-bold text-xs sm:text-sm flex items-center gap-2"
             >
-              <Award className="w-4 h-4 text-amber-400" />
+              <Award className="w-4 h-4 text-amber-500" />
               <span>قسم الاعتمادات والمدربين</span>
             </Link>
           </div>

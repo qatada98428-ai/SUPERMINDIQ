@@ -4,6 +4,20 @@
  */
 
 import { soundSynth } from "@/lib/audio-synthesizer";
+import {
+  numberToArabicWords as fullArabicWords,
+  numberToEnglishWords as fullEnglishWords,
+  formatTermSpeechText,
+  loadSpeechPreferences,
+  discoverRealVoices,
+  SpeechPreferences,
+} from "@/lib/speech-engine";
+
+export {
+  fullArabicWords as numberToArabicWords,
+  fullEnglishWords as numberToEnglishWords,
+  formatTermSpeechText,
+};
 
 export interface SorobanRodState {
   upper: boolean; // Upper deck bead (worth 5 when active, pushed toward reckoning beam)
@@ -550,105 +564,60 @@ export function generateFlashAnzanSeries(config: FlashAnzanConfig): number[] {
 /**
  * Comfortable & Soothing Sound Player
  */
-export function playSoundEffect(type: "beep" | "correct" | "wrong" | "tick") {
+export function playSoundEffect(
+  type: "beep" | "correct" | "wrong" | "tick" | "ready" | "complete" | "combo" | "excellent" | "levelup"
+) {
   if (typeof window === "undefined") return;
   try {
     if (type === "beep") {
-      soundSynth.playFlashBeep(0.22);
+      soundSynth.playFlashCue("number");
+    } else if (type === "ready") {
+      soundSynth.playFlashCue("ready");
+    } else if (type === "complete") {
+      soundSynth.playFlashCue("complete");
     } else if (type === "tick") {
-      soundSynth.playBeadClick(640, 0.12);
+      soundSynth.playSound("flash-countdown");
     } else if (type === "correct") {
-      soundSynth.playSuccessChime(0.28);
+      soundSynth.playCorrectFeedback(1);
+    } else if (type === "combo") {
+      soundSynth.playCorrectFeedback(2);
+    } else if (type === "excellent") {
+      soundSynth.playOutcomeSound("excellent");
+    } else if (type === "levelup") {
+      soundSynth.playOutcomeSound("levelup");
     } else if (type === "wrong") {
-      soundSynth.playEncouragingMistake(0.22);
+      soundSynth.playSound("wrong");
     }
   } catch {
     // Ignore audio errors
   }
 }
 
-const ARABIC_ONES = [
-  "صفر", "واحد", "اثنان", "ثلاثة", "أربعة",
-  "خمسة", "ستة", "سبعة", "ثمانية", "تسعة",
-  "عشرة", "أحد عشر", "اثنا عشر", "ثلاثة عشر", "أربعة عشر",
-  "خمسة عشر", "ستة عشر", "سبعة عشر", "ثمانية عشر", "تسعة عشر",
-];
-
-const ARABIC_TENS = [
-  "", "", "عشرون", "ثلاثون", "أربعون",
-  "خمسون", "ستون", "سبعون", "ثمانون", "تسعون",
-];
-
-const ARABIC_HUNDREDS = [
-  "", "مئة", "مئتان", "ثلاثمئة", "أربعمئة",
-  "خمسمئة", "ستمئة", "سبعمئة", "ثمانمئة", "تسعمئة",
-];
-
-/**
- * Converts an integer (0..9999) into clear, natural Arabic words for crisp TTS pronunciation
- */
-export function numberToArabicWords(n: number): string {
-  const abs = Math.abs(Math.floor(n));
-  if (abs < 20) return ARABIC_ONES[abs];
-  if (abs < 100) {
-    const u = abs % 10;
-    const t = Math.floor(abs / 10);
-    return u === 0 ? ARABIC_TENS[t] : `${ARABIC_ONES[u]} و${ARABIC_TENS[t]}`;
-  }
-  if (abs < 1000) {
-    const h = Math.floor(abs / 100);
-    const rem = abs % 100;
-    return rem === 0 ? ARABIC_HUNDREDS[h] : `${ARABIC_HUNDREDS[h]} و${numberToArabicWords(rem)}`;
-  }
-  return abs.toString();
-}
-
-const ENGLISH_ONES = [
-  "Zero", "One", "Two", "Three", "Four",
-  "Five", "Six", "Seven", "Eight", "Nine",
-  "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen",
-  "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen",
-];
-
-const ENGLISH_TENS = [
-  "", "", "Twenty", "Thirty", "Forty",
-  "Fifty", "Sixty", "Seventy", "Eighty", "Ninety",
-];
-
-export function numberToEnglishWords(n: number): string {
-  const abs = Math.abs(Math.floor(n));
-  if (abs < 20) return ENGLISH_ONES[abs];
-  if (abs < 100) {
-    const u = abs % 10;
-    const t = Math.floor(abs / 10);
-    return u === 0 ? ENGLISH_TENS[t] : `${ENGLISH_TENS[t]} ${ENGLISH_ONES[u]}`;
-  }
-  return abs.toString();
-}
-
 let cachedVoices: SpeechSynthesisVoice[] = [];
 
-function getBestVoice(langPrefix: "ar" | "en"): SpeechSynthesisVoice | null {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) return null;
-  if (cachedVoices.length === 0) {
-    cachedVoices = window.speechSynthesis.getVoices();
+export function getRawBrowserVoices(): SpeechSynthesisVoice[] {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return [];
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length > 0) cachedVoices = voices;
+  return cachedVoices;
+}
+
+function resolveSpeechVoice(
+  langMode: "arabic" | "english",
+  preferredVoiceUri?: string
+): SpeechSynthesisVoice | null {
+  const voices = getRawBrowserVoices();
+  if (voices.length === 0) return null;
+
+  if (preferredVoiceUri) {
+    const exact = voices.find((v) => v.voiceURI === preferredVoiceUri);
+    if (exact) return exact;
   }
-  const matching = cachedVoices.filter((v) =>
-    v.lang.toLowerCase().startsWith(langPrefix)
-  );
-  if (matching.length === 0) return null;
-  // Prefer Google / Microsoft / Apple high-quality natural voices
-  const preferred = matching.find(
-    (v) =>
-      v.name.includes("Google") ||
-      v.name.includes("Microsoft") ||
-      v.name.includes("Natural") ||
-      v.name.includes("Maged") ||
-      v.name.includes("Tarik") ||
-      v.name.includes("Hoda") ||
-      v.localService
-  );
-  return preferred || matching[0];
+
+  const catalog = discoverRealVoices(voices, langMode);
+  return catalog.all.length > 0
+    ? voices.find((v) => v.voiceURI === catalog.all[0].voiceURI) || null
+    : null;
 }
 
 if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -673,96 +642,194 @@ export function warmupSpeechEngine() {
   }
 }
 
+export function stopActiveSpeech() {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+  } catch {
+    // Ignore
+  }
+}
+
+function getEffectiveSpeechSettings(overrides?: Partial<SpeechPreferences>): SpeechPreferences {
+  const saved = loadSpeechPreferences();
+  return {
+    ...saved,
+    ...overrides,
+  };
+}
+
+function getEffectiveSpeechVolume(): number {
+  const audioPrefs = soundSynth.getPreferences();
+  if (!audioPrefs.masterEnabled) return 0;
+  return Math.max(0, Math.min(1, audioPrefs.masterVolume));
+}
+
 /**
- * Speaks a flashed/question number clearly in Arabic or English, or plays a clean click if off
+ * Automatically tunes speech playback rate to match Flash Anzan question speed (showDelayMs).
+ */
+export function computeAdaptiveSpeechRate(speedMs = 800): number {
+  if (speedMs <= 420) return 1.95;
+  if (speedMs <= 550) return 1.75;
+  if (speedMs <= 750) return 1.52;
+  if (speedMs <= 950) return 1.32;
+  if (speedMs <= 1250) return 1.15;
+  return 1.02;
+}
+
+function createConfiguredUtterance(
+  text: string,
+  langMode: "arabic" | "english",
+  prefs: SpeechPreferences,
+  speedMs?: number
+): SpeechSynthesisUtterance {
+  const utterance = new SpeechSynthesisUtterance(text);
+  const targetUri = langMode === "arabic" ? prefs.voiceUriAr : prefs.voiceUriEn;
+  const voice = resolveSpeechVoice(langMode, targetUri);
+  if (voice) utterance.voice = voice;
+  utterance.lang = voice?.lang || (langMode === "arabic" ? "ar-SA" : "en-US");
+  const rate = speedMs !== undefined ? computeAdaptiveSpeechRate(speedMs) : 1.25;
+  utterance.rate = Math.max(0.5, Math.min(2.0, rate));
+  utterance.pitch = 1.04;
+  utterance.volume = getEffectiveSpeechVolume();
+  return utterance;
+}
+
+/**
+ * Speaks a flashed/question number cleanly according to fixed-speed rules.
+ * Always plays synchronized short flash pip first (subject to independent flash audio toggle).
  */
 export function speakSorobanNumber(
   num: number,
   voiceMode: "arabic" | "english" | "off",
-  speedMs = 700
+  speedMs = 700,
+  overrides?: Partial<SpeechPreferences>
 ) {
   if (typeof window === "undefined") return;
 
-  if (voiceMode === "off" || !("speechSynthesis" in window)) {
-    playSoundEffect("beep");
+  // Always play ultra-short crystal digital cue strictly synced to the digit appearance (zero delay)
+  soundSynth.playFlashCue("number");
+
+  const prefs = getEffectiveSpeechSettings(overrides);
+  const volume = getEffectiveSpeechVolume();
+  if (voiceMode === "off" || volume <= 0 || !("speechSynthesis" in window)) {
     return;
   }
 
-  // Play a gentle subtle tick so there is immediate tactile feedback alongside the voice
-  playSoundEffect("tick");
+  // At extreme rapid fixed speeds (<= 300ms), keep crisp digital cue only so OS TTS never queues
+  if (speedMs <= 300) {
+    return;
+  }
 
   try {
     window.speechSynthesis.cancel();
-    const isNeg = num < 0;
-    const abs = Math.abs(num);
-
-    let text = "";
-    if (voiceMode === "arabic") {
-      const words = numberToArabicWords(abs);
-      text = isNeg ? `ناقص ${words}` : words;
-    } else {
-      const words = numberToEnglishWords(abs);
-      text = isNeg ? `Minus ${words}` : words;
-    }
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    const voice = getBestVoice(voiceMode === "arabic" ? "ar" : "en");
-    if (voice) utterance.voice = voice;
-    utterance.lang = voiceMode === "arabic" ? "ar-SA" : "en-US";
-
-    // Adapt rate dynamically to flash speed so fast flashes are never cut off
-    if (speedMs <= 400) {
-      utterance.rate = 2.0;
-    } else if (speedMs <= 650) {
-      utterance.rate = 1.75;
-    } else if (speedMs <= 900) {
-      utterance.rate = 1.5;
-    } else {
-      utterance.rate = 1.3;
-    }
-
-    utterance.pitch = 1.05;
-    utterance.volume = 1.0;
+    const text = formatTermSpeechText(num, voiceMode);
+    const utterance = createConfiguredUtterance(text, voiceMode, prefs, speedMs);
     window.speechSynthesis.speak(utterance);
   } catch {
-    playSoundEffect("beep");
+    // Speech unavailable; digital cue already played cleanly
   }
 }
 
 /**
- * Speaks a full question sequence (e.g. "4, زائد 5, ناقص 2") for voice/competition mode
+ * Async variant for Flash Anzan Synchronized Speech mode:
+ * Speaks the full number tuned to speedMs and invokes onComplete when speech finishes.
+ */
+export function speakSorobanNumberAsync(
+  num: number,
+  voiceMode: "arabic" | "english" | "off",
+  options: {
+    speedMs?: number;
+    minVisibleMs?: number;
+    maxWaitMs?: number;
+    overrides?: Partial<SpeechPreferences>;
+    onComplete: () => void;
+  }
+): () => void {
+  if (typeof window === "undefined") {
+    options.onComplete();
+    return () => {};
+  }
+
+  soundSynth.playFlashCue("number");
+
+  const prefs = getEffectiveSpeechSettings(options.overrides);
+  const volume = getEffectiveSpeechVolume();
+  const minVisibleMs = options.minVisibleMs ?? 320;
+  const maxWaitMs = options.maxWaitMs ?? 4500;
+  const startedAt = Date.now();
+
+  let settled = false;
+  let minTimer: ReturnType<typeof setTimeout> | null = null;
+  let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const cleanup = () => {
+    settled = true;
+    if (minTimer) clearTimeout(minTimer);
+    if (fallbackTimer) clearTimeout(fallbackTimer);
+  };
+
+  const finishRespectingMin = () => {
+    if (settled) return;
+    const elapsed = Date.now() - startedAt;
+    const remaining = Math.max(0, minVisibleMs - elapsed);
+    if (remaining === 0) {
+      cleanup();
+      options.onComplete();
+    } else {
+      minTimer = setTimeout(() => {
+        if (!settled) {
+          cleanup();
+          options.onComplete();
+        }
+      }, remaining);
+    }
+  };
+
+  if (voiceMode === "off" || volume <= 0 || !("speechSynthesis" in window)) {
+    fallbackTimer = setTimeout(finishRespectingMin, minVisibleMs);
+    return cleanup;
+  }
+
+  try {
+    window.speechSynthesis.cancel();
+    const text = formatTermSpeechText(num, voiceMode);
+    const utterance = createConfiguredUtterance(text, voiceMode, prefs, options.speedMs);
+
+    utterance.onend = () => finishRespectingMin();
+    utterance.onerror = () => finishRespectingMin();
+    fallbackTimer = setTimeout(finishRespectingMin, maxWaitMs);
+
+    window.speechSynthesis.speak(utterance);
+  } catch {
+    fallbackTimer = setTimeout(finishRespectingMin, minVisibleMs);
+  }
+
+  return cleanup;
+}
+
+/**
+ * Speaks a full question sequence following SUPER MIND rules (NO "زائد"/"Plus" on addition).
  */
 export function speakQuestionSequence(
   series: number[],
-  voiceMode: "arabic" | "english" | "off"
+  voiceMode: "arabic" | "english" | "off",
+  overrides?: Partial<SpeechPreferences>
 ) {
-  if (typeof window === "undefined" || voiceMode === "off" || !("speechSynthesis" in window)) {
-    playSoundEffect("beep");
+  if (typeof window === "undefined") return;
+  const prefs = getEffectiveSpeechSettings(overrides);
+  const volume = getEffectiveSpeechVolume();
+
+  if (voiceMode === "off" || volume <= 0 || !("speechSynthesis" in window)) {
+    soundSynth.playFlashCue("number");
     return;
   }
 
   try {
     window.speechSynthesis.cancel();
-    const parts = series.map((n, idx) => {
-      const abs = Math.abs(n);
-      if (voiceMode === "arabic") {
-        const w = numberToArabicWords(abs);
-        if (idx === 0) return n < 0 ? `ناقص ${w}` : w;
-        return n < 0 ? `ناقص ${w}` : `زائد ${w}`;
-      } else {
-        const w = numberToEnglishWords(abs);
-        if (idx === 0) return n < 0 ? `Minus ${w}` : w;
-        return n < 0 ? `Minus ${w}` : `Plus ${w}`;
-      }
-    });
-
-    const text = parts.join(" ، ");
-    const utterance = new SpeechSynthesisUtterance(text);
-    const voice = getBestVoice(voiceMode === "arabic" ? "ar" : "en");
-    if (voice) utterance.voice = voice;
-    utterance.lang = voiceMode === "arabic" ? "ar-SA" : "en-US";
-    utterance.rate = 1.35;
-    utterance.pitch = 1.05;
+    const parts = series.map((n) => formatTermSpeechText(n, voiceMode));
+    const text = parts.join(voiceMode === "arabic" ? " ، " : ", ");
+    const utterance = createConfiguredUtterance(text, voiceMode, prefs, 800);
     window.speechSynthesis.speak(utterance);
   } catch {
     // Ignore
@@ -770,16 +837,20 @@ export function speakQuestionSequence(
 }
 
 /**
- * Speaks countdown numbers (3, 2, 1, Go / ابدأ)
+ * Plays countdown ticks (3, 2, 1, Go / ابدأ) respecting Flash Anzan & global settings.
  */
 export function speakSorobanCountdown(
   count: number,
-  voiceMode: "arabic" | "english" | "off"
+  voiceMode: "arabic" | "english" | "off",
+  overrides?: Partial<SpeechPreferences>
 ) {
   if (typeof window === "undefined") return;
-  playSoundEffect(count === 0 ? "correct" : "beep");
+  soundSynth.playFlashCue(count === 0 ? "ready" : "countdown");
 
-  if (voiceMode === "off" || !("speechSynthesis" in window)) return;
+  const prefs = getEffectiveSpeechSettings(overrides);
+  const volume = getEffectiveSpeechVolume();
+  if (voiceMode === "off" || volume <= 0 || !("speechSynthesis" in window)) return;
+
   try {
     window.speechSynthesis.cancel();
     const arMap: Record<number, string> = { 3: "ثلاثة", 2: "اثنان", 1: "واحد", 0: "ابدأ" };
@@ -787,14 +858,35 @@ export function speakSorobanCountdown(
     const text = voiceMode === "arabic" ? arMap[count] || "" : enMap[count] || "";
     if (!text) return;
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    const voice = getBestVoice(voiceMode === "arabic" ? "ar" : "en");
-    if (voice) utterance.voice = voice;
-    utterance.lang = voiceMode === "arabic" ? "ar-SA" : "en-US";
-    utterance.rate = 1.35;
-    utterance.pitch = 1.1;
+    const utterance = createConfiguredUtterance(text, voiceMode, prefs, 750);
     window.speechSynthesis.speak(utterance);
   } catch {
     // Ignore
+  }
+}
+
+/**
+ * Speaks a test sample phrase immediately using chosen language & device voice.
+ */
+export function speakTestSample(
+  langMode: "arabic" | "english",
+  overrides?: Partial<SpeechPreferences>
+): boolean {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
+  const prefs = getEffectiveSpeechSettings(overrides);
+  const volume = getEffectiveSpeechVolume();
+  if (volume <= 0) return false;
+
+  try {
+    window.speechSynthesis.cancel();
+    const sampleTerms = [25, -7, 14.5];
+    const sampleText = sampleTerms
+      .map((t) => formatTermSpeechText(t, langMode))
+      .join(langMode === "arabic" ? " ، " : ", ");
+    const utterance = createConfiguredUtterance(sampleText, langMode, prefs, 850);
+    window.speechSynthesis.speak(utterance);
+    return true;
+  } catch {
+    return false;
   }
 }

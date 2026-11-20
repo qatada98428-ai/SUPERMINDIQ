@@ -33,53 +33,56 @@ export default function SupportersPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-14">
       {/* Hero Section */}
-      <section className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white p-8 sm:p-14 lg:p-16 border border-indigo-800/40 shadow-2xl text-center">
-        <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-96 h-96 bg-rose-500/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-20 right-10 w-96 h-96 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
+      <section className="clay-banner-lavender relative overflow-hidden text-white p-7 sm:p-12 lg:p-14 text-center">
+        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-80 h-80 bg-rose-300/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 right-10 w-80 h-80 bg-amber-300/15 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 max-w-3xl mx-auto space-y-6">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-rose-500/20 border border-rose-400/30 text-rose-300 text-xs sm:text-sm font-bold">
-            <Heart className="w-4 h-4 text-rose-400 fill-rose-400" />
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/15 backdrop-blur-md border border-white/25 text-white text-xs sm:text-sm font-bold shadow-sm">
+            <Heart className="w-4 h-4 text-rose-300 fill-rose-300 shrink-0" />
             <span>{isEn ? "Social & Educational Mission" : "رسالة إنسانية وتعليمية مشتركة"}</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white leading-tight">
+          <h1 className="text-2xl sm:text-4xl lg:text-[2.75rem] font-black text-white leading-[1.28] tracking-tight">
             {isEn ? SUPPORTERS_CONTENT.enTitle : SUPPORTERS_CONTENT.title}
           </h1>
 
-          {/* User Exact Quote */}
-          <div className="p-6 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md space-y-3">
-            <p className="text-xl sm:text-2xl lg:text-3xl font-black text-amber-300 leading-snug">
+          {/* User Exact Quote inside Calm High-Contrast Glass Panel */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-[#1C1245]/45 border border-white/20 backdrop-blur-md shadow-lg space-y-3">
+            <p className="text-lg sm:text-2xl font-black text-amber-200 leading-relaxed">
               &quot;{isEn ? SUPPORTERS_CONTENT.enQuote : SUPPORTERS_CONTENT.quote}&quot;
             </p>
-            <p className="text-sm sm:text-base text-slate-200 leading-relaxed max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base text-indigo-50/90 leading-7 max-w-2xl mx-auto">
               {isEn ? SUPPORTERS_CONTENT.enBody : SUPPORTERS_CONTENT.body}
             </p>
           </div>
 
-          {/* User Exact Tagline & CTA */}
-          <p className="text-lg sm:text-xl font-bold text-emerald-300">
-            {isEn ? SUPPORTERS_CONTENT.enCallToAction : SUPPORTERS_CONTENT.callToAction}
-          </p>
+          {/* User Exact Tagline Badge & CTA */}
+          <div>
+            <p className="inline-flex items-center gap-2 px-5 py-2 rounded-2xl bg-emerald-400/15 border border-emerald-300/35 text-emerald-100 text-sm sm:text-base font-bold backdrop-blur-sm">
+              <Sparkles className="w-4 h-4 text-emerald-200 shrink-0" />
+              <span>{isEn ? SUPPORTERS_CONTENT.enCallToAction : SUPPORTERS_CONTENT.callToAction}</span>
+            </p>
+          </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+          <div className="flex flex-wrap items-center justify-center gap-3.5 pt-2">
             <a
               href={supporterLink}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => playFx("click")}
-              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-600 to-rose-600 hover:from-rose-400 hover:to-rose-500 text-white font-black text-base shadow-xl shadow-rose-500/30 transition-all hover:scale-105 active:scale-95 flex items-center gap-2.5"
+              className="px-7 py-3.5 rounded-2xl bg-gradient-to-b from-rose-400 to-rose-600 hover:from-rose-400 hover:to-rose-500 text-white font-black text-sm sm:text-base shadow-[0_12px_24px_-6px_rgba(244,63,94,0.45),inset_0_2px_3px_rgba(255,255,255,0.42),inset_0_-3px_0_rgba(159,18,57,0.35)] transition-all hover:-translate-y-0.5 active:scale-95 flex items-center gap-2.5"
             >
-              <HeartHandshake className="w-5 h-5 text-rose-200" />
+              <HeartHandshake className="w-5 h-5 text-rose-100" />
               <span>{isEn ? "Become a Platform Supporter" : "كن داعماً للمنصة"}</span>
               <ArrowIcon className="w-4 h-4" />
             </a>
 
             <Link
               href="/dashboard"
-              className="px-6 py-4 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/20 transition-colors flex items-center gap-2"
+              className="px-6 py-3.5 rounded-2xl bg-white/15 hover:bg-white/25 text-white font-bold text-sm sm:text-base border border-white/25 backdrop-blur-md transition-colors flex items-center gap-2"
             >
-              <GraduationCap className="w-4 h-4 text-amber-400" />
+              <GraduationCap className="w-4 h-4 text-amber-200" />
               <span>{isEn ? "Explore Free Platform" : "استكشف الأدوات المجانية للطلاب"}</span>
             </Link>
           </div>

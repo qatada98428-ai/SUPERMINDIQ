@@ -2,82 +2,101 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
+import { useApp } from "@/context/AppContext";
+import ClayIcon from "@/components/design-system/ClayIcon";
 
 export default function HeroIllustration() {
   const [clickedEquation, setClickedEquation] = useState(false);
+  const { language, playFx } = useApp();
+  const isEn = language === "en";
 
   return (
-    <div className="relative w-full max-w-lg mx-auto flex items-center justify-center px-3 py-5 sm:p-4 select-none">
-      {/* Decorative Lilac/Purple Backdrop Shape matching user screenshot */}
-      <div className="absolute -inset-4 sm:-inset-8 bg-indigo-100/70 rounded-[3.5rem] -rotate-3 scale-95 pointer-events-none -z-10" />
-      <div className="absolute -inset-2 bg-gradient-to-tr from-brand-300/30 via-purple-200/40 to-pink-100/30 rounded-[3rem] rotate-2 pointer-events-none -z-10 blur-xs" />
+    <div className="relative w-full max-w-md mx-auto flex items-center justify-center px-3 pt-6 pb-8 sm:p-4 select-none">
+      {/* Soft Pastel Clay Backdrop Halos */}
+      <div className="absolute -inset-3 sm:-inset-6 rounded-[3.25rem] bg-gradient-to-br from-[#EBE6FF] via-[#F7F5FF] to-[#DFF7F3] dark:from-[#24204A] dark:via-[#1C1A3A] dark:to-[#183536] -rotate-3 pointer-events-none -z-10 shadow-clay-sm" />
+      <div className="absolute top-6 right-4 w-56 h-56 rounded-full bg-brand-400/20 blur-3xl pointer-events-none -z-20" />
+      <div className="absolute bottom-4 left-4 w-48 h-48 rounded-full bg-amber-400/20 blur-3xl pointer-events-none -z-20" />
 
-      {/* Ambient background glowing circles */}
-      <div className="absolute -inset-4 bg-gradient-to-tr from-brand-500/20 via-purple-500/15 to-amber-400/15 rounded-[3rem] blur-2xl -z-20 animate-pulse-subtle" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-400/20 rounded-full blur-3xl -z-20" />
-
-      {/* Main Container with smooth floating motion */}
-      <div className="relative group w-full animate-float-slow transition-transform duration-500 hover:scale-[1.02]">
-        {/* Frame around image */}
-        <div className="relative rounded-[2.5rem] overflow-hidden bg-white/95 p-2.5 sm:p-3.5 shadow-2xl shadow-indigo-500/20 border-4 border-white backdrop-blur-sm">
-          <div className="relative rounded-[2rem] overflow-hidden bg-slate-950 aspect-[4/5] w-full">
+      {/* Main Sculpted 3D Clay Card showcasing Coach & SUPER MIND Champions */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="relative group w-full"
+      >
+        <div className="clay-card p-3 sm:p-4 overflow-visible space-y-3">
+          <div className="relative rounded-[24px] overflow-hidden bg-gradient-to-b from-[#1E3A8A] to-[#0F172A] aspect-square w-full">
             <Image
-              src="/images/coach-with-champions.jpg"
-              alt="الأستاذ قتادة كريم مع أبطال برنامج العقل الخارق المتوجين بكأس البطولة"
-              width={800}
-              height={1000}
+              src="/images/clay/hero-champions.jpg"
+              alt="الأستاذ قتادة كريم مع أبطال برنامج العقل الخارق SUPER MIND"
+              width={900}
+              height={900}
               priority
               className="w-full h-full object-cover object-top transform transition-transform duration-700 group-hover:scale-103"
             />
+          </div>
 
-            {/* Inner subtle gradient vignette & caption badge */}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent pointer-events-none flex items-end justify-center p-4">
-              <span className="text-[11px] sm:text-xs font-bold text-amber-300 bg-slate-950/85 px-3 py-1 rounded-full border border-amber-400/40 shadow-md">
-                🏆 الأستاذ قتادة كريم مع أبطال العقل الخارق
-              </span>
+          {/* Crisp Clay Coach Ribbon Below Artwork + Non-Overlapping Quick Challenge Pill */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-2xl bg-[#F7F5FE] dark:bg-[#242146] px-3.5 py-2.5 shadow-clay-sm border border-[#E7E3FA] dark:border-[#373369]">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <ClayIcon name="trophy" tone="gold" size="sm" />
+              <div className="min-w-0 text-start">
+                <div className="text-xs font-black text-[#1E1B3A] dark:text-white truncate">
+                  {isEn ? "SUPER MIND Champions" : "أبطال العقل الخارق"}
+                </div>
+                <div className="text-[11px] font-bold text-brand-600 dark:text-brand-300 truncate">
+                  {isEn ? "Coach Qatadah Karim" : "إشراف أ. قتادة كريم"}
+                </div>
+              </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setClickedEquation(!clickedEquation);
+                playFx("correct");
+              }}
+              className="clay-btn-purple px-3.5 py-1.5 !rounded-xl flex items-center gap-2 text-start cursor-pointer shrink-0"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping shrink-0" />
+              <div>
+                <span className="text-[9px] text-amber-200 font-bold block leading-tight">
+                  {isEn ? "Quick Math:" : "الحساب السريع:"}
+                </span>
+                <span dir="ltr" className="text-xs font-black font-mono text-white">
+                  34 + 58 ={" "}
+                  <span className="text-amber-300">
+                    {clickedEquation ? "92 ✔" : "92"}
+                  </span>
+                </span>
+              </div>
+            </button>
           </div>
         </div>
 
-        {/* Floating Badge 1: Top Right [- +] (Matches user screenshot) */}
-        <div className="absolute -top-2 right-1 sm:-top-5 sm:-right-4 animate-float z-20">
-          <div className="bg-white/95 backdrop-blur-md px-3 py-2 sm:px-4 sm:py-3 rounded-2xl shadow-xl border border-indigo-100 flex items-center justify-center text-indigo-600 font-black text-base sm:text-xl font-mono transform hover:scale-110 transition-transform">
-            <span>−+</span>
-          </div>
-        </div>
-
-        {/* Floating Badge 2: Center Left [÷] (Matches user screenshot) */}
-        <div className="absolute top-1/2 left-1 sm:-left-6 -translate-y-1/2 animate-float-delayed z-20">
-          <div className="bg-white/95 backdrop-blur-md px-3 py-2 sm:px-4 sm:py-3 rounded-2xl shadow-xl border border-blue-100 flex items-center justify-center text-blue-600 font-black text-base sm:text-xl font-mono transform hover:scale-110 transition-transform">
-            <span>÷</span>
-          </div>
-        </div>
-
-        {/* Floating Badge 3: Bottom Left [∞] (Matches user screenshot) */}
-        <div className="absolute -bottom-2 left-1 sm:-bottom-4 sm:-left-5 animate-float z-20">
-          <div className="bg-white/95 backdrop-blur-md px-3 py-2 sm:px-4 sm:py-3 rounded-2xl shadow-xl border border-purple-100 flex items-center justify-center text-purple-600 font-black text-lg sm:text-2xl font-mono transform hover:scale-110 transition-transform">
-            <span>∞</span>
-          </div>
-        </div>
-
-        {/* Interactive Floating Equation Pill (Matching the whiteboard in the photo: 34 + 58 = 92) */}
-        <div
-          onClick={() => setClickedEquation(!clickedEquation)}
-          className="absolute -bottom-4 right-2 sm:-bottom-5 sm:right-10 animate-float-delayed z-20 cursor-pointer"
+        {/* Floating Clay Pill 1: Top Right [- +] */}
+        <motion.div
+          animate={{ y: [0, -6, 0] }}
+          transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -top-3 right-1 sm:-top-4 sm:-right-3 z-20"
         >
-          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white px-4 py-2 rounded-2xl shadow-2xl border-2 border-amber-400/80 flex items-center gap-2 transform hover:scale-105 active:scale-95 transition-all">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <div className="text-right">
-              <span className="text-[10px] text-amber-300 font-bold block">تحدي الحساب السريع:</span>
-              <span dir="ltr" className="text-xs sm:text-sm font-black font-mono tracking-wide text-white">
-                34 + 58 = <span className="text-emerald-400 font-extrabold">{clickedEquation ? "92 ✔" : "92"}</span>
-              </span>
-            </div>
-            <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+          <div className="clay-pill px-3.5 py-2 text-brand-600 dark:text-brand-300 font-black text-base sm:text-xl font-mono">
+            −+
           </div>
-        </div>
-      </div>
+        </motion.div>
+
+        {/* Floating Clay Pill 2: Center Left [÷] */}
+        <motion.div
+          animate={{ y: [0, 7, 0] }}
+          transition={{ duration: 4.4, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
+          className="absolute top-1/3 left-0 sm:-left-4 z-20"
+        >
+          <div className="clay-pill w-11 h-11 flex items-center justify-center text-[#2CB5A3] font-black text-xl font-mono">
+            ÷
+          </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

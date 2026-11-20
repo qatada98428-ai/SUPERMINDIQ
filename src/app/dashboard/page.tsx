@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Sparkles,
   Zap,
@@ -27,7 +28,11 @@ import {
   Edit3,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useApp } from "@/context/AppContext";
 import { getWhatsAppLink } from "@/lib/constants";
+import ClayIcon from "@/components/design-system/ClayIcon";
+import { ClayProgressBar } from "@/components/design-system/ClayMotion";
+import { triggerClayCelebration } from "@/lib/celebrations";
 import {
   ExtendedUserProfile,
   RealTrainingSession,
@@ -47,6 +52,7 @@ import ProfileEditorModal from "@/components/profile/ProfileEditorModal";
 
 export default function StudentDashboardPage() {
   const { user, profile: authProfile, isGuest, guestProgress } = useAuth();
+  const { playFx } = useApp();
 
   const activeUserId = user?.id || "guest-local";
   const [extProfile, setExtProfile] = useState<ExtendedUserProfile | null>(null);
@@ -241,14 +247,14 @@ export default function StudentDashboardPage() {
         </div>
       )}
 
-      {/* 3. Top Welcome & Student Profile Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-l from-brand-700 via-brand-600 to-indigo-900 text-white p-6 sm:p-8 shadow-xl">
+      {/* 3. Screen-3 Inspired Rewards & Student Profile Clay Banner */}
+      <div className="clay-banner-lavender relative overflow-hidden text-white p-6 sm:p-8">
         <div className="absolute top-0 left-0 w-80 h-80 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
             {/* Student Avatar */}
             <div className="relative group shrink-0">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl overflow-hidden bg-white/15 border-2 border-amber-400 shadow-xl flex items-center justify-center">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-[26px] overflow-hidden bg-white/20 border-2 border-amber-300 shadow-clay flex items-center justify-center">
                 {extProfile.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -264,8 +270,11 @@ export default function StudentDashboardPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setShowProfileModal(true)}
-                className="absolute -bottom-2 -right-2 px-2.5 py-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[10px] shadow-md flex items-center gap-1 transition-transform hover:scale-105"
+                onClick={() => {
+                  playFx("pop");
+                  setShowProfileModal(true);
+                }}
+                className="clay-btn-amber absolute -bottom-2 -right-2 px-3 py-1 font-black text-[10px] flex items-center gap-1"
               >
                 <Camera className="w-3 h-3" />
                 <span>تعديل البروفايل</span>
@@ -274,7 +283,7 @@ export default function StudentDashboardPage() {
 
             <div className="space-y-2.5">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-amber-300 text-xs font-bold border border-white/20">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-amber-200 text-xs font-extrabold border border-white/25">
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>{extProfile.currentLevel}</span>
                 </span>
@@ -290,22 +299,22 @@ export default function StudentDashboardPage() {
                 )}
 
                 {subEval.isActive ? (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/30 border border-emerald-300/40 text-emerald-200 text-xs font-black">
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-400/25 border border-emerald-300/40 text-emerald-100 text-xs font-black">
                     <Crown className="w-3.5 h-3.5 text-amber-300" />
                     <span>مشترك فعال ({extProfile.subscription.planLabel})</span>
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/10 text-slate-200 text-xs font-bold">
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/15 text-white/90 text-xs font-bold">
                     <span>الباقة المجانية (متاح التعليم والمعداد والفلاش أنزان)</span>
                   </span>
                 )}
               </div>
 
               <h1 className="text-2xl sm:text-4xl font-black">
-                أهلاً بالبطل، {displayName} 👋
+                أحسنت يا بطل، {displayName} ⭐
               </h1>
 
-              <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm text-slate-200">
+              <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm text-white/90">
                 <div>
                   المدرب المشرف:{" "}
                   <span className="font-black text-amber-300">
@@ -313,16 +322,15 @@ export default function StudentDashboardPage() {
                   </span>
                 </div>
                 {extProfile.phone && (
-                  <div className="flex items-center gap-1 font-mono bg-white/10 px-2.5 py-0.5 rounded-lg">
+                  <div className="flex items-center gap-1 font-mono bg-white/15 px-2.5 py-0.5 rounded-xl">
                     <Phone className="w-3.5 h-3.5 text-emerald-300" />
                     <span>واتساب موثق: {extProfile.phone}</span>
                   </div>
                 )}
               </div>
 
-              {/* Subscription Date Info Bar if Active */}
               {subEval.isActive && extProfile.subscription.startDate && (
-                <div className="inline-flex flex-wrap items-center gap-3 px-3.5 py-1.5 rounded-xl bg-slate-950/35 border border-white/15 text-xs text-emerald-200">
+                <div className="inline-flex flex-wrap items-center gap-3 px-3.5 py-1.5 rounded-xl bg-slate-950/30 border border-white/15 text-xs text-emerald-200">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5 text-amber-300" />
                     <span>تاريخ الاشتراك: {formatDateAr(extProfile.subscription.startDate)}</span>
@@ -337,26 +345,181 @@ export default function StudentDashboardPage() {
             </div>
           </div>
 
-          {/* Quick Streak & Points & Profile Edit */}
-          <div className="flex flex-wrap items-center gap-3 self-stretch lg:self-auto justify-end">
-            <div className="flex-1 sm:flex-initial bg-white/15 backdrop-blur-md border border-white/20 rounded-2xl p-4 text-center min-w-[100px]">
-              <div className="flex items-center justify-center gap-1 text-amber-300 mb-1">
-                <Flame className="w-5 h-5 fill-amber-300" />
-                <span className="font-black font-mono text-xl">{extProfile.streakDays || 1}</span>
-              </div>
-              <div className="text-xs text-slate-200 font-medium">أيام الحماس</div>
+          {/* 3D Coin & Champion Character Card */}
+          <div className="flex items-center gap-3 self-stretch lg:self-auto justify-between sm:justify-end">
+            <div className="hidden sm:block w-36 rounded-[20px] overflow-hidden border-2 border-white/40 shadow-clay bg-[#C9B9FF] shrink-0">
+              <Image
+                src="/images/clay/champion-reward-kid.jpg"
+                alt="أنت نجم يا بطل"
+                width={320}
+                height={180}
+                className="w-full h-24 object-cover"
+              />
             </div>
 
-            <div className="flex-1 sm:flex-initial bg-white/15 backdrop-blur-md border border-white/20 rounded-2xl p-4 text-center min-w-[100px]">
-              <div className="flex items-center justify-center gap-1 text-sky-300 mb-1">
-                <Trophy className="w-5 h-5" />
-                <span className="font-black font-mono text-xl">{points}</span>
+            <div className="flex items-center gap-2.5">
+              <div className="rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 px-4 py-3 text-center min-w-[92px]">
+                <div className="flex items-center justify-center gap-1 text-amber-300 mb-0.5">
+                  <Flame className="w-5 h-5 fill-amber-300" />
+                  <span className="font-black font-mono text-xl">{extProfile.streakDays || 1}</span>
+                </div>
+                <div className="text-[11px] text-white/90 font-bold">أيام الحماس</div>
               </div>
-              <div className="text-xs text-slate-200 font-medium">نقاط التميز الحقيقية</div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  playFx("levelup");
+                  triggerClayCelebration("small");
+                }}
+                className="rounded-2xl bg-white text-[#1E1B3A] shadow-clay px-4 py-3 text-center min-w-[100px] hover:scale-105 active:scale-95 transition-transform"
+                title="اضغط للاحتفال بنقاطك!"
+              >
+                <div className="flex items-center justify-center gap-1 text-amber-500 mb-0.5">
+                  <ClayIcon name="star" tone="none" size="xs" />
+                  <span className="font-black font-mono text-xl text-[#1E1B3A]">{points}</span>
+                </div>
+                <div className="text-[11px] text-brand-700 font-extrabold">نقاط التميز</div>
+              </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* 3B. Screen-3 Inspired "Your Progress + Badges + Weekly Challenge" Trio */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* Progress 3-Column Card */}
+        <div className="lg:col-span-5 clay-card p-5 sm:p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base sm:text-lg font-black text-[#1E1B3A] dark:text-white">
+              تقدمك اليومي
+            </h2>
+            <Link
+              href="/progress"
+              className="text-xs font-extrabold text-brand-600 dark:text-brand-300 hover:underline"
+            >
+              التقرير المفصل
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2.5 pt-1">
+            <div className="rounded-2xl bg-[#F7F6FE] dark:bg-[#242146] p-3 text-center space-y-1.5 border border-[#ECE8FA] dark:border-[#363268]">
+              <ClayIcon name="book" tone="lavender" size="sm" className="mx-auto" />
+              <div className="text-xl font-black font-mono text-[#1E1B3A] dark:text-white">
+                {totalExercises}
+              </div>
+              <div className="text-[11px] font-bold text-[#6E6A94] dark:text-[#B3AED6]">
+                تمارين منجزة
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-[#F7F6FE] dark:bg-[#242146] p-3 text-center space-y-1.5 border border-[#ECE8FA] dark:border-[#363268]">
+              <ClayIcon name="flame" tone="peach" size="sm" className="mx-auto" />
+              <div className="text-xl font-black font-mono text-[#1E1B3A] dark:text-white">
+                {extProfile.streakDays || 1}
+              </div>
+              <div className="text-[11px] font-bold text-[#6E6A94] dark:text-[#B3AED6]">
+                سلسلة الأيام
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-[#F7F6FE] dark:bg-[#242146] p-3 text-center space-y-1.5 border border-[#ECE8FA] dark:border-[#363268]">
+              <ClayIcon name="medal" tone="gold" size="sm" className="mx-auto" />
+              <div className="text-xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+                {accuracyRate}%
+              </div>
+              <div className="text-[11px] font-bold text-[#6E6A94] dark:text-[#B3AED6]">
+                معدل الدقة
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 3D Badges Shelf */}
+        <div className="lg:col-span-4 clay-card p-5 sm:p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base sm:text-lg font-black text-[#1E1B3A] dark:text-white">
+              أوسمة البطل
+            </h2>
+            <span className="text-xs font-extrabold text-brand-600 dark:text-brand-300">
+              اضغط للاحتفال 🎉
+            </span>
+          </div>
+
+          <div className="grid grid-cols-4 gap-2 text-center">
+            {[
+              {
+                name: "الخطوة الأولى",
+                icon: "footprint" as const,
+                tone: "lavender" as const,
+                unlocked: totalExercises >= 1,
+              },
+              {
+                name: "عبقري الحساب",
+                icon: "math123" as const,
+                tone: "gold" as const,
+                unlocked: totalQuestions >= 10,
+              },
+              {
+                name: "نجم السرعة",
+                icon: "flash" as const,
+                tone: "mint" as const,
+                unlocked: accuracyRate >= 80,
+              },
+              {
+                name: "محب التعلّم",
+                icon: "book" as const,
+                tone: "pink" as const,
+                unlocked: true,
+              },
+            ].map((badge) => (
+              <button
+                key={badge.name}
+                type="button"
+                onClick={() => {
+                  if (badge.unlocked) {
+                    playFx("levelup");
+                    triggerClayCelebration("small");
+                  } else {
+                    playFx("pop");
+                  }
+                }}
+                className={`group flex flex-col items-center gap-1.5 p-1.5 rounded-2xl transition-transform hover:-translate-y-1 ${
+                  badge.unlocked ? "opacity-100" : "opacity-45 grayscale"
+                }`}
+              >
+                <ClayIcon name={badge.icon} tone={badge.tone} size="md" />
+                <span className="text-[10px] font-extrabold text-[#4F4A75] dark:text-[#D5D0F2] leading-tight">
+                  {badge.name}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Weekly Challenge Mascot Card */}
+        <div className="lg:col-span-3 clay-card p-5 flex items-center justify-between gap-3">
+          <div className="w-16 h-16 rounded-2xl overflow-hidden shrink-0 border border-[#ECE8FA] bg-white">
+            <Image
+              src="/images/clay/challenge-mascot.jpg"
+              alt="تحدي الأسبوع"
+              width={160}
+              height={160}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="text-xs font-black text-[#1E1B3A] dark:text-white">
+              التحدي الأسبوعي 🎁
+            </div>
+            <p className="text-[11px] font-semibold text-[#6E6A94] dark:text-[#B3AED6]">
+              أكمل {Math.min(10, totalExercises)} / 10 تمارين
+            </p>
+            <ClayProgressBar value={Math.min(10, totalExercises)} max={10} />
+          </div>
+          <ClayIcon name="gift" tone="pink" size="sm" />
+        </div>
+      </section>
 
       {/* 4. Official Admin Competitions & Challenges Section */}
       {adminCompetitions.length > 0 && (

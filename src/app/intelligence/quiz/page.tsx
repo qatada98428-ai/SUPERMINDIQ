@@ -22,8 +22,11 @@ import {
 } from "@/lib/kangaroo-data";
 import { COACH_INFO } from "@/lib/constants";
 import { soundSynth } from "@/lib/audio-synthesizer";
+import { useApp } from "@/context/AppContext";
+import { triggerClayCelebration } from "@/lib/celebrations";
 
 function QuizContent() {
+  const { soundEnabled: globalSound, playFx } = useApp();
   const searchParams = useSearchParams();
   const initialLevelParam = searchParams.get("level") || "all";
 
@@ -31,6 +34,7 @@ function QuizContent() {
   const [selectedPointsFilter, setSelectedPointsFilter] = useState<number>(0); // 0 = all
   const [mode, setMode] = useState<"practice" | "exam">("practice");
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [quizStreak, setQuizStreak] = useState(0);
 
   // Filtered questions
   const filteredQuestions = useMemo(() => {
@@ -58,6 +62,7 @@ function QuizContent() {
     setShowExplanation({});
     setIsSubmitted(false);
     setTimeLeft(45 * 60);
+    setQuizStreak(0);
   }, [selectedLevel, selectedPointsFilter, mode]);
 
   // Exam timer countdown
@@ -87,12 +92,24 @@ function QuizContent() {
     if (mode === "practice") {
       setShowExplanation((prev) => ({ ...prev, [currentQ.id]: true }));
       if (key === currentQ.correctAnswer) {
-        if (soundEnabled) soundSynth.playSuccessChime();
+        const nextStreak = quizStreak + 1;
+        setQuizStreak(nextStreak);
+        if (soundEnabled && globalSound) {
+          soundSynth.playCorrectFeedback(nextStreak);
+        }
+        if (nextStreak >= 2) {
+          triggerClayCelebration("small");
+        }
       } else {
-        if (soundEnabled) soundSynth.playEncouragingMistake();
+        setQuizStreak(0);
+        if (soundEnabled && globalSound) {
+          playFx("wrong");
+        }
       }
     } else {
-      if (soundEnabled) soundSynth.playBeadClick(560);
+      if (soundEnabled && globalSound) {
+        playFx("click");
+      }
     }
   };
 
@@ -115,8 +132,12 @@ function QuizContent() {
   const handleSubmitExam = () => {
     setIsSubmitted(true);
     const { totalScore, maxPossibleScore } = calculateResults();
-    if (maxPossibleScore > 0 && totalScore / maxPossibleScore >= 0.75) {
-      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+    const ratio = maxPossibleScore > 0 ? totalScore / maxPossibleScore : 0;
+    if (ratio >= 0.75) {
+      if (soundEnabled && globalSound) playFx("excellent");
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, disableForReducedMotion: true });
+    } else if (soundEnabled && globalSound) {
+      playFx("complete");
     }
   };
 
@@ -184,23 +205,23 @@ function QuizContent() {
             {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </button>
 
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
+          <div className="flex items-center bg-[#F2EFFE] dark:bg-[#242146] p-1 rounded-2xl border border-[#E4DFF9] dark:border-[#38346B] text-xs font-extrabold">
             <button
               onClick={() => setMode("practice")}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
+              className={`px-3.5 py-2 rounded-xl transition-all ${
                 mode === "practice"
-                  ? "bg-white text-brand-700 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "clay-btn-purple !rounded-xl"
+                  : "text-[#5E5985] dark:text-[#B3AED6] hover:text-[#1E1B3A]"
               }`}
             >
               🎓 نمط التدريب والشرح
             </button>
             <button
               onClick={() => setMode("exam")}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
+              className={`px-3.5 py-2 rounded-xl transition-all ${
                 mode === "exam"
-                  ? "bg-white text-indigo-700 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "clay-btn-purple !rounded-xl"
+                  : "text-[#5E5985] dark:text-[#B3AED6] hover:text-[#1E1B3A]"
               }`}
             >
               ⏱️ محاكاة الاختبار الزمني

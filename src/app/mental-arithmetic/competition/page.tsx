@@ -536,13 +536,19 @@ export default function MentalMathCompetitionPage() {
       const targetQuestions = overrideQuestions || questions;
       setStage("results");
       setResultsPage(0);
-      soundSynth.playCelebrationFanfare(0.35);
 
       const correctCnt = targetQuestions.filter(
         (q) =>
           q.userAnswer.trim() !== "" &&
           parseInt(q.userAnswer.trim(), 10) === q.correctAnswer
       ).length;
+
+      const ratio = correctCnt / Math.max(1, targetQuestions.length);
+      if (ratio >= 0.8) {
+        soundSynth.playOutcomeSound("excellent");
+      } else {
+        soundSynth.playOutcomeSound("complete");
+      }
 
       const primaryLevel: ArithmeticLevel = ruleGroups[0]?.level || "simple";
 

@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { COACH_INFO, getWhatsAppLink } from "@/lib/constants";
 import SorobanBeadVisualizer, { RodVisualConfig } from "@/components/soroban/SorobanBeadVisualizer";
+import { useApp } from "@/context/AppContext";
+import { triggerClayCelebration } from "@/lib/celebrations";
 
 interface Stage {
   id: number;
@@ -857,6 +859,7 @@ const LEARNING_STAGES: Stage[] = [
 ];
 
 export default function LearnPage() {
+  const { playFx } = useApp();
   const [activeStageId, setActiveStageId] = useState<number>(1);
   const [selectedQuizAnswer, setSelectedQuizAnswer] = useState<number | null>(null);
   const [quizSubmitted, setQuizSubmitted] = useState<boolean>(false);
@@ -864,6 +867,12 @@ export default function LearnPage() {
   const currentStage = LEARNING_STAGES.find((s) => s.id === activeStageId) || LEARNING_STAGES[0];
 
   const handleStageChange = (newId: number) => {
+    if (newId > activeStageId) {
+      playFx("levelup");
+      triggerClayCelebration("milestone");
+    } else if (newId !== activeStageId) {
+      playFx("toggle");
+    }
     setActiveStageId(newId);
     setSelectedQuizAnswer(null);
     setQuizSubmitted(false);
@@ -874,12 +883,20 @@ export default function LearnPage() {
 
   const handleQuizSelect = (idx: number) => {
     if (quizSubmitted) return;
+    playFx("click");
     setSelectedQuizAnswer(idx);
   };
 
   const handleQuizSubmit = () => {
     if (selectedQuizAnswer === null) return;
     setQuizSubmitted(true);
+    const isRight = selectedQuizAnswer === currentStage.interactiveCheck.correctIndex;
+    if (isRight) {
+      playFx("correct");
+      triggerClayCelebration("small");
+    } else {
+      playFx("wrong");
+    }
   };
 
   const progressPercentage = Math.round((activeStageId / LEARNING_STAGES.length) * 100);
@@ -914,8 +931,8 @@ export default function LearnPage() {
         </div>
       </div>
 
-      {/* Horizontal Stages Stepper Navigation */}
-      <div className="bg-white rounded-3xl p-3 sm:p-4 border border-slate-200/90 shadow-sm">
+      {/* Horizontal Clay Stages Stepper Navigation */}
+      <div className="clay-card p-3 sm:p-4">
         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
           {LEARNING_STAGES.map((stg) => {
             const isActive = stg.id === activeStageId;
@@ -924,10 +941,10 @@ export default function LearnPage() {
                 key={stg.id}
                 type="button"
                 onClick={() => handleStageChange(stg.id)}
-                className={`shrink-0 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 border ${
+                className={`shrink-0 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold transition-all flex items-center gap-2 ${
                   isActive
-                    ? "bg-brand-600 text-white border-brand-500 shadow-md shadow-brand-500/20 scale-102"
-                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                    ? "clay-btn-purple !rounded-2xl"
+                    : "clay-pill text-[#4F4A75] dark:text-[#D5D0F2] hover:text-brand-600"
                 }`}
               >
                 <span className="text-base">{stg.icon}</span>

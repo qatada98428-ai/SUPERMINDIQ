@@ -17,6 +17,7 @@ import {
 import SorobanBeadVisualizer, { RodVisualConfig } from "@/components/soroban/SorobanBeadVisualizer";
 import { COACH_INFO, getWhatsAppLink } from "@/lib/constants";
 import { soundSynth } from "@/lib/audio-synthesizer";
+import { triggerClayCelebration } from "@/lib/celebrations";
 
 type ActiveTab = "tables" | "multiplication" | "division";
 
@@ -91,14 +92,15 @@ export default function MultiplicationDivisionPage() {
 
     const q = testQuestions[currentTestQIdx];
     const isCorrect = chosen === q.ans;
+    const nextScore = isCorrect ? testScore + 1 : testScore;
 
     if (isCorrect) {
       setTestFeedback("correct");
-      setTestScore((s) => s + 1);
-      if (soundEnabled) soundSynth.playCelebrationFanfare();
+      setTestScore(nextScore);
+      if (soundEnabled) soundSynth.playCorrectFeedback(nextScore);
     } else {
       setTestFeedback("wrong");
-      playClick(300);
+      if (soundEnabled) soundSynth.playSound("wrong");
     }
 
     setTimeout(() => {
@@ -108,6 +110,14 @@ export default function MultiplicationDivisionPage() {
         setTestFeedback(null);
       } else {
         setTestStage("completed");
+        if (soundEnabled) {
+          if (nextScore >= 8) {
+            soundSynth.playOutcomeSound("excellent");
+            triggerClayCelebration("milestone");
+          } else {
+            soundSynth.playOutcomeSound("complete");
+          }
+        }
       }
     }, 1200);
   };

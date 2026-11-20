@@ -15,15 +15,15 @@ export default function SubscriptionsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
       {/* Header */}
-      <div className="text-center max-w-3xl mx-auto space-y-4">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 text-xs font-bold">
-          <Sparkles className="w-4 h-4 text-brand-600" />
+      <div className="clay-banner-lavender text-white p-7 sm:p-11 text-center max-w-5xl mx-auto space-y-4">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/20 border border-white/25 text-amber-200 text-xs sm:text-sm font-extrabold">
+          <Sparkles className="w-4 h-4" />
           <span>خطط ورخص الاشتراك الرسمية في منصة العقل الخارق</span>
         </div>
-        <h1 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white">
+        <h1 className="text-3xl sm:text-5xl font-black text-white">
           باقات الاشتراك للطلاب والمدربين والمدارس
         </h1>
-        <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base leading-relaxed">
+        <p className="text-white/90 text-sm sm:text-base leading-relaxed max-w-3xl mx-auto">
           قسم التعليم، المعداد الحر (السوروبان)، والفلاش أنزان متاحة مجاناً للجميع، مع 100 سؤال مجاناً كل شهر في محاكي المسابقة لكل طالب مسجل بحساب رسمي! وللوصول المفتوح بلا حدود وتوثيق الحساب اختر باقتك:
         </p>
       </div>
@@ -46,10 +46,8 @@ export default function SubscriptionsPage() {
           {SUBSCRIPTION_PLANS.student.map((plan) => (
             <div
               key={plan.id}
-              className={`rounded-3xl p-7 bg-white dark:bg-slate-900 border-2 flex flex-col justify-between transition-all hover:shadow-xl ${
-                plan.popular
-                  ? "border-brand-600 shadow-lg"
-                  : "border-slate-200 dark:border-slate-800"
+              className={`clay-card p-7 flex flex-col justify-between transition-all hover:-translate-y-1 ${
+                plan.popular ? "ring-2 ring-brand-500 shadow-glow" : ""
               }`}
             >
               <div className="space-y-4">
@@ -106,10 +104,8 @@ export default function SubscriptionsPage() {
           {SUBSCRIPTION_PLANS.trainer.map((plan) => (
             <div
               key={plan.id}
-              className={`rounded-3xl p-7 bg-white dark:bg-slate-900 border-2 flex flex-col justify-between transition-all hover:shadow-xl ${
-                plan.popular
-                  ? "border-amber-500 shadow-lg"
-                  : "border-slate-200 dark:border-slate-800"
+              className={`clay-card p-7 flex flex-col justify-between transition-all hover:-translate-y-1 ${
+                plan.popular ? "ring-2 ring-amber-400 shadow-glow" : ""
               }`}
             >
               <div className="space-y-4">

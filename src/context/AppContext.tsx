@@ -2,15 +2,45 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { Language, getTranslation } from "@/lib/translations";
-import { soundSynth } from "@/lib/audio-synthesizer";
+import {
+  AUDIO_STORAGE_KEYS,
+  loadStoredAudioPreferences,
+  soundSynth,
+} from "@/lib/audio-synthesizer";
 
 type ThemeMode = "light" | "dark";
+export type FxType =
+  | "click"
+  | "pop"
+  | "toggle"
+  | "bead"
+  | "modal_open"
+  | "modal_close"
+  | "correct"
+  | "combo"
+  | "complete"
+  | "excellent"
+  | "wrong"
+  | "fanfare"
+  | "levelup"
+  | "flash_countdown"
+  | "flash_ready"
+  | "flash_number"
+  | "flash_complete";
+
+interface PlayFxOptions {
+  streak?: number;
+  frequency?: number;
+}
 
 interface AppContextValue {
   language: Language;
   dir: "rtl" | "ltr";
   theme: ThemeMode;
   soundEnabled: boolean;
+  soundVolume: number;
+  flashSoundEnabled: boolean;
+  flashSoundVolume: number;
   t: (key: string) => string;
   setLanguage: (lang: Language) => void;
   toggleLanguage: () => void;
@@ -18,30 +48,38 @@ interface AppContextValue {
   toggleTheme: () => void;
   setSoundEnabled: (enabled: boolean) => void;
   toggleSound: () => void;
-  playFx: (type: "click" | "correct" | "wrong" | "fanfare" | "bead") => void;
+  setSoundVolume: (vol: number) => void;
+  setFlashSoundEnabled: (enabled: boolean) => void;
+  toggleFlashSound: () => void;
+  setFlashSoundVolume: (vol: number) => void;
+  playFx: (type: FxType, options?: PlayFxOptions) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
 
 const STORAGE_KEY_LANG = "supermind_lang";
 const STORAGE_KEY_THEME = "supermind_theme";
-const STORAGE_KEY_SOUND = "supermind_sound";
+
+function clampVolume(v: number): number {
+  if (!Number.isFinite(v)) return 0.8;
+  return Math.max(0, Math.min(1, v));
+}
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState] = useState<Language>("ar");
   const [theme, setThemeState] = useState<ThemeMode>("light");
   const [soundEnabled, setSoundEnabledState] = useState<boolean>(true);
+  const [soundVolume, setSoundVolumeState] = useState<number>(0.8);
+  const [flashSoundEnabled, setFlashSoundEnabledState] = useState<boolean>(true);
+  const [flashSoundVolume, setFlashSoundVolumeState] = useState<number>(0.85);
   const [mounted, setMounted] = useState<boolean>(false);
 
-  // Initialize from localStorage and system preference on client mount
   useEffect(() => {
-    // Language
     const savedLang = localStorage.getItem(STORAGE_KEY_LANG) as Language | null;
     if (savedLang === "ar" || savedLang === "en") {
       setLanguageState(savedLang);
     }
 
-    // Theme
     const savedTheme = localStorage.getItem(STORAGE_KEY_THEME) as ThemeMode | null;
     if (savedTheme === "light" || savedTheme === "dark") {
       setThemeState(savedTheme);
@@ -49,16 +87,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setThemeState("dark");
     }
 
-    // Sound
-    const savedSound = localStorage.getItem(STORAGE_KEY_SOUND);
-    if (savedSound !== null) {
-      setSoundEnabledState(savedSound === "true");
-    }
+    const prefs = loadStoredAudioPreferences();
+    setSoundEnabledState(prefs.masterEnabled);
+    setSoundVolumeState(prefs.masterVolume);
+    setFlashSoundEnabledState(prefs.flashEnabled);
+    setFlashSoundVolumeState(prefs.flashVolume);
+    soundSynth.setPreferences(prefs);
 
     setMounted(true);
+
+    // Passive first-gesture unlocker for Safari / Mobile browsers
+    const handleUnlock = () => {
+      soundSynth.unlockAndPreload(false);
+    };
+    window.addEventListener("pointerdown", handleUnlock, { once: true, passive: true });
+    window.addEventListener("keydown", handleUnlock, { once: true, passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", handleUnlock);
+      window.removeEventListener("keydown", handleUnlock);
+    };
   }, []);
 
-  // Update DOM when language changes
   useEffect(() => {
     if (!mounted) return;
     const dir = language === "ar" ? "rtl" : "ltr";
@@ -67,7 +116,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(STORAGE_KEY_LANG, language);
   }, [language, mounted]);
 
-  // Update DOM when theme changes
   useEffect(() => {
     if (!mounted) return;
     if (theme === "dark") {
@@ -78,11 +126,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(STORAGE_KEY_THEME, theme);
   }, [theme, mounted]);
 
-  // Update Sound in localStorage
   useEffect(() => {
     if (!mounted) return;
-    localStorage.setItem(STORAGE_KEY_SOUND, String(soundEnabled));
-  }, [soundEnabled, mounted]);
+    soundSynth.setPreferences({
+      masterEnabled: soundEnabled,
+      masterVolume: soundVolume,
+      flashEnabled: flashSoundEnabled,
+      flashVolume: flashSoundVolume,
+    });
+    try {
+      localStorage.setItem(AUDIO_STORAGE_KEYS.MASTER_ENABLED, String(soundEnabled));
+      localStorage.setItem(AUDIO_STORAGE_KEYS.MASTER_VOLUME, String(soundVolume));
+      localStorage.setItem(AUDIO_STORAGE_KEYS.FLASH_ENABLED, String(flashSoundEnabled));
+      localStorage.setItem(AUDIO_STORAGE_KEYS.FLASH_VOLUME, String(flashSoundVolume));
+    } catch {
+      // Ignore storage quota errors
+    }
+  }, [soundEnabled, soundVolume, flashSoundEnabled, flashSoundVolume, mounted]);
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
@@ -108,6 +168,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSoundEnabledState((curr) => !curr);
   }, []);
 
+  const setSoundVolume = useCallback((vol: number) => {
+    setSoundVolumeState(clampVolume(vol));
+  }, []);
+
+  const setFlashSoundEnabled = useCallback((enabled: boolean) => {
+    setFlashSoundEnabledState(enabled);
+  }, []);
+
+  const toggleFlashSound = useCallback(() => {
+    setFlashSoundEnabledState((curr) => !curr);
+  }, []);
+
+  const setFlashSoundVolume = useCallback((vol: number) => {
+    setFlashSoundVolumeState(clampVolume(vol));
+  }, []);
+
   const t = useCallback(
     (key: string) => {
       return getTranslation(key, language);
@@ -116,19 +192,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const playFx = useCallback(
-    (type: "click" | "correct" | "wrong" | "fanfare" | "bead") => {
+    (type: FxType, options?: PlayFxOptions) => {
       if (!soundEnabled) return;
       try {
-        if (type === "click") {
-          soundSynth.playBeadClick(520, 0.12);
-        } else if (type === "bead") {
-          soundSynth.playBeadClick(460, 0.18);
-        } else if (type === "correct") {
-          soundSynth.playCelebrationFanfare();
-        } else if (type === "wrong") {
-          soundSynth.playBeadClick(320, 0.25);
-        } else if (type === "fanfare") {
-          soundSynth.playCelebrationFanfare();
+        switch (type) {
+          case "click":
+          case "pop":
+            soundSynth.playSound("ui-click");
+            break;
+          case "toggle":
+            soundSynth.playSound("ui-toggle");
+            break;
+          case "bead":
+            soundSynth.playBeadClick(options?.frequency ?? 520, 0.85);
+            break;
+          case "modal_open":
+            soundSynth.playModalSound("open");
+            break;
+          case "modal_close":
+            soundSynth.playModalSound("close");
+            break;
+          case "correct":
+            soundSynth.playCorrectFeedback(options?.streak ?? 1);
+            break;
+          case "combo":
+            soundSynth.playCorrectFeedback(Math.max(2, options?.streak ?? 2));
+            break;
+          case "complete":
+            soundSynth.playOutcomeSound("complete");
+            break;
+          case "excellent":
+          case "fanfare":
+            soundSynth.playOutcomeSound("excellent");
+            break;
+          case "levelup":
+            soundSynth.playOutcomeSound("levelup");
+            break;
+          case "wrong":
+            soundSynth.playSound("wrong");
+            break;
+          case "flash_countdown":
+            soundSynth.playFlashCue("countdown");
+            break;
+          case "flash_ready":
+            soundSynth.playFlashCue("ready");
+            break;
+          case "flash_number":
+            soundSynth.playFlashCue("number");
+            break;
+          case "flash_complete":
+            soundSynth.playFlashCue("complete");
+            break;
         }
       } catch {
         // Audio error suppression
@@ -144,6 +258,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dir,
     theme,
     soundEnabled,
+    soundVolume,
+    flashSoundEnabled,
+    flashSoundVolume,
     t,
     setLanguage,
     toggleLanguage,
@@ -151,6 +268,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toggleTheme,
     setSoundEnabled,
     toggleSound,
+    setSoundVolume,
+    setFlashSoundEnabled,
+    toggleFlashSound,
+    setFlashSoundVolume,
     playFx,
   };
 
@@ -158,9 +279,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useApp() {
-  const context = useContext(AppContext);
-  if (!context) {
+  const ctx = useContext(AppContext);
+  if (!ctx) {
     throw new Error("useApp must be used within an AppProvider");
   }
-  return context;
+  return ctx;
 }

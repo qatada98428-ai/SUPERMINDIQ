@@ -22,8 +22,10 @@ import {
   LogOut,
   ArrowRight,
   ArrowLeft,
+  SlidersHorizontal,
 } from "lucide-react";
 import BrandLogo from "@/components/ui/BrandLogo";
+import AudioControlPanel from "@/components/ui/AudioControlPanel";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
 
@@ -31,6 +33,7 @@ export default function Navbar() {
   const { language, theme, soundEnabled, toggleLanguage, toggleTheme, toggleSound, playFx } = useApp();
   const { user, profile, role, isGuest, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [audioMenuOpen, setAudioMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -38,7 +41,7 @@ export default function Navbar() {
   const isHomePage = pathname === "/";
 
   const handleGoBack = () => {
-    playFx("click");
+    playFx("pop");
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();
     } else if (pathname.startsWith("/mental-arithmetic/")) {
@@ -48,7 +51,6 @@ export default function Navbar() {
     }
   };
 
-  // Clean, quiet navigation items with "الداعمون" highlighted with a distinctive prestigious theme
   const navItems = [
     { href: "/", label: "الرئيسية", enLabel: "Home", icon: Sparkles },
     { href: "/mental-arithmetic", label: "الحساب الذهني", enLabel: "Mental Math", icon: Calculator },
@@ -58,7 +60,7 @@ export default function Navbar() {
       label: "الداعمون",
       enLabel: "Supporters",
       icon: HeartHandshake,
-      isSpecial: true, // Special distinctive styling requested by user
+      isSpecial: true,
     },
     { href: "/about", label: "من نحن", enLabel: "About Us", icon: Users },
     { href: "/support", label: "الدعم الفني", enLabel: "Support", icon: HelpCircle },
@@ -70,46 +72,60 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors shadow-xs">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 min-w-0">
-        {/* Brand Logo + Back Button on non-home pages */}
-        <div className="min-w-0 flex items-center gap-1.5 sm:gap-3">
+    <header className="sticky top-0 z-40 w-full bg-white/92 dark:bg-[#181636]/92 backdrop-blur-xl border-b border-[#E6E2FA] dark:border-[#2E2B57] transition-colors shadow-[0_8px_28px_-10px_rgba(68,52,138,0.14)]">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-5 lg:px-8 h-14 sm:h-16 xl:h-[4.25rem] flex items-center justify-between gap-1.5 sm:gap-2 min-w-0">
+        {/* Brand Logo + Clay Back Pill */}
+        <div className="shrink-0 flex items-center gap-1.5 sm:gap-2">
           {!isHomePage && (
             <button
               type="button"
               onClick={handleGoBack}
-              className="shrink-0 px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-[11px] sm:text-sm flex items-center gap-1 border border-slate-200/80 dark:border-slate-700 transition-all active:scale-95 shadow-2xs"
+              className="clay-pill shrink-0 px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-[#2E2759] dark:text-[#F5F4FD] font-bold text-[11px] sm:text-sm flex items-center gap-1 active:scale-95"
               title={isEn ? "Go Back" : "رجوع للصفحة السابقة"}
             >
-              {isEn ? <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-600" /> : <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-600" />}
-              <span>{isEn ? "Back" : "رجوع"}</span>
+              {isEn ? (
+                <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-600" />
+              ) : (
+                <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-600" />
+              )}
+              <span className="hidden sm:inline">{isEn ? "Back" : "رجوع"}</span>
             </button>
           )}
-          <BrandLogo />
+          <BrandLogo compactOnTablet />
         </div>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden lg:flex items-center gap-1 xl:gap-2">
+        {/* Responsive Primary Navigation: Touch Clay Icons on md/lg, Clay Pill Icon + Text on xl+ */}
+        <nav
+          aria-label={isEn ? "Primary navigation" : "التنقل الرئيسي"}
+          className="hidden md:flex items-center gap-1.5 shrink-0"
+        >
           {navItems.map((item) => {
             const active = isActive(item.href);
+            const Icon = item.icon;
+            const itemLabel = isEn ? item.enLabel : item.label;
 
-            // Special Distinctive Styling for "الداعمون"
             if (item.isSpecial) {
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => playFx("click")}
-                  className={`px-3.5 py-1.5 rounded-2xl text-xs xl:text-sm font-black transition-all duration-300 flex items-center gap-1.5 border shadow-sm ${
+                  onClick={() => playFx("pop")}
+                  title={itemLabel}
+                  aria-label={itemLabel}
+                  className={`group w-10 h-10 xl:w-auto xl:h-auto xl:px-3.5 xl:py-2 rounded-2xl text-xs xl:text-[13px] font-black transition-all duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 ${
                     active
-                      ? "bg-gradient-to-r from-amber-500 to-rose-500 text-white border-amber-400 shadow-md scale-105"
-                      : "bg-gradient-to-r from-amber-500/10 via-rose-500/15 to-amber-500/10 dark:from-amber-950/40 dark:via-rose-950/50 dark:to-amber-950/40 text-rose-700 dark:text-rose-300 border-rose-300/80 dark:border-rose-700/60 hover:from-rose-500 hover:to-amber-500 hover:text-white hover:border-transparent hover:scale-105"
+                      ? "bg-gradient-to-b from-[#FB7185] to-[#E11D48] text-white shadow-[0_10px_20px_-6px_rgba(225,29,72,0.45),inset_0_2px_3px_rgba(255,255,255,0.45)]"
+                      : "bg-gradient-to-b from-[#FFF2F6] to-[#FFE0EA] dark:from-[#3D182C] dark:to-[#2C101F] text-[#C81E52] dark:text-[#FDA4AF] border border-[#FECDD6] dark:border-[#702446] shadow-clay-sm hover:-translate-y-0.5"
                   }`}
                 >
-                  <HeartHandshake className="w-4 h-4 text-rose-500 group-hover:text-white animate-pulse" />
-                  <span>{isEn ? item.enLabel : item.label}</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-400/30 text-amber-900 dark:text-amber-200 font-extrabold">
-                    ⭐️
+                  <HeartHandshake
+                    className={`w-4 h-4 shrink-0 ${
+                      active ? "text-white" : "text-rose-500 dark:text-rose-300"
+                    }`}
+                  />
+                  <span className="hidden xl:inline">{itemLabel}</span>
+                  <span className="hidden xl:inline-flex text-[10px] px-1.5 py-0.5 rounded-full bg-amber-300/40 text-amber-900 dark:text-amber-200 font-extrabold">
+                    ⭐
                   </span>
                 </Link>
               );
@@ -119,78 +135,109 @@ export default function Navbar() {
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => playFx("click")}
-                className={`px-3 py-2 rounded-xl text-sm font-bold transition-all duration-200 flex items-center gap-1.5 ${
+                onClick={() => playFx("pop")}
+                title={itemLabel}
+                aria-label={itemLabel}
+                className={`w-10 h-10 xl:w-auto xl:h-auto xl:px-3 xl:py-2 rounded-2xl text-[13px] font-bold transition-all duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 ${
                   active
-                    ? "bg-brand-50 dark:bg-brand-950/70 text-brand-700 dark:text-brand-300 shadow-xs"
-                    : "text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-slate-100/70 dark:hover:bg-slate-800/60"
+                    ? "clay-btn-purple !rounded-2xl"
+                    : "bg-[#F7F5FE] dark:bg-[#242146] text-[#4C4578] dark:text-[#D9D5F5] border border-[#E7E3FA] dark:border-[#363268] shadow-[0_4px_10px_-4px_rgba(68,52,138,0.1),inset_0_2px_2px_rgba(255,255,255,0.85)] dark:shadow-none hover:text-brand-600 dark:hover:text-brand-300 hover:-translate-y-0.5"
                 }`}
               >
-                <span>{isEn ? item.enLabel : item.label}</span>
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="hidden xl:inline">{itemLabel}</span>
               </Link>
             );
           })}
         </nav>
 
-        {/* Action Controls: Quiet and Uncluttered */}
+        {/* Action Controls */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Language, Day/Night Mode & Sound Controls */}
-          <div className="hidden sm:flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100/80 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          {/* Clay Pill Utilities */}
+          <div className="hidden sm:flex items-center gap-1 p-1 rounded-full bg-[#F2EFFE] dark:bg-[#242146] border border-[#E4DFF9] dark:border-[#38346B] shadow-inner">
             {isHomePage && (
               <button
                 onClick={() => {
                   toggleLanguage();
-                  playFx("click");
+                  playFx("toggle");
                 }}
                 title={isEn ? "التبديل إلى العربية" : "Switch to English"}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-black shadow-xs transition-colors"
+                className="clay-pill flex items-center gap-1 px-2.5 py-1.5 text-[#2E2759] dark:text-[#F5F4FD] text-xs font-black hover:scale-105 active:scale-95"
               >
-                <Globe className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                <Globe className="w-3.5 h-3.5 text-brand-600 dark:text-brand-300" />
                 <span>{isEn ? "عربي" : "EN"}</span>
               </button>
             )}
 
-            {/* Theme Mode Switcher */}
             <button
               onClick={() => {
                 toggleTheme();
-                playFx("click");
+                playFx("toggle");
               }}
               title={theme === "dark" ? "الوضع الفاتح" : "الوضع الليلي"}
-              className="p-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-xs transition-colors"
+              className="clay-pill p-1.5 text-[#2E2759] dark:text-[#F5F4FD] hover:scale-105 active:scale-95"
             >
               {theme === "dark" ? (
                 <Sun className="w-4 h-4 text-amber-400" />
               ) : (
-                <Moon className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                <Moon className="w-4 h-4 text-brand-600" />
               )}
             </button>
 
-            {/* Sound Toggle */}
-            <button
-              onClick={() => {
-                toggleSound();
-                if (!soundEnabled) playFx("click");
-              }}
-              title={soundEnabled ? "كتم الصوت" : "تشغيل الصوت"}
-              className="p-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-xs transition-colors"
-            >
-              {soundEnabled ? (
-                <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              ) : (
-                <VolumeX className="w-4 h-4 text-slate-400" />
+            <div className="relative flex items-center gap-0.5">
+              <button
+                onClick={() => {
+                  const next = !soundEnabled;
+                  toggleSound();
+                  if (next) setTimeout(() => playFx("toggle"), 30);
+                }}
+                title={soundEnabled ? "كتم الصوت" : "تشغيل الصوت"}
+                className="clay-pill p-1.5 text-[#2E2759] dark:text-[#F5F4FD] hover:scale-105 active:scale-95"
+              >
+                {soundEnabled ? (
+                  <Volume2 className="w-4 h-4 text-emerald-500" />
+                ) : (
+                  <VolumeX className="w-4 h-4 text-slate-400" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  playFx("toggle");
+                  setAudioMenuOpen((v) => !v);
+                }}
+                title={isEn ? "Audio Settings" : "إعدادات الصوت ومستواه"}
+                aria-label={isEn ? "Audio Settings" : "إعدادات الصوت ومستواه"}
+                aria-expanded={audioMenuOpen}
+                className="clay-pill p-1.5 text-[#5E5985] dark:text-[#C8C3EC] hover:text-brand-600 hover:scale-105 active:scale-95"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+              </button>
+
+              {audioMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setAudioMenuOpen(false)}
+                    aria-hidden="true"
+                  />
+                  <div className="absolute top-full end-0 mt-2.5 w-72 p-4 clay-card bg-white dark:bg-[#1E1B3E] z-50 border border-[#E6E2FA] dark:border-[#343063] shadow-xl">
+                    <AudioControlPanel compact />
+                  </div>
+                </>
               )}
-            </button>
+            </div>
           </div>
 
-          {/* Auth Action Controls */}
+          {/* Auth Controls */}
           {!isGuest && user ? (
-            <div className="flex items-center gap-1 sm:gap-1.5">
+            <div className="flex items-center gap-1.5">
               {role === "admin" && (
                 <Link
                   href="/admin"
-                  onClick={() => playFx("click")}
-                  className="px-2 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs shadow-sm flex items-center gap-1.5 transition-transform hover:scale-102"
+                  onClick={() => playFx("pop")}
+                  className="clay-btn-amber px-2.5 sm:px-3.5 py-1.5 !rounded-2xl font-black text-xs flex items-center gap-1.5"
                   title="لوحة الإدارة"
                 >
                   <ShieldCheck className="w-4 h-4 shrink-0" />
@@ -199,20 +246,20 @@ export default function Navbar() {
               )}
               <Link
                 href={role === "trainer" ? "/trainer" : "/dashboard"}
-                onClick={() => playFx("click")}
-                className="px-2 sm:px-3 py-1.5 rounded-xl bg-brand-50 dark:bg-brand-950/80 border border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 font-bold text-[11px] sm:text-xs flex items-center gap-1 sm:gap-1.5 max-w-[88px] sm:max-w-[130px]"
+                onClick={() => playFx("pop")}
+                className="clay-pill px-2.5 sm:px-3.5 py-1.5 text-brand-700 dark:text-brand-200 font-bold text-[11px] sm:text-xs flex items-center gap-1.5 max-w-[96px] sm:max-w-[140px]"
                 title={profile?.name || user.email || "حسابي"}
               >
-                <User className="w-3.5 h-3.5 shrink-0" />
+                <User className="w-3.5 h-3.5 shrink-0 text-brand-600 dark:text-brand-300" />
                 <span className="truncate">{profile?.name || user.email?.split("@")[0]}</span>
               </Link>
               <button
                 onClick={() => {
                   signOut();
-                  playFx("click");
+                  playFx("toggle");
                 }}
                 title={isEn ? "Sign Out" : "تسجيل الخروج"}
-                className="hidden sm:inline-flex p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                className="hidden sm:inline-flex clay-pill p-2 text-slate-500 hover:text-rose-600 dark:hover:text-rose-400"
               >
                 <LogOut className="w-3.5 h-3.5" />
               </button>
@@ -220,36 +267,92 @@ export default function Navbar() {
           ) : (
             <Link
               href="/login"
-              onClick={() => playFx("click")}
-              className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-[11px] sm:text-sm shadow-sm transition-all whitespace-nowrap"
+              onClick={() => playFx("pop")}
+              className="clay-btn-purple px-3.5 sm:px-5 py-2 !rounded-2xl font-extrabold text-[11px] sm:text-sm whitespace-nowrap"
             >
               {isEn ? "Sign In" : "تسجيل الدخول"}
             </Link>
           )}
 
-          {/* Mobile Menu Hamburger */}
+          {/* Mobile Quick Settings Button (< 640px only) */}
           <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 lg:hidden focus:outline-none"
-            aria-label="القائمة الرئيسية"
+            onClick={() => {
+              playFx("toggle");
+              setMobileMenuOpen(!mobileMenuOpen);
+            }}
+            className="clay-pill p-2 text-[#2E2759] dark:text-[#F5F4FD] sm:hidden focus:outline-none"
+            aria-label={isEn ? "Quick Settings & Menu" : "الإعدادات والقائمة"}
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* Direct Touch-Friendly Clay Icon Strip on Small Screens (< 768px) — Always Accessible Without Drawer */}
+      <nav
+        aria-label={isEn ? "Quick touch navigation" : "شريط الأيقونات السريع"}
+        className="flex md:hidden items-center justify-between gap-1 px-2 py-1.5 border-t border-[#E6E2FA] dark:border-[#2E2B57] bg-[#F8F7FE]/95 dark:bg-[#151332]/95"
+      >
+        {navItems.map((item) => {
+          const active = isActive(item.href);
+          const Icon = item.icon;
+          const itemLabel = isEn ? item.enLabel : item.label;
+
+          if (item.isSpecial) {
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => {
+                  playFx("pop");
+                  setMobileMenuOpen(false);
+                }}
+                title={itemLabel}
+                aria-label={itemLabel}
+                className={`flex-1 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 ${
+                  active
+                    ? "bg-gradient-to-b from-[#FB7185] to-[#E11D48] text-white shadow-md"
+                    : "bg-gradient-to-b from-[#FFF2F6] to-[#FFE0EA] dark:from-[#3D182C] dark:to-[#2C101F] text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-700/60 shadow-clay-sm"
+                }`}
+              >
+                <HeartHandshake className="w-4 h-4 shrink-0" />
+              </Link>
+            );
+          }
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => {
+                playFx("pop");
+                setMobileMenuOpen(false);
+              }}
+              title={itemLabel}
+              aria-label={itemLabel}
+              className={`flex-1 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 ${
+                active
+                  ? "clay-btn-purple !rounded-xl"
+                  : "bg-white dark:bg-[#221F44] text-[#554E82] dark:text-[#DAD6F7] border border-[#E7E3FA] dark:border-[#343063] shadow-clay-sm"
+              }`}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Mobile Utility Drawer (< 640px) */}
       {mobileMenuOpen && (
-        <div className="lg:hidden max-h-[calc(100vh-4rem)] overflow-y-auto border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md px-4 pt-4 pb-8 space-y-4 animate-in slide-in-from-top duration-200">
-          {/* Toggles inside Mobile Menu */}
-          <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+        <div className="sm:hidden max-h-[calc(100vh-7rem)] overflow-y-auto border-t border-[#E6E2FA] dark:border-[#2E2B57] bg-white/95 dark:bg-[#181636]/95 backdrop-blur-md px-4 pt-4 pb-6 space-y-4">
+          <div className="clay-card-sm flex items-center justify-between p-3 bg-[#F6F4FE] dark:bg-[#211E42]">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
                   toggleLanguage();
-                  playFx("click");
+                  playFx("toggle");
                 }}
-                className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-white font-black text-xs border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 shadow-xs"
+                className="clay-pill px-3 py-1.5 text-[#2E2759] dark:text-white font-black text-xs flex items-center gap-1.5"
               >
                 <Globe className="w-3.5 h-3.5 text-brand-600" />
                 <span>{isEn ? "العربية" : "English"}</span>
@@ -258,82 +361,46 @@ export default function Navbar() {
               <button
                 onClick={() => {
                   toggleTheme();
-                  playFx("click");
+                  playFx("toggle");
                 }}
-                className="p-2 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 shadow-xs"
+                className="clay-pill p-2 text-[#2E2759] dark:text-white"
               >
-                {theme === "dark" ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+                {theme === "dark" ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-brand-600" />}
               </button>
 
               <button
                 onClick={() => {
+                  const next = !soundEnabled;
                   toggleSound();
-                  if (!soundEnabled) playFx("click");
+                  if (next) setTimeout(() => playFx("toggle"), 30);
                 }}
-                className="p-2 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-slate-700 shadow-xs"
+                className="clay-pill p-2 text-[#2E2759] dark:text-white"
               >
                 {soundEnabled ? (
-                  <Volume2 className="w-4 h-4 text-emerald-600" />
+                  <Volume2 className="w-4 h-4 text-emerald-500" />
                 ) : (
                   <VolumeX className="w-4 h-4 text-slate-400" />
                 )}
               </button>
             </div>
 
-            <span className="text-xs text-slate-500 font-bold">
+            <span className="text-xs text-brand-600 dark:text-brand-300 font-extrabold">
               {isEn ? "SUPER MIND" : "العقل الخارق"}
             </span>
           </div>
 
-          {/* Clean Links in Drawer */}
-          <div className="flex flex-col gap-1.5">
-            {navItems.map((item) => {
-              const active = isActive(item.href);
-              const Icon = item.icon;
-
-              if (item.isSpecial) {
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="px-4 py-3 rounded-2xl text-sm font-black flex items-center justify-between bg-gradient-to-r from-amber-500/15 via-rose-500/20 to-amber-500/15 dark:from-amber-950/60 dark:via-rose-950/60 dark:to-amber-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-700"
-                  >
-                    <div className="flex items-center gap-3">
-                      <HeartHandshake className="w-5 h-5 text-rose-500 animate-pulse" />
-                      <span>{isEn ? item.enLabel : item.label}</span>
-                    </div>
-                    <span className="text-xs">⭐️ شركاء صناعة العقول</span>
-                  </Link>
-                );
-              }
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`px-4 py-3 rounded-xl text-sm font-bold flex items-center gap-3 transition-colors ${
-                    active
-                      ? "bg-brand-50 dark:bg-brand-950/70 text-brand-700 dark:text-brand-300 border-r-4 border-brand-600"
-                      : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900"
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 ${active ? "text-brand-600" : "text-slate-400"}`} />
-                  <span>{isEn ? item.enLabel : item.label}</span>
-                </Link>
-              );
-            })}
+          <div className="clay-card-sm p-3.5 bg-[#F6F4FE] dark:bg-[#211E42]">
+            <AudioControlPanel compact />
           </div>
 
-          <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <div className="pt-1 space-y-2">
             {!isGuest && user ? (
               <div className="space-y-2">
                 {role === "admin" && (
                   <Link
                     href="/admin"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs text-center flex items-center justify-center gap-2 shadow-sm"
+                    className="clay-btn-amber w-full py-3 font-black text-xs text-center flex items-center justify-center gap-2"
                   >
                     <ShieldCheck className="w-4 h-4" />
                     <span>الدخول إلى لوحة الإدارة العليا</span>
@@ -343,16 +410,16 @@ export default function Navbar() {
                   <Link
                     href={role === "trainer" ? "/trainer" : "/dashboard"}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex-1 py-2.5 rounded-xl bg-brand-600 text-white font-bold text-xs text-center"
+                    className="clay-btn-purple flex-1 py-2.5 font-bold text-xs text-center"
                   >
-                    {role === "trainer" ? "لوحة المدرب" : "لوحة الطالب"}
+                    {role === "trainer" ? "لوحة المدرب" : "بوابة الطالب"}
                   </Link>
                   <button
                     onClick={() => {
                       signOut();
                       setMobileMenuOpen(false);
                     }}
-                    className="px-4 py-2.5 rounded-xl bg-rose-50 text-rose-700 font-bold text-xs"
+                    className="clay-pill px-4 py-2.5 text-rose-600 dark:text-rose-300 font-bold text-xs"
                   >
                     خروج
                   </button>
@@ -363,14 +430,14 @@ export default function Navbar() {
                 <Link
                   href="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full inline-block text-center py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-md"
+                  className="clay-btn-purple w-full inline-block text-center py-3 font-bold text-sm"
                 >
                   {isEn ? "Sign In to Account" : "تسجيل الدخول للمنصة"}
                 </Link>
                 <Link
                   href="/mental-arithmetic"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full inline-block text-center py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs"
+                  className="clay-btn-mint w-full inline-block text-center py-2.5 font-bold text-xs"
                 >
                   {isEn ? "Practice as Guest (Free)" : "التدريب مجاناً (وضع الزائر)"}
                 </Link>

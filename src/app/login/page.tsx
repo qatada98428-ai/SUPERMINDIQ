@@ -154,7 +154,7 @@ export default function LoginPage() {
         )}
 
         {/* Main Form Card */}
-        <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-5">
+        <div className="clay-card p-6 sm:p-8 space-y-5">
           {/* Google OAuth Button */}
           <div>
             <button
@@ -216,7 +216,7 @@ export default function LoginPage() {
                   placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className={`w-full ${dir === "rtl" ? "pr-10 pl-3.5" : "pl-10 pr-3.5"} py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none transition-colors`}
+                  className={`clay-input w-full ${dir === "rtl" ? "pr-10 pl-3.5" : "pl-10 pr-3.5"} py-3 text-slate-900 dark:text-white text-sm`}
                 />
               </div>
             </div>
@@ -246,7 +246,7 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className={`w-full ${dir === "rtl" ? "pr-10 pl-3.5" : "pl-10 pr-3.5"} py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none transition-colors`}
+                  className={`clay-input w-full ${dir === "rtl" ? "pr-10 pl-3.5" : "pl-10 pr-3.5"} py-3 text-slate-900 dark:text-white text-sm`}
                 />
               </div>
             </div>
@@ -254,7 +254,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-black text-sm shadow-md shadow-brand-500/20 transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-70"
+              className="clay-btn-purple w-full py-3.5 font-black text-sm flex items-center justify-center gap-2 disabled:opacity-70"
             >
               {isSubmitting ? (
                 <>
@@ -281,23 +281,21 @@ export default function LoginPage() {
         {/* =========================================================================
             SECTION 2: PROMINENT GREEN GUEST MODE (تجربة المنصة مجاناً دون تسجيل)
            ========================================================================= */}
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700 text-white p-6 sm:p-7 shadow-xl shadow-emerald-600/20 border-2 border-emerald-400/80 space-y-4">
-          <div className="absolute -top-12 -right-12 w-44 h-44 bg-white/15 rounded-full blur-2xl pointer-events-none" />
-
+        <section className="clay-banner-mint relative overflow-hidden text-[#0F2F2E] p-6 sm:p-7 space-y-4">
           <div className="relative z-10 flex items-start gap-3.5">
-            <div className="p-3 rounded-2xl bg-white/20 backdrop-blur-md text-emerald-100 shrink-0 border border-white/25">
-              <Zap className="w-6 h-6 text-amber-300 fill-amber-300" />
+            <div className="p-3 rounded-2xl bg-white/75 backdrop-blur-md text-emerald-700 shrink-0 shadow-clay-sm">
+              <Zap className="w-6 h-6 text-amber-500 fill-amber-400" />
             </div>
 
             <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-black tracking-wide uppercase border border-white/20">
-                <Sparkles className="w-3 h-3 text-amber-300" />
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/80 text-[#0F766E] text-[10px] font-black tracking-wide uppercase">
+                <Sparkles className="w-3 h-3 text-amber-500" />
                 <span>{isEn ? "100% Free Practice" : "تدريب مجاني 100%"}</span>
               </div>
-              <h2 className="text-lg sm:text-xl font-black text-white leading-tight">
+              <h2 className="text-lg sm:text-xl font-black text-[#0F2F2E] leading-tight">
                 {isEn ? "Try the Platform Free Without Signing In!" : "جرّب المنصة مجاناً دون تسجيل!"}
               </h2>
-              <p className="text-emerald-100 text-xs leading-relaxed">
+              <p className="text-[#114542] text-xs font-medium leading-relaxed">
                 {isEn
                   ? "Start training immediately. Your progress, speed, and accuracy will be saved on this device and browser."
                   : "ابدأ التدريب فوراً، وسيُحفظ تقدمك على هذا الجهاز والمتصفح."}
@@ -309,13 +307,13 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleStartGuestMode}
-              className="w-full py-3.5 rounded-2xl bg-white hover:bg-emerald-50 text-emerald-950 font-black text-xs sm:text-sm shadow-lg transition-transform hover:scale-101 active:scale-98 flex items-center justify-center gap-2 group cursor-pointer"
+              className="clay-btn-secondary w-full py-3.5 font-black text-xs sm:text-sm flex items-center justify-center gap-2 group cursor-pointer text-[#0F766E]"
             >
               <span>{isEn ? "Start Training for Free" : "ابدأ التدريب مجاناً"}</span>
-              <ArrowIcon className="w-4 h-4 text-emerald-800 transition-transform group-hover:translate-x-1" />
+              <ArrowIcon className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </button>
 
-            <p className="text-[11px] text-emerald-200 text-center mt-2.5 leading-snug">
+            <p className="text-[11px] text-[#0F4E49] text-center mt-2.5 leading-snug font-medium">
               {isEn
                 ? "Note: Progress may be lost if browser cache is cleared. Create a free account to sync achievements across all devices."
                 : "قد يُفقد التقدم عند حذف بيانات المتصفح. أنشئ حساباً مجانياً لحفظ إنجازاتك عبر الأجهزة."}

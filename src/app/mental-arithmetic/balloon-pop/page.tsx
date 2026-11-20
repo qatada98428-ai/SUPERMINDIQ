@@ -23,6 +23,8 @@ import {
   isSimpleAddition,
   isSimpleSubtraction,
 } from "@/lib/soroban-engine";
+import { triggerClayCelebration } from "@/lib/celebrations";
+import { soundSynth } from "@/lib/audio-synthesizer";
 
 // ============================================================
 // TYPES
@@ -1126,6 +1128,7 @@ export default function BalloonPopPage() {
   const [balloonsDisabled, setBalloonsDisabled] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [wrongPopsThisRound, setWrongPopsThisRound] = useState(0);
+  const [balloonStreak, setBalloonStreak] = useState(0);
 
   const escapeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -1147,10 +1150,12 @@ export default function BalloonPopPage() {
 
   // ── Start game → go to countdown ────────────────────────────
   const startGame = useCallback((cfg: GameConfig) => {
+    soundSynth.unlockAndPreload(true);
     warmupSpeechEngine();
     setConfig(cfg);
     setTeams(cfg.teams.map((t) => ({ ...t, score: 0 })));
     setResults([]);
+    setBalloonStreak(0);
     setActiveTeamIdx(0);
     setupRound(cfg, 0);
     setPhase("countdown");
@@ -1164,6 +1169,7 @@ export default function BalloonPopPage() {
   // ── Flash done → show balloons ───────────────────────────────
   const handleFlashDone = useCallback(() => {
     if (!question || !config) return;
+    playFx("flash_complete");
     const bs = generateBalloons(question.answer, config.balloonCount);
     setBalloons(bs);
     setPhase("balloons");
@@ -1197,15 +1203,18 @@ export default function BalloonPopPage() {
       ]);
       setPhase("result");
     }, 13000);
-  }, [question, config, clearTimers, round, wrongPopsThisRound, activeTeamIdx]);
+  }, [question, config, clearTimers, round, wrongPopsThisRound, activeTeamIdx, playFx]);
 
   // ── Pop balloon ──────────────────────────────────────────────
   const handlePop = useCallback((id: string, value: number) => {
     if (!question || !config || balloonsDisabled) return;
     const isCorrect = value === question.answer;
-    playFx(isCorrect ? "correct" : "wrong");
 
     if (isCorrect) {
+      const nextStreak = balloonStreak + 1;
+      setBalloonStreak(nextStreak);
+      playFx(nextStreak >= 2 ? "combo" : "correct", { streak: nextStreak });
+      triggerClayCelebration(nextStreak >= 3 ? "milestone" : "small");
       clearTimers();
       setCountdown(null);
       setBalloonsDisabled(true);
@@ -1230,6 +1239,8 @@ export default function BalloonPopPage() {
       ]);
       setPhase("result");
     } else {
+      setBalloonStreak(0);
+      playFx("wrong");
       const newWrong = wrongPopsThisRound + 1;
       setWrongPopsThisRound(newWrong);
       setBalloons((prev) => prev.map((b) => b.id === id ? { ...b, state: "popped-wrong" } : b));
@@ -1261,7 +1272,7 @@ export default function BalloonPopPage() {
         }, 500);
       }
     }
-  }, [question, config, balloonsDisabled, activeTeamIdx, round, wrongPopsThisRound, clearTimers, playFx]);
+  }, [question, config, balloonsDisabled, activeTeamIdx, round, wrongPopsThisRound, balloonStreak, clearTimers, playFx]);
 
   // ── Next turn / Next round ───────────────────────────────────
   const handleNextRound = useCallback(() => {
@@ -1282,6 +1293,14 @@ export default function BalloonPopPage() {
     // All teams have completed the current round -> move to next round
     const nextRound = round + 1;
     if (nextRound >= config.totalRounds) {
+      const wins = results.filter((r) => r.correct).length;
+      const ratio = results.length > 0 ? wins / results.length : 0;
+      if (ratio >= 0.75) {
+        playFx("excellent");
+        triggerClayCelebration("milestone");
+      } else {
+        playFx("complete");
+      }
       setPhase("summary");
       return;
     }
@@ -1289,7 +1308,7 @@ export default function BalloonPopPage() {
     setupRound(config, nextRound);
     setBalloons([]);
     setPhase("countdown");
-  }, [config, round, activeTeamIdx, setupRound]);
+  }, [config, round, activeTeamIdx, results, setupRound, playFx]);
 
   // ── Restart ──────────────────────────────────────────────────
   const handleRestart = useCallback(() => { clearTimers(); setPhase("settings"); setConfig(null); }, [clearTimers]);

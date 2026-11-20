@@ -2,16 +2,17 @@
 
 import React from "react";
 import Link from "next/link";
-import {
-  TrendingUp,
-  Calendar,
-  ArrowLeft,
-} from "lucide-react";
+import Image from "next/image";
+import { Calendar, ArrowLeft } from "lucide-react";
 import { MOCK_STUDENT } from "@/lib/constants";
 import { useAuth } from "@/context/AuthContext";
+import { useApp } from "@/context/AppContext";
+import ClayIcon from "@/components/design-system/ClayIcon";
+import { ClayProgressBar } from "@/components/design-system/ClayMotion";
 
 export default function ProgressPage() {
   const { user, profile, isGuest, guestProgress } = useAuth();
+  const { playFx } = useApp();
   const student = MOCK_STUDENT;
 
   const displayName = isGuest
@@ -26,71 +27,114 @@ export default function ProgressPage() {
     : student.stats.accuracyRate;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
-        <div>
-          <h1 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <TrendingUp className="w-8 h-8 text-brand-600" />
-            <span>تقرير التقدم والأداء التحليلي</span>
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1">
-            سجل إنجازات وتطور سرعة ودقة الطالب: <strong className="text-slate-800 dark:text-slate-200">{displayName}</strong>
-            {isGuest && (
-              <span className="mr-2 text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold">
-                وضع الزائر (محفوظ على هذا المتصفح)
-              </span>
-            )}
-          </p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
+      {/* Header Clay Banner */}
+      <div className="clay-banner-lavender text-white p-6 sm:p-9 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-20 h-20 rounded-[22px] overflow-hidden border-2 border-white/50 shadow-clay shrink-0 bg-[#C9B9FF]">
+            <Image
+              src="/images/clay/champion-reward-kid.jpg"
+              alt="تقرير التقدم"
+              width={240}
+              height={140}
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-4xl font-black flex items-center gap-2.5">
+              <span>تقرير التقدم والأداء التحليلي</span>
+            </h1>
+            <p className="text-white/90 text-xs sm:text-sm mt-1">
+              سجل إنجازات وتطور سرعة ودقة الطالب:{" "}
+              <strong className="text-amber-200">{displayName}</strong>
+              {isGuest && (
+                <span className="mr-2 text-[10px] bg-white/20 text-white px-2.5 py-0.5 rounded-full font-bold">
+                  وضع الزائر (محفوظ على هذا المتصفح)
+                </span>
+              )}
+            </p>
+          </div>
         </div>
 
         <Link
           href="/dashboard"
-          className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm transition-colors flex items-center gap-1.5 self-start"
+          onClick={() => playFx("pop")}
+          className="clay-btn-secondary px-5 py-3 text-xs sm:text-sm font-extrabold flex items-center gap-2 shrink-0"
         >
           <span>العودة للوحة الطالب</span>
           <ArrowLeft className="w-4 h-4" />
         </Link>
       </div>
 
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-          <span className="text-xs text-slate-500 font-medium">إجمالي التمارين</span>
-          <div className="text-3xl font-black font-mono text-slate-900 dark:text-white">{totalExercises}</div>
-          <span className="text-xs text-emerald-600 font-bold">
+      {/* Sculpted Metrics Clay Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <div className="clay-card p-5 sm:p-6 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#6E6A94] dark:text-[#B3AED6]">إجمالي التمارين</span>
+            <ClayIcon name="book" tone="lavender" size="sm" />
+          </div>
+          <div className="text-3xl font-black font-mono text-[#1E1B3A] dark:text-white">{totalExercises}</div>
+          <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold block">
             {isGuest ? "تمارين محفوظة محلياً" : "معدل ممتاز"}
           </span>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-          <span className="text-xs text-slate-500 font-medium">نسبة الدقة التراكمية</span>
-          <div className="text-3xl font-black font-mono text-emerald-600">{accuracyRate}%</div>
-          <span className="text-xs text-slate-500">من مجمل المحاولات</span>
+
+        <div className="clay-card p-5 sm:p-6 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#6E6A94] dark:text-[#B3AED6]">نسبة الدقة التراكمية</span>
+            <ClayIcon name="medal" tone="mint" size="sm" />
+          </div>
+          <div className="text-3xl font-black font-mono text-[#109D8A] dark:text-[#5EEAD4]">{accuracyRate}%</div>
+          <span className="text-xs text-[#6E6A94] dark:text-[#B3AED6] block">من مجمل المحاولات</span>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-          <span className="text-xs text-slate-500 font-medium">متوسط زمن الاستجابة</span>
-          <div className="text-3xl font-black font-mono text-brand-600">{student.stats.avgSpeedSeconds}s</div>
-          <span className="text-xs text-slate-500">لكل رقم وميضي</span>
+
+        <div className="clay-card p-5 sm:p-6 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#6E6A94] dark:text-[#B3AED6]">متوسط زمن الاستجابة</span>
+            <ClayIcon name="flash" tone="sky" size="sm" />
+          </div>
+          <div className="text-3xl font-black font-mono text-brand-600 dark:text-brand-300">
+            {student.stats.avgSpeedSeconds}s
+          </div>
+          <span className="text-xs text-[#6E6A94] dark:text-[#B3AED6] block">لكل رقم وميضي</span>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-1">
-          <span className="text-xs text-slate-500 font-medium">أيام الالتزام المتواصل</span>
+
+        <div className="clay-card p-5 sm:p-6 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#6E6A94] dark:text-[#B3AED6]">أيام الالتزام المتواصل</span>
+            <ClayIcon name="flame" tone="peach" size="sm" />
+          </div>
           <div className="text-3xl font-black font-mono text-amber-500">{isGuest ? 1 : student.streakDays} يوماً</div>
-          <span className="text-xs text-amber-600 font-bold">شعلة حماس متقدة</span>
+          <span className="text-xs text-amber-600 dark:text-amber-300 font-bold block">شعلة حماس متقدة</span>
         </div>
       </div>
 
-      {/* Weekly Breakdown Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs p-6 sm:p-8 space-y-6">
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-brand-600" />
-          <span>توزيع الإنجاز الأسبوعي</span>
-        </h3>
+      {/* Weekly Breakdown Clay Card */}
+      <div className="clay-card p-6 sm:p-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-black text-[#1E1B3A] dark:text-white flex items-center gap-2.5">
+            <Calendar className="w-5 h-5 text-brand-600" />
+            <span>توزيع الإنجاز الأسبوعي</span>
+          </h3>
+          <ClayIcon name="chart" tone="lavender" size="sm" />
+        </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3.5">
           {student.weeklyProgress.map((item, idx) => (
-            <div key={idx} className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 text-center space-y-2">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">{item.day}</span>
-              <div className="text-2xl font-black font-mono text-slate-900 dark:text-white">{item.count}</div>
-              <span className="text-[11px] text-emerald-600 font-bold block">{item.accuracy}% دقة</span>
+            <div
+              key={idx}
+              className="clay-card-sm bg-[#F8F7FE] dark:bg-[#242146] p-4 text-center space-y-2.5"
+            >
+              <span className="text-xs font-extrabold text-[#4F4A75] dark:text-[#D5D0F2] block">
+                {item.day}
+              </span>
+              <div className="text-2xl font-black font-mono text-[#1E1B3A] dark:text-white">
+                {item.count}
+              </div>
+              <ClayProgressBar value={item.accuracy} tone={item.accuracy >= 90 ? "mint" : "purple"} />
+              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-extrabold block">
+                {item.accuracy}% دقة
+              </span>
             </div>
           ))}
         </div>

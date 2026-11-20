@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Sparkles, X } from "lucide-react";
+import { soundSynth } from "@/lib/audio-synthesizer";
 
 const SESSION_STORAGE_KEY = "supermind_welcome_prayer_seen_v1";
 
@@ -18,12 +19,16 @@ export default function WelcomePrayerModal() {
       setIsOpen(true);
     }
 
-    const handleManualOpen = () => setIsOpen(true);
+    const handleManualOpen = () => {
+      soundSynth.playModalSound("open");
+      setIsOpen(true);
+    };
     window.addEventListener("supermind:open-prayer", handleManualOpen);
     return () => window.removeEventListener("supermind:open-prayer", handleManualOpen);
   }, []);
 
   const handleClose = () => {
+    soundSynth.playModalSound("close");
     setIsOpen(false);
     try {
       sessionStorage.setItem(SESSION_STORAGE_KEY, "1");

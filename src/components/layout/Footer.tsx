@@ -29,7 +29,7 @@ export default function Footer() {
 
   if (isSimulatorOrPortal) {
     return (
-      <footer className="bg-slate-950 text-slate-400 border-t border-slate-800/80 py-4 mt-10">
+      <footer className="bg-[#161333] text-slate-300 border-t border-[#2E2B57] py-4 mt-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
           <p>
             © {new Date().getFullYear()} منصة العقل الخارق (SUPER MIND) — إشراف{" "}
@@ -60,9 +60,9 @@ export default function Footer() {
   );
 
   return (
-    <footer className="bg-slate-950 text-slate-300 border-t border-slate-800 pt-10 pb-8 mt-16">
+    <footer className="bg-[#161333] text-slate-200 border-t border-[#2E2B57] pt-10 pb-8 mt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-8 border-b border-slate-800/80">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-8 border-b border-[#2E2B57]">
           {/* Col 1: Brand & Brief */}
           <div className="space-y-3">
             <BrandLogo size="md" inverted />

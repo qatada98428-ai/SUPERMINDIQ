@@ -21,6 +21,7 @@ import {
   submitTrainerDirectoryCardToCloud,
   submitSchoolDirectoryCardToCloud,
 } from "@/lib/platform-store";
+import { soundSynth } from "@/lib/audio-synthesizer";
 
 interface DirectoryApplicationModalProps {
   isOpen: boolean;
@@ -58,6 +59,7 @@ export default function DirectoryApplicationModal({
 
   useEffect(() => {
     if (isOpen) {
+      soundSynth.playModalSound("open");
       setAppType(defaultType);
       setName(defaultName && defaultName !== "بطل العقل الخارق" ? defaultName : "");
       setPhone(defaultPhone);
@@ -66,6 +68,11 @@ export default function DirectoryApplicationModal({
       setSubmittedOk(false);
     }
   }, [isOpen, defaultType, defaultName, defaultEmail, defaultPhone]);
+
+  const handleClose = () => {
+    soundSynth.playModalSound("close");
+    onClose();
+  };
 
   if (!isOpen) return null;
 
@@ -161,7 +168,7 @@ export default function DirectoryApplicationModal({
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
           >
             <X className="w-5 h-5" />
@@ -181,7 +188,7 @@ export default function DirectoryApplicationModal({
             </p>
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="px-8 py-3 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-black text-sm shadow-lg"
             >
               حسناً، إغلاق

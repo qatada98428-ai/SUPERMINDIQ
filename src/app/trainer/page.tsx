@@ -332,8 +332,8 @@ export default function TrainerDashboardPage() {
       )}
 
       {/* 2. Top Trainer Welcome & Verified Digital Membership Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-slate-900 text-white p-6 sm:p-8 border border-slate-800 shadow-xl">
-        <div className="absolute -top-10 left-10 w-80 h-80 bg-brand-500/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="clay-banner-lavender relative overflow-hidden text-white p-6 sm:p-8">
+        <div className="absolute -top-10 left-10 w-80 h-80 bg-white/15 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
             {/* Trainer Photo */}

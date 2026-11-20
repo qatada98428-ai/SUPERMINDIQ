@@ -107,109 +107,111 @@ export default function SorobanBeadVisualizer({
         </div>
       )}
 
-      {/* Frame Container */}
+      {/* Frame Container — Soft 3D Claymorphism Soroban Theme */}
       <div
         dir="ltr"
-        className="bg-[#24140B] p-4 sm:p-6 rounded-3xl border-4 sm:border-8 border-[#3C2114] shadow-xl overflow-x-auto relative"
+        className="rounded-[30px] bg-gradient-to-br from-[#6D50F6] via-[#5335DE] to-[#391FB8] p-3 sm:p-5 shadow-[0_18px_36px_-10px_rgba(68,42,198,0.42),inset_0_3px_5px_rgba(255,255,255,0.4)] overflow-x-auto relative"
       >
-        <div className="min-w-max mx-auto flex justify-center">
-          <div
-            className="flex items-center justify-center gap-2 sm:gap-4"
-            style={{ minWidth: `${finalRods.length * 52}px` }}
-          >
-            {finalRods.map((rod, rIdx) => {
-              const rodVal = (rod.upper ? 5 : 0) + rod.lowers;
-              const isHighlight = !!rod.highlight;
+        <div className="rounded-[22px] bg-gradient-to-b from-[#FCFBFF] via-[#F4F1FE] to-[#EBE6FC] dark:from-[#1B183C] dark:via-[#161333] dark:to-[#110E28] p-3 sm:p-5 border border-white/60 dark:border-[#3D3776] shadow-inner">
+          <div className="min-w-max mx-auto flex justify-center">
+            <div
+              className="flex items-center justify-center gap-2 sm:gap-4"
+              style={{ minWidth: `${finalRods.length * 52}px` }}
+            >
+              {finalRods.map((rod, rIdx) => {
+                const rodVal = (rod.upper ? 5 : 0) + rod.lowers;
+                const isHighlight = !!rod.highlight;
+                const powerOfTen = finalRods.length - 1 - rIdx;
+                const isHundredsDot = powerOfTen % 3 === 2;
 
-              return (
-                <div
-                  key={rIdx}
-                  onClick={() => onRodClick?.(rIdx)}
-                  className={`flex flex-col items-center select-none ${sizeConfig.rodWidth} ${
-                    isHighlight ? "ring-2 ring-amber-400 bg-amber-500/10 rounded-2xl p-1 -m-1" : ""
-                  } ${onRodClick ? "cursor-pointer hover:opacity-90" : ""}`}
-                >
-                  {/* Optional Top Label */}
-                  {rod.label && (
-                    <div
-                      dir="rtl"
-                      className={`text-[10px] font-bold font-arabic mb-1 text-center truncate max-w-full ${
-                        isHighlight ? "text-amber-300 font-black" : "text-amber-200/70"
-                      }`}
-                      title={rod.label}
-                    >
-                      {rod.label}
-                    </div>
-                  )}
-
-                  {/* Upper Deck (1 bead = 5) */}
+                return (
                   <div
-                    className={`${sizeConfig.upperHeight} w-full flex flex-col justify-between items-center relative py-1`}
+                    key={rIdx}
+                    onClick={() => onRodClick?.(rIdx)}
+                    className={`flex flex-col items-center select-none ${sizeConfig.rodWidth} ${
+                      isHighlight ? "ring-2 ring-amber-400 bg-amber-500/10 rounded-2xl p-1 -m-1" : ""
+                    } ${onRodClick ? "cursor-pointer hover:opacity-90" : ""}`}
                   >
-                    {/* Metal Rod wire */}
-                    <div className="absolute top-0 bottom-0 w-1 sm:w-1.5 bg-slate-300/60 rounded-full" />
-
-                    {/* 5-Bead */}
-                    <div className="relative z-10 w-full flex justify-center">
+                    {/* Optional Top Label */}
+                    {rod.label && (
                       <div
-                        className={`${sizeConfig.beadSize} rounded-full shadow-lg transition-all duration-300 flex items-center justify-center border-2 ${
-                          rod.upper
-                            ? `${sizeConfig.upperActiveTranslate} bg-gradient-to-b from-amber-400 via-amber-500 to-amber-600 border-amber-200 text-amber-950 font-black shadow-amber-500/30 scale-105`
-                            : `${sizeConfig.upperIdleTranslate} bg-gradient-to-b from-slate-200 to-slate-400 border-slate-100 text-slate-700 font-bold opacity-80`
+                        dir="rtl"
+                        className={`text-[10px] font-bold font-arabic mb-1 text-center truncate max-w-full ${
+                          isHighlight
+                            ? "text-amber-600 dark:text-amber-300 font-black"
+                            : "text-[#635D94] dark:text-[#ABA5D6]"
                         }`}
+                        title={rod.label}
                       >
-                        <span className="text-[10px] font-mono font-bold">5</span>
+                        {rod.label}
+                      </div>
+                    )}
+
+                    {/* Upper Deck (1 bead = 5) */}
+                    <div
+                      className={`${sizeConfig.upperHeight} w-full flex flex-col justify-between items-center relative py-1`}
+                    >
+                      <div className="absolute top-0 bottom-0 w-1.5 bg-gradient-to-r from-[#B8B0E0] via-[#FFFFFF] to-[#8C82C4] dark:from-[#3D3773] dark:via-[#8F87CC] dark:to-[#282352] rounded-full" />
+
+                      <div className="relative z-10 w-full flex justify-center">
+                        <div
+                          className={`${sizeConfig.beadSize} rounded-[44%/50%] transition-all duration-300 flex items-center justify-center border ${
+                            rod.upper
+                              ? `${sizeConfig.upperActiveTranslate} bg-[radial-gradient(ellipse_at_50%_22%,#FFB5C8_0%,#F43F6E_46%,#A3133D_100%)] border-[#FF9EB7]/70 text-white font-black shadow-[0_6px_12px_-3px_rgba(225,29,72,0.5)] scale-105`
+                              : `${sizeConfig.upperIdleTranslate} bg-[radial-gradient(ellipse_at_50%_22%,#FFFFFF_0%,#DED8FA_52%,#AEA3DF_100%)] dark:bg-[radial-gradient(ellipse_at_50%_22%,#8F86C9_0%,#534B8E_55%,#2F2A5E_100%)] border-white/80 dark:border-[#7B72BA]/50 text-[#554D85] dark:text-[#E2DFF7] font-bold opacity-90`
+                          }`}
+                        >
+                          <span className="text-[10px] font-mono font-bold">5</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Reckoning Beam (Horizontal divider with center dot) */}
-                  <div className="w-full h-3 sm:h-4 bg-gradient-to-r from-amber-800 via-amber-600 to-amber-800 my-1 rounded-sm shadow-md flex items-center justify-center relative">
-                    <span
-                      className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-white shadow-xs border border-amber-900"
-                    />
-                  </div>
+                    {/* Reckoning Beam with Hundreds Marker Dot */}
+                    <div className="w-[calc(100%+12px)] sm:w-[calc(100%+18px)] h-3 sm:h-4 bg-gradient-to-b from-[#8F73FF] via-[#6040F2] to-[#3B21B5] my-1 rounded-full shadow-md flex items-center justify-center relative z-10">
+                      {isHundredsDot && (
+                        <span className="w-2 h-2 rounded-full bg-amber-300 ring-1 ring-amber-700/60" />
+                      )}
+                    </div>
 
-                  {/* Lower Deck (4 beads = 1 each) */}
-                  <div
-                    className={`${sizeConfig.lowerHeight} w-full flex flex-col justify-start items-center relative pt-1`}
-                  >
-                    {/* Metal Rod wire */}
-                    <div className="absolute top-0 bottom-0 w-1 sm:w-1.5 bg-slate-300/60 rounded-full" />
+                    {/* Lower Deck (4 beads = 1 each) */}
+                    <div
+                      className={`${sizeConfig.lowerHeight} w-full flex flex-col justify-start items-center relative pt-1`}
+                    >
+                      <div className="absolute top-0 bottom-0 w-1.5 bg-gradient-to-r from-[#B8B0E0] via-[#FFFFFF] to-[#8C82C4] dark:from-[#3D3773] dark:via-[#8F87CC] dark:to-[#282352] rounded-full" />
 
-                    {/* 4 lower beads */}
-                    <div className="relative z-10 w-full flex flex-col gap-1 sm:gap-1.5 items-center">
-                      {[1, 2, 3, 4].map((beadNum) => {
-                        const isActive = rod.lowers >= beadNum;
-                        return (
-                          <div
-                            key={beadNum}
-                            className={`${sizeConfig.beadSize} rounded-full shadow-md transition-all duration-300 flex items-center justify-center border-2 ${
-                              isActive
-                                ? `${sizeConfig.lowerActiveTranslate} bg-gradient-to-b from-sky-400 via-sky-500 to-sky-600 border-sky-100 text-sky-950 font-black shadow-sky-500/30 scale-105`
-                                : `${sizeConfig.lowerIdleTranslate} bg-gradient-to-b from-slate-200 to-slate-400 border-slate-100 text-slate-700 font-bold opacity-75`
-                            }`}
-                          >
-                            <span className="text-[10px] font-mono font-bold">1</span>
-                          </div>
-                        );
-                      })}
+                      <div className="relative z-10 w-full flex flex-col gap-1 sm:gap-1.5 items-center">
+                        {[1, 2, 3, 4].map((beadNum) => {
+                          const isActive = rod.lowers >= beadNum;
+                          return (
+                            <div
+                              key={beadNum}
+                              className={`${sizeConfig.beadSize} rounded-[44%/50%] transition-all duration-300 flex items-center justify-center border ${
+                                isActive
+                                  ? `${sizeConfig.lowerActiveTranslate} bg-[radial-gradient(ellipse_at_50%_22%,#FFF099_0%,#F59E0B_48%,#B45309_100%)] border-[#FDE68A]/80 text-[#451A03] font-black shadow-[0_6px_12px_-3px_rgba(245,158,11,0.48)] scale-105`
+                                  : `${sizeConfig.lowerIdleTranslate} bg-[radial-gradient(ellipse_at_50%_22%,#FFFFFF_0%,#DED8FA_52%,#AEA3DF_100%)] dark:bg-[radial-gradient(ellipse_at_50%_22%,#8F86C9_0%,#534B8E_55%,#2F2A5E_100%)] border-white/80 dark:border-[#7B72BA]/50 text-[#554D85] dark:text-[#E2DFF7] font-bold opacity-85`
+                              }`}
+                            >
+                              <span className="text-[10px] font-mono font-bold">1</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Rod Value Indicator */}
+                    <div
+                      className={`mt-2 py-1 px-2.5 rounded-xl border text-center font-mono font-black text-xs sm:text-sm shadow-xs ${
+                        isHighlight || rodVal > 0
+                          ? "bg-gradient-to-b from-[#8B6EFF] to-[#6344F5] text-white border-[#A892FF]/50"
+                          : "bg-white dark:bg-[#242146] border-[#E4DFF9] dark:border-[#3A3570] text-[#554D85] dark:text-[#D5D0F2]"
+                      }`}
+                    >
+                      {rod.badge || rodVal}
                     </div>
                   </div>
-
-                  {/* Rod Value Indicator */}
-                  <div
-                    className={`mt-2 py-1 px-2 sm:px-2.5 rounded-lg border text-center font-mono font-black text-xs sm:text-sm shadow-xs ${
-                      isHighlight
-                        ? "bg-amber-400 text-slate-950 border-amber-300"
-                        : "bg-slate-900 border-slate-800 text-amber-300"
-                    }`}
-                  >
-                    {rod.badge || rodVal}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

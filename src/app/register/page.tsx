@@ -235,16 +235,19 @@ export default function RegisterPage() {
           </div>
         )}
 
-        <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-5">
+        <div className="clay-card p-6 sm:p-8 space-y-5">
           {/* Role selector */}
-          <div className="grid grid-cols-2 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl gap-1">
+          <div className="grid grid-cols-2 p-1.5 bg-[#F2EFFE] dark:bg-[#242146] rounded-2xl gap-1.5 border border-[#E4DFF9] dark:border-[#38346B]">
             <button
               type="button"
-              onClick={() => setRequestedRole("student")}
-              className={`py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+              onClick={() => {
+                playFx("toggle");
+                setRequestedRole("student");
+              }}
+              className={`py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
                 requestedRole === "student"
-                  ? "bg-white dark:bg-slate-900 text-brand-700 dark:text-brand-300 shadow-sm"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  ? "clay-btn-purple !rounded-xl"
+                  : "text-[#5E5985] dark:text-[#B3AED6] hover:text-[#1E1B3A]"
               }`}
             >
               <GraduationCap className="w-4 h-4" />
@@ -253,11 +256,14 @@ export default function RegisterPage() {
 
             <button
               type="button"
-              onClick={() => setRequestedRole("trainer")}
-              className={`py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+              onClick={() => {
+                playFx("toggle");
+                setRequestedRole("trainer");
+              }}
+              className={`py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
                 requestedRole === "trainer"
-                  ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 shadow-sm"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  ? "clay-btn-mint !rounded-xl"
+                  : "text-[#5E5985] dark:text-[#B3AED6] hover:text-[#1E1B3A]"
               }`}
             >
               <UserCheck className="w-4 h-4" />

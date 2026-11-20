@@ -26,8 +26,7 @@ import {
   speakSorobanNumber,
   speakSorobanCountdown,
   warmupSpeechEngine,
-  numberToArabicWords,
-  numberToEnglishWords,
+  formatTermSpeechText,
 } from "@/lib/soroban-engine";
 import { soundSynth } from "@/lib/audio-synthesizer";
 import { getWhatsAppLink } from "@/lib/constants";
@@ -294,6 +293,7 @@ export default function TeamsBattlePage() {
     // Move to answering stage
     const finishTimer = setTimeout(() => {
       setIsFlashVisible(false);
+      soundSynth.playFlashCue("complete");
       turnStartTimeRef.current = Date.now();
       setStage("answering");
     }, delayAccumulator);
@@ -833,13 +833,7 @@ export default function TeamsBattlePage() {
                         <span className="mt-4 px-4 py-1.5 rounded-full bg-slate-800/95 border border-slate-700 text-amber-300 font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-md">
                           <Volume2 className="w-4 h-4 text-amber-400" />
                           <span>
-                            {voiceMode === "arabic"
-                              ? currentSeries[currentFlashIdx] > 0
-                                ? `زائد ${numberToArabicWords(Math.abs(currentSeries[currentFlashIdx]))}`
-                                : `ناقص ${numberToArabicWords(Math.abs(currentSeries[currentFlashIdx]))}`
-                              : currentSeries[currentFlashIdx] > 0
-                              ? `Plus ${numberToEnglishWords(Math.abs(currentSeries[currentFlashIdx]))}`
-                              : `Minus ${numberToEnglishWords(Math.abs(currentSeries[currentFlashIdx]))}`}
+                            {formatTermSpeechText(currentSeries[currentFlashIdx], voiceMode)}
                           </span>
                         </span>
                       )}

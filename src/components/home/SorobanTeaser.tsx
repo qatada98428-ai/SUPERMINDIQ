@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Sparkles, RotateCcw, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { toArabicNumerals } from "@/lib/utils";
 import { soundSynth } from "@/lib/audio-synthesizer";
+import InteractiveSorobanBoard from "@/components/soroban/InteractiveSorobanBoard";
 
 export default function SorobanTeaser() {
   // 4 rods: Thousands (left), Hundreds, Tens, Units (right)
@@ -15,21 +16,18 @@ export default function SorobanTeaser() {
     { upper: true, lowers: 4 },  // 9 (units - right) -> 1739
   ]);
 
-  const toggleUpper = (rodIndex: number) => {
+  const setRodUpper = (rodIndex: number, upper: boolean) => {
     soundSynth.playBeadClick(580, 0.18);
     setRods((prev) =>
-      prev.map((r, i) => (i === rodIndex ? { ...r, upper: !r.upper } : r))
+      prev.map((r, i) => (i === rodIndex ? { ...r, upper } : r))
     );
   };
 
-  const setLowerCount = (rodIndex: number, targetCount: number) => {
-    soundSynth.playBeadClick(500 + targetCount * 25, 0.18);
+  const setRodLowers = (rodIndex: number, lowers: number) => {
+    const clamped = Math.max(0, Math.min(4, lowers));
+    soundSynth.playBeadClick(500 + clamped * 25, 0.18);
     setRods((prev) =>
-      prev.map((r, i) => {
-        if (i !== rodIndex) return r;
-        const newCount = r.lowers === targetCount ? targetCount - 1 : targetCount;
-        return { ...r, lowers: Math.max(0, Math.min(4, newCount)) };
-      })
+      prev.map((r, i) => (i === rodIndex ? { ...r, lowers: clamped } : r))
     );
   };
 
@@ -42,7 +40,18 @@ export default function SorobanTeaser() {
   const rodValues = rods.map((r) => (r.upper ? 5 : 0) + r.lowers);
   const totalValue = rodValues.reduce((acc, val, idx) => acc + val * Math.pow(10, rods.length - 1 - idx), 0);
 
-  const placeLabels = ["آلاف", "مئات", "عشرات", "الآحاد"];
+  const getPlaceName = (power: number) => {
+    switch (power) {
+      case 0:
+        return "الآحاد";
+      case 1:
+        return "عشرات";
+      case 2:
+        return "مئات";
+      default:
+        return "آلاف";
+    }
+  };
 
   return (
     <div className="relative bg-gradient-to-b from-slate-900 to-slate-950 p-4 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl overflow-hidden">
@@ -85,92 +94,20 @@ export default function SorobanTeaser() {
         </div>
       </div>
 
-      {/* Soroban Frame (Enforce dir="ltr" so left is thousands and right is units) */}
-      <div
-        dir="ltr"
-        className="relative z-10 bg-[#2A1810] p-2.5 sm:p-6 rounded-2xl border-4 border-[#3D2317] shadow-inner"
-      >
-        <div className="grid grid-cols-4 gap-1.5 sm:gap-6 relative">
-          {rods.map((rod, rIdx) => {
-            const rodVal = (rod.upper ? 5 : 0) + rod.lowers;
-            return (
-              <div key={rIdx} className="flex flex-col items-center select-none">
-                {/* Place label */}
-                <div
-                  dir="rtl"
-                  className={`text-[11px] font-bold font-arabic mb-1 text-center ${
-                    rIdx === 3 ? "text-emerald-400 font-black" : "text-amber-200/70"
-                  }`}
-                >
-                  {placeLabels[rIdx]}
-                </div>
-
-                {/* Upper Deck (1 Bead = 5) */}
-                <div className="h-16 w-full flex flex-col justify-between items-center relative py-1">
-                  <div className="absolute top-0 bottom-0 w-1 bg-slate-400/50 -z-0" />
-
-                  <div className="relative z-10 w-full flex justify-center">
-                    <button
-                      onClick={() => toggleUpper(rIdx)}
-                      className={`w-10 sm:w-16 h-7 rounded-full shadow-md transition-all duration-150 cursor-pointer flex items-center justify-center border-2 ${
-                        rod.upper
-                          ? "translate-y-7 bg-gradient-to-b from-amber-400 to-amber-600 border-amber-300 text-amber-950 font-bold text-xs"
-                          : "translate-y-0 bg-gradient-to-b from-slate-300 to-slate-400 border-slate-200 text-slate-700 font-medium text-xs opacity-85 hover:opacity-100"
-                      }`}
-                      aria-label={`خرزة الخمسة - ${placeLabels[rIdx]}`}
-                    >
-                      5
-                    </button>
-                  </div>
-                </div>
-
-                {/* The Reckoning Beam with unit dot on rod 3 (Units) */}
-                <div className="w-full h-3.5 bg-gradient-to-r from-amber-700 via-amber-600 to-amber-700 my-1 rounded-sm shadow flex items-center justify-center relative">
-                  {rIdx === 3 && (
-                    <span className="w-2 h-2 rounded-full bg-white shadow-xs border border-amber-900" />
-                  )}
-                </div>
-
-                {/* Lower Deck (4 Beads = 1 each) */}
-                <div className="h-44 w-full flex flex-col justify-start items-center relative pt-2">
-                  <div className="absolute top-0 bottom-0 w-1 bg-slate-400/50 -z-0" />
-
-                  <div className="relative z-10 w-full flex flex-col gap-1 items-center">
-                    {[1, 2, 3, 4].map((beadNum) => {
-                      const isActive = rod.lowers >= beadNum;
-                      return (
-                        <button
-                          key={beadNum}
-                          onClick={() => setLowerCount(rIdx, beadNum)}
-                          className={`w-10 sm:w-16 h-7 rounded-full shadow-md transition-all duration-150 cursor-pointer flex items-center justify-center border-2 ${
-                            isActive
-                              ? "-translate-y-1 bg-gradient-to-b from-sky-400 to-sky-600 border-sky-200 text-sky-950 font-bold text-xs shadow-sky-500/20"
-                              : "translate-y-4 bg-gradient-to-b from-slate-300 to-slate-400 border-slate-200 text-slate-700 font-medium text-xs opacity-75 hover:opacity-95"
-                          }`}
-                          aria-label={`خرزة 1 - ${placeLabels[rIdx]}`}
-                        >
-                          1
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Rod Total Value Indicator */}
-                <div className="mt-2 py-1 px-2.5 rounded-lg bg-slate-900 border border-slate-800 text-center font-mono font-bold text-sm text-amber-400">
-                  {rodVal}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* Interactive Touch-Draggable Soroban Frame */}
+      <InteractiveSorobanBoard
+        rods={rods}
+        onSetRodUpper={setRodUpper}
+        onSetRodLowers={setRodLowers}
+        getPlaceName={getPlaceName}
+        variant="compact"
+      />
 
       {/* Footer CTA */}
       <div className="relative z-10 mt-6 pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>محاكاة فيزيائية دقيقة تبدأ من الآحاد في اليمين</span>
+        <div className="flex items-center gap-2 text-center sm:text-right">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>اسحب الخرزات باللمس لأعلى وأسفل بسلاسة أو انقر عليها</span>
         </div>
         <Link
           href="/mental-arithmetic/abacus"

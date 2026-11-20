@@ -30,6 +30,7 @@ import {
   submitTrainerDirectoryCardToCloud,
   submitSchoolDirectoryCardToCloud,
 } from "@/lib/platform-store";
+import { soundSynth } from "@/lib/audio-synthesizer";
 
 interface ProfileEditorModalProps {
   isOpen: boolean;
@@ -91,6 +92,7 @@ export default function ProfileEditorModal({
 
   useEffect(() => {
     if (isOpen) {
+      soundSynth.playModalSound("open");
       setName(profile.name === "بطل العقل الخارق" ? "" : profile.name);
       setPhone(profile.phone || "");
       setCountry(profile.country || "العراق");
@@ -283,7 +285,10 @@ export default function ProfileEditorModal({
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              soundSynth.playModalSound("close");
+              onClose();
+            }}
             className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
           >
             <X className="w-5 h-5" />
