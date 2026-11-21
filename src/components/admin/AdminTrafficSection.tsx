@@ -293,7 +293,7 @@ export default function AdminTrafficSection() {
           });
 
           if (resolved.ok) {
-            const [{ data: metaRow }, { data: rows }] = await Promise.all([
+            const [metaRes, rowsRes] = await Promise.all([
               supabase
                 .from("site_traffic_meta")
                 .select("tracking_start_date")
@@ -307,18 +307,20 @@ export default function AdminTrafficSection() {
                 .order("traffic_date", { ascending: true }),
             ]);
 
-            const directReport = buildTrafficReport({
-              range: resolved.range,
-              trackingStartDate:
-                metaRow && typeof metaRow.tracking_start_date === "string"
-                  ? metaRow.tracking_start_date
-                  : null,
-              rows: (rows || []) as DailyTrafficRow[],
-            });
+            if (!rowsRes.error) {
+              const directReport = buildTrafficReport({
+                range: resolved.range,
+                trackingStartDate:
+                  metaRes.data && typeof metaRes.data.tracking_start_date === "string"
+                    ? metaRes.data.tracking_start_date
+                    : null,
+                rows: (rowsRes.data || []) as DailyTrafficRow[],
+              });
 
-            setReport(directReport);
-            setLoading(false);
-            return;
+              setReport(directReport);
+              setLoading(false);
+              return;
+            }
           }
         } catch (directErr) {
           console.warn("Direct Supabase query hitch, trying API route fallback:", directErr);

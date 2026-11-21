@@ -259,21 +259,21 @@ export default function VoiceSettingsPanel({
               </option>
 
               {/* Cloud Studio Voices (Guaranteed zero-setup across all phones) */}
-              <optgroup label={isEn ? "Smart Cloud Studio Voices (Universal)" : "أصوات النطق السحابي الذكي (تعمل على جميع الهواتف)"}>
+              <optgroup label={isEn ? "Smart Cloud Studio Voices (Universal)" : "أصوات الاستوديو العصبية (فائقة النقاء لجميع الهواتف والأجهزة)"}>
                 <option value={CLOUD_VOICE_FEMALE_URI}>
-                  {isEn ? "Cloud Studio: Clear Female Voice 👩‍🏫 ☁️" : "سحابي نقي: صوت أنثوي فائق الوضوح 👩‍🏫 ☁️"}
+                  {isEn ? "Cloud Studio: Clear Female (Zariyah) 👩‍🏫 ☁️" : "استوديو نقي: صوت امرأة (زاريا - فائق النقاء) 👩‍🏫 ☁️"}
                 </option>
                 <option value={CLOUD_VOICE_MALE_URI}>
-                  {isEn ? "Cloud Studio: Resonant Deep Male (Trainer Maged) 👨‍🏫 ☁️" : "سحابي ذكوري 1: وقور وعميق (المدرب ماجد) 👨‍🏫 ☁️"}
+                  {isEn ? "Cloud Studio: Resonant Deep Male (Hamed) 👨‍🏫 ☁️" : "استوديو نقي: صوت رجل 1 (حامد - فخم ووقور) 👨‍🏫 ☁️"}
                 </option>
                 <option value={CLOUD_VOICE_MALE_2_URI}>
-                  {isEn ? "Cloud Studio: Energetic Clear Male (Trainer Tarik) ⚡ ☁️" : "سحابي ذكوري 2: شبابي وحيوي (المدرب طارق) ⚡ ☁️"}
+                  {isEn ? "Cloud Studio: Energetic Clear Male (Shakir) ⚡ ☁️" : "استوديو نقي: صوت رجل 2 (شاكر - شبابي وحيوي) ⚡ ☁️"}
                 </option>
               </optgroup>
 
               {/* Real Local Device Voices (If available) */}
               {catalog.male.length > 0 && (
-                <optgroup label={isEn ? "Device Male Voices (Local)" : "أصوات ذكورية محلية على جهازك"}>
+                <optgroup label={isEn ? "Device Male Voices (Local)" : "أصوات الرجال المثبتة على جهازك (محلية) 💻"}>
                   {catalog.male.map((v) => (
                     <option key={v.voiceURI} value={v.voiceURI}>
                       {v.name} ({v.lang})
@@ -282,7 +282,7 @@ export default function VoiceSettingsPanel({
                 </optgroup>
               )}
               {catalog.female.length > 0 && (
-                <optgroup label={isEn ? "Device Female Voices (Local)" : "أصوات أنثوية محلية على جهازك"}>
+                <optgroup label={isEn ? "Device Female Voices (Local)" : "أصوات النساء المثبتة على جهازك (محلية) 💻"}>
                   {catalog.female.map((v) => (
                     <option key={v.voiceURI} value={v.voiceURI}>
                       {v.name} ({v.lang})
@@ -291,7 +291,7 @@ export default function VoiceSettingsPanel({
                 </optgroup>
               )}
               {catalog.other.length > 0 && (
-                <optgroup label={isEn ? "Other System Voices" : "أصوات النظام المتاحة"}>
+                <optgroup label={isEn ? "Other System Voices" : "أصوات النظام الإضافية على جهازك 💻"}>
                   {catalog.other.map((v) => (
                     <option key={v.voiceURI} value={v.voiceURI}>
                       {v.name} ({v.lang})

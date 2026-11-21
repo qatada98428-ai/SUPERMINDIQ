@@ -410,11 +410,11 @@ export function discoverRealVoices(
     };
 
     if (gender === "male") {
-      if (male.length < 3) male.push(option);
+      male.push(option);
     } else if (gender === "female") {
-      if (female.length < 3) female.push(option);
+      female.push(option);
     } else {
-      if (other.length < 3) other.push(option);
+      other.push(option);
     }
   }
 
@@ -424,8 +424,8 @@ export function discoverRealVoices(
       voiceURI: CLOUD_VOICE_FEMALE_URI,
       name:
         langMode === "arabic"
-          ? "سحابي نقي: صوت أنثوي فائق الوضوح 👩‍🏫 ☁️"
-          : "Cloud Studio: Clear Female Voice 👩‍🏫 ☁️",
+          ? "استوديو نقي: صوت امرأة (زاريا - فائق النقاء) 👩‍🏫 ☁️"
+          : "Cloud Studio: Clear Female (Zariyah) 👩‍🏫 ☁️",
       lang: langMode === "arabic" ? "ar-SA" : "en-US",
       gender: "female",
       localService: false,
@@ -435,8 +435,8 @@ export function discoverRealVoices(
       voiceURI: CLOUD_VOICE_MALE_URI,
       name:
         langMode === "arabic"
-          ? "سحابي ذكوري 1: صوت وقور وعميق (المدرب ماجد) 👨‍🏫 ☁️"
-          : "Cloud Studio: Resonant Deep Male (Trainer Maged) 👨‍🏫 ☁️",
+          ? "استوديو نقي: صوت رجل 1 (حامد - فخم ووقور) 👨‍🏫 ☁️"
+          : "Cloud Studio: Resonant Deep Male (Hamed) 👨‍🏫 ☁️",
       lang: langMode === "arabic" ? "ar-SA" : "en-US",
       gender: "male",
       localService: false,
@@ -446,8 +446,8 @@ export function discoverRealVoices(
       voiceURI: CLOUD_VOICE_MALE_2_URI,
       name:
         langMode === "arabic"
-          ? "سحابي ذكوري 2: صوت شبابي وحيوي (المدرب طارق) ⚡ ☁️"
-          : "Cloud Studio: Energetic Clear Male (Trainer Tarik) ⚡ ☁️",
+          ? "استوديو نقي: صوت رجل 2 (شاكر - شبابي وحيوي) ⚡ ☁️"
+          : "Cloud Studio: Energetic Clear Male (Shakir) ⚡ ☁️",
       lang: langMode === "arabic" ? "ar-SA" : "en-US",
       gender: "male_2",
       localService: false,
