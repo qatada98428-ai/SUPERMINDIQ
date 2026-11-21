@@ -23,6 +23,7 @@ import {
   warmupSpeechEngine,
   stopActiveSpeech,
   formatTermSpeechText,
+  prefetchCloudSpeech,
   ArithmeticLevel,
   FlashAnzanConfig,
 } from "@/lib/soroban-engine";
@@ -262,6 +263,13 @@ export default function FlashAnzanPage() {
     setFeedbackPhrase("");
     setSessionState("countdown");
     setCountdown(3);
+
+    // Prefetch all cloud audio clips during countdown so playback is 100% instant
+    const activeVoiceLang = speechPrefs.voiceMode;
+    if (activeVoiceLang === "arabic" || activeVoiceLang === "english") {
+      const phrases = series.map((n) => formatTermSpeechText(n, activeVoiceLang));
+      prefetchCloudSpeech(phrases, activeVoiceLang);
+    }
 
     // Countdown 3 -> 2 -> 1 -> start with soft audio and voice
     speakCountdownNumber(3);

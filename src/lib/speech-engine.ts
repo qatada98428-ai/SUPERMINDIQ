@@ -10,12 +10,20 @@ export type SpeechLanguageMode = "arabic" | "english" | "off";
 export type FlashTimingMode = "fixed" | "synced";
 export type VoiceGender = "male" | "female" | "unknown";
 
+export const CLOUD_VOICE_FEMALE_URI = "supermind_cloud_female";
+export const CLOUD_VOICE_MALE_URI = "supermind_cloud_male";
+
+export function isCloudVoiceUri(uri?: string): boolean {
+  return uri === CLOUD_VOICE_FEMALE_URI || uri === CLOUD_VOICE_MALE_URI;
+}
+
 export interface RealVoiceOption {
   voiceURI: string;
   name: string;
   lang: string;
   gender: VoiceGender;
   localService: boolean;
+  isCloud?: boolean;
 }
 
 export interface LanguageVoiceCatalog {
@@ -23,6 +31,8 @@ export interface LanguageVoiceCatalog {
   female: RealVoiceOption[];
   other: RealVoiceOption[];
   all: RealVoiceOption[];
+  cloudVoices: RealVoiceOption[];
+  hasLocalVoice: boolean;
 }
 
 export interface SpeechPreferences {
@@ -353,9 +363,19 @@ function scoreVoiceQuality(v: SpeechSynthesisVoice): number {
 }
 
 /**
- * Inspects real OS/Browser SpeechSynthesis voices and returns up to 3 Male + 3 Female
- * (plus unclassified real OS voices) strictly for what is genuinely available on this device.
+ * Inspects real OS/Browser SpeechSynthesis voices and pairs them with high-fidelity Cloud Voices.
+ * If local voices exist on the user's device, they are preferred for zero latency.
+ * When no local voices exist (e.g. on Android/iOS without Arabic pack), cloud voices step in seamlessly.
  */
+export function hasLocalLanguageVoices(
+  rawVoices: SpeechSynthesisVoice[],
+  langMode: "arabic" | "english"
+): boolean {
+  if (!rawVoices || rawVoices.length === 0) return false;
+  const prefix = langMode === "arabic" ? "ar" : "en";
+  return rawVoices.some((v) => v.lang.toLowerCase().startsWith(prefix));
+}
+
 export function discoverRealVoices(
   rawVoices: SpeechSynthesisVoice[],
   langMode: "arabic" | "english"
@@ -381,6 +401,7 @@ export function discoverRealVoices(
       lang: v.lang,
       gender,
       localService: v.localService,
+      isCloud: false,
     };
 
     if (gender === "male") {
@@ -392,10 +413,40 @@ export function discoverRealVoices(
     }
   }
 
+  // Define High-Quality Cloud Voices (Available everywhere with zero setup)
+  const cloudVoices: RealVoiceOption[] = [
+    {
+      voiceURI: CLOUD_VOICE_FEMALE_URI,
+      name:
+        langMode === "arabic"
+          ? "سحابي نقي: صوت أنثوي فائق الوضوح ☁️"
+          : "Cloud Studio: Clear Female Voice ☁️",
+      lang: langMode === "arabic" ? "ar-SA" : "en-US",
+      gender: "female",
+      localService: false,
+      isCloud: true,
+    },
+    {
+      voiceURI: CLOUD_VOICE_MALE_URI,
+      name:
+        langMode === "arabic"
+          ? "سحابي نقي: صوت ذكوري وقور ☁️"
+          : "Cloud Studio: Resonant Male Voice ☁️",
+      lang: langMode === "arabic" ? "ar-SA" : "en-US",
+      gender: "male",
+      localService: false,
+      isCloud: true,
+    },
+  ];
+
+  const hasLocal = matching.length > 0;
+
   return {
     male,
     female,
     other,
-    all: [...male, ...female, ...other],
+    cloudVoices,
+    hasLocalVoice: hasLocal,
+    all: [...male, ...female, ...other, ...cloudVoices],
   };
 }

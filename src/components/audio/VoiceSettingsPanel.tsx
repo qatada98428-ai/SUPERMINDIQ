@@ -18,6 +18,9 @@ import {
   FlashTimingMode,
   SpeechLanguageMode,
   SpeechPreferences,
+  isCloudVoiceUri,
+  CLOUD_VOICE_FEMALE_URI,
+  CLOUD_VOICE_MALE_URI,
 } from "@/lib/speech-engine";
 import {
   getRawBrowserVoices,
@@ -109,11 +112,12 @@ export default function VoiceSettingsPanel({
 
     warmupSpeechEngine();
     const ok = speakTestSample(activeSpeechLang, prefs);
+    const isCloud = !catalog.hasLocalVoice || isCloudVoiceUri(selectedVoiceUri);
     setTestingNote(
       ok
         ? isEn
-          ? 'Playing sample: "Twenty-five, Minus seven, Fourteen point five"'
-          : "يتم نطق العينة: «خمسة وعشرون، ناقص سبعة، أربعة عشر فاصلة خمسة»"
+          ? `Playing sample (${isCloud ? "Cloud Studio Voice" : "Device Local Voice"}): "Twenty-five, Minus seven, Fourteen point five"`
+          : `يتم نطق العينة عبر (${isCloud ? "النطق السحابي الذكي الفوري" : "الصوت المحلي لجهازك"}): «خمسة وعشرون، ناقص سبعة، أربعة عشر فاصلة خمسة»`
         : isEn
         ? "Speech synthesis is unavailable on this browser."
         : "محرّك النطق الصوتي غير متاح في هذا المتصفح."
@@ -218,12 +222,16 @@ export default function VoiceSettingsPanel({
               >
                 {isEn
                   ? `Supported ${activeSpeechLang === "arabic" ? "Arabic" : "English"} Voices`
-                  : `الأصوات المدعومة فعليًا (${activeSpeechLang === "arabic" ? "العربية" : "الإنجليزية"})`}
+                  : `الأصوات المدعومة (${activeSpeechLang === "arabic" ? "العربية" : "الإنجليزية"})`}
               </label>
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white dark:bg-[#242146] border border-[#E4DFF9] dark:border-[#363268] text-brand-700 dark:text-brand-300">
-                {isEn
-                  ? `${catalog.all.length} available on device`
-                  : `${catalog.all.length} متاح على جهازك`}
+                {catalog.hasLocalVoice
+                  ? isEn
+                    ? `${catalog.male.length + catalog.female.length + catalog.other.length} local + Cloud active`
+                    : `${catalog.male.length + catalog.female.length + catalog.other.length} صوت محلي + سحابي`
+                  : isEn
+                  ? "Cloud Studio Active ☁️"
+                  : "النطق السحابي مفعّل ☁️"}
               </span>
             </div>
 
@@ -240,12 +248,28 @@ export default function VoiceSettingsPanel({
               className="w-full clay-input px-3.5 py-2.5 text-xs sm:text-sm font-bold text-[#1E1B3A] dark:text-white dark:bg-[#14122B]"
             >
               <option value="">
-                {isEn
-                  ? "Auto (Best available voice on device)"
-                  : "التلقائي (أفضل صوت مدعوم على جهازك)"}
+                {catalog.hasLocalVoice
+                  ? isEn
+                    ? "Auto (Local Device or Smart Cloud)"
+                    : "التلقائي (صوت الجهاز المحلي مع البديل السحابي)"
+                  : isEn
+                  ? "Auto (Smart Cloud Studio Voice - Active)"
+                  : "التلقائي (النطق السحابي الذكي الفوري - مفعّل)"}
               </option>
+
+              {/* Cloud Studio Voices (Guaranteed zero-setup across all phones) */}
+              <optgroup label={isEn ? "Smart Cloud Studio Voices (Universal)" : "أصوات النطق السحابي الذكي (تعمل على جميع الهواتف)"}>
+                <option value={CLOUD_VOICE_FEMALE_URI}>
+                  {isEn ? "Cloud Studio: Clear Female Voice ☁️" : "سحابي نقي: صوت أنثوي فائق الوضوح ☁️"}
+                </option>
+                <option value={CLOUD_VOICE_MALE_URI}>
+                  {isEn ? "Cloud Studio: Resonant Male Voice ☁️" : "سحابي نقي: صوت ذكوري وقور ☁️"}
+                </option>
+              </optgroup>
+
+              {/* Real Local Device Voices (If available) */}
               {catalog.male.length > 0 && (
-                <optgroup label={isEn ? "Male Voices (Available)" : "أصوات ذكورية متاحة"}>
+                <optgroup label={isEn ? "Device Male Voices (Local)" : "أصوات ذكورية محلية على جهازك"}>
                   {catalog.male.map((v) => (
                     <option key={v.voiceURI} value={v.voiceURI}>
                       {v.name} ({v.lang})
@@ -254,7 +278,7 @@ export default function VoiceSettingsPanel({
                 </optgroup>
               )}
               {catalog.female.length > 0 && (
-                <optgroup label={isEn ? "Female Voices (Available)" : "أصوات أنثوية متاحة"}>
+                <optgroup label={isEn ? "Device Female Voices (Local)" : "أصوات أنثوية محلية على جهازك"}>
                   {catalog.female.map((v) => (
                     <option key={v.voiceURI} value={v.voiceURI}>
                       {v.name} ({v.lang})
@@ -273,12 +297,30 @@ export default function VoiceSettingsPanel({
               )}
             </select>
 
-            {catalog.all.length === 0 && (
-              <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-300">
-                {isEn
-                  ? "No dedicated OS voice detected for this language; the browser default fallback will be used with crisp digital cues."
-                  : "لم يكتشف المتصفح حزمة صوت محلية إضافية لهذه اللغة على هذا الجهاز؛ سيعمل المتصفح بالصوت الافتراضي أو صوت التنبيه الدقيق."}
-              </p>
+            {/* Reassuring badge when device lacks local voice pack */}
+            {!catalog.hasLocalVoice ? (
+              <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-start gap-2.5 shadow-sm">
+                <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-black">
+                    {isEn ? "Smart Cloud Voice Active" : "النطق السحابي الذكي مفعّل تلقائياً"}
+                  </div>
+                  <div className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5 leading-relaxed font-medium">
+                    {isEn
+                      ? "Studio-quality Classical Arabic narration is running seamlessly without needing to install any phone language packs."
+                      : "يتم نطق الأعداد كاملة بالعربية الفصحى بصوت نقي فائق الجودة يعمل تلقائياً دون الحاجة لتثبيت أي حزمة صوتية على هاتفك."}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 px-1 flex items-center gap-1.5">
+                <Info className="w-3.5 h-3.5 text-brand-500 shrink-0" />
+                <span>
+                  {isEn
+                    ? "Your device has local voices. Smart Cloud fallback is ready if local voice encounters any issue."
+                    : "يتوفر صوت محلي على جهازك، والنظام السحابي الاحتياطي جاهز تلقائياً عند الحاجة."}
+                </span>
+              </div>
             )}
           </div>
 

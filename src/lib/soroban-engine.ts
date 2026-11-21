@@ -10,13 +10,26 @@ import {
   formatTermSpeechText,
   loadSpeechPreferences,
   discoverRealVoices,
+  hasLocalLanguageVoices,
+  isCloudVoiceUri,
+  CLOUD_VOICE_FEMALE_URI,
+  CLOUD_VOICE_MALE_URI,
+  VoiceGender,
   SpeechPreferences,
 } from "@/lib/speech-engine";
+import {
+  playCloudSpeech,
+  stopAllCloudSpeech,
+  prefetchCloudSpeech,
+} from "@/lib/cloud-tts-client";
 
 export {
   fullArabicWords as numberToArabicWords,
   fullEnglishWords as numberToEnglishWords,
   formatTermSpeechText,
+  prefetchCloudSpeech,
+  CLOUD_VOICE_FEMALE_URI,
+  CLOUD_VOICE_MALE_URI,
 };
 
 export interface SorobanRodState {
@@ -642,10 +655,47 @@ export function warmupSpeechEngine() {
   }
 }
 
+export function shouldUseCloudSpeech(
+  langMode: "arabic" | "english",
+  prefs: SpeechPreferences
+): { useCloud: boolean; gender: VoiceGender } {
+  const uri = langMode === "arabic" ? prefs.voiceUriAr : prefs.voiceUriEn;
+  if (isCloudVoiceUri(uri)) {
+    return {
+      useCloud: true,
+      gender: uri === CLOUD_VOICE_FEMALE_URI ? "female" : "male",
+    };
+  }
+  const voices = getRawBrowserVoices();
+  const hasLocal = hasLocalLanguageVoices(voices, langMode);
+  if (!hasLocal) {
+    const isMale =
+      uri.toLowerCase().includes("male") ||
+      uri.includes("ذكر") ||
+      uri.includes("hamed") ||
+      uri.includes("shakir");
+    return {
+      useCloud: true,
+      gender: isMale ? "male" : "female",
+    };
+  }
+  return {
+    useCloud: false,
+    gender: "female",
+  };
+}
+
 export function stopActiveSpeech() {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  if (typeof window === "undefined") return;
   try {
-    window.speechSynthesis.cancel();
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+  } catch {
+    // Ignore
+  }
+  try {
+    stopAllCloudSpeech();
   } catch {
     // Ignore
   }
@@ -697,7 +747,7 @@ function createConfiguredUtterance(
 
 /**
  * Speaks a flashed/question number cleanly according to fixed-speed rules.
- * Always plays synchronized short flash pip first (subject to independent flash audio toggle).
+ * Automatically prefers real device local voice when working; falls back to Smart Cloud TTS seamlessly.
  */
 export function speakSorobanNumber(
   num: number,
@@ -712,7 +762,7 @@ export function speakSorobanNumber(
 
   const prefs = getEffectiveSpeechSettings(overrides);
   const volume = getEffectiveSpeechVolume();
-  if (voiceMode === "off" || volume <= 0 || !("speechSynthesis" in window)) {
+  if (voiceMode === "off" || volume <= 0) {
     return;
   }
 
@@ -721,19 +771,55 @@ export function speakSorobanNumber(
     return;
   }
 
-  try {
-    window.speechSynthesis.cancel();
-    const text = formatTermSpeechText(num, voiceMode);
-    const utterance = createConfiguredUtterance(text, voiceMode, prefs, speedMs);
-    window.speechSynthesis.speak(utterance);
-  } catch {
-    // Speech unavailable; digital cue already played cleanly
+  const text = formatTermSpeechText(num, voiceMode);
+  const cloudStatus = shouldUseCloudSpeech(voiceMode, prefs);
+
+  if (cloudStatus.useCloud) {
+    playCloudSpeech(text, {
+      lang: voiceMode,
+      gender: cloudStatus.gender,
+      rate: computeAdaptiveSpeechRate(speedMs),
+      volume,
+    });
+    return;
+  }
+
+  if ("speechSynthesis" in window) {
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = createConfiguredUtterance(text, voiceMode, prefs, speedMs);
+      utterance.onerror = () => {
+        // Transparent fallback to cloud voice on any device error
+        playCloudSpeech(text, {
+          lang: voiceMode,
+          gender: cloudStatus.gender,
+          rate: computeAdaptiveSpeechRate(speedMs),
+          volume,
+        });
+      };
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      playCloudSpeech(text, {
+        lang: voiceMode,
+        gender: cloudStatus.gender,
+        rate: computeAdaptiveSpeechRate(speedMs),
+        volume,
+      });
+    }
+  } else {
+    playCloudSpeech(text, {
+      lang: voiceMode,
+      gender: cloudStatus.gender,
+      rate: computeAdaptiveSpeechRate(speedMs),
+      volume,
+    });
   }
 }
 
 /**
  * Async variant for Flash Anzan Synchronized Speech mode:
  * Speaks the full number tuned to speedMs and invokes onComplete when speech finishes.
+ * Uses local OS speech if present, or Smart Cloud TTS with zero latency and automatic caching.
  */
 export function speakSorobanNumberAsync(
   num: number,
@@ -762,11 +848,13 @@ export function speakSorobanNumberAsync(
   let settled = false;
   let minTimer: ReturnType<typeof setTimeout> | null = null;
   let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+  let cancelCloud: (() => void) | null = null;
 
   const cleanup = () => {
     settled = true;
     if (minTimer) clearTimeout(minTimer);
     if (fallbackTimer) clearTimeout(fallbackTimer);
+    if (cancelCloud) cancelCloud();
   };
 
   const finishRespectingMin = () => {
@@ -786,23 +874,61 @@ export function speakSorobanNumberAsync(
     }
   };
 
-  if (voiceMode === "off" || volume <= 0 || !("speechSynthesis" in window)) {
+  if (voiceMode === "off" || volume <= 0) {
     fallbackTimer = setTimeout(finishRespectingMin, minVisibleMs);
     return cleanup;
   }
 
-  try {
-    window.speechSynthesis.cancel();
-    const text = formatTermSpeechText(num, voiceMode);
-    const utterance = createConfiguredUtterance(text, voiceMode, prefs, options.speedMs);
+  const text = formatTermSpeechText(num, voiceMode);
+  const cloudStatus = shouldUseCloudSpeech(voiceMode, prefs);
+  fallbackTimer = setTimeout(finishRespectingMin, maxWaitMs);
 
-    utterance.onend = () => finishRespectingMin();
-    utterance.onerror = () => finishRespectingMin();
-    fallbackTimer = setTimeout(finishRespectingMin, maxWaitMs);
+  if (cloudStatus.useCloud) {
+    cancelCloud = playCloudSpeech(text, {
+      lang: voiceMode,
+      gender: cloudStatus.gender,
+      rate: computeAdaptiveSpeechRate(options.speedMs),
+      volume,
+      onComplete: finishRespectingMin,
+    });
+    return cleanup;
+  }
 
-    window.speechSynthesis.speak(utterance);
-  } catch {
-    fallbackTimer = setTimeout(finishRespectingMin, minVisibleMs);
+  if ("speechSynthesis" in window) {
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = createConfiguredUtterance(text, voiceMode, prefs, options.speedMs);
+
+      utterance.onend = () => finishRespectingMin();
+      utterance.onerror = () => {
+        // Fallback to cloud on error
+        cancelCloud = playCloudSpeech(text, {
+          lang: voiceMode,
+          gender: cloudStatus.gender,
+          rate: computeAdaptiveSpeechRate(options.speedMs),
+          volume,
+          onComplete: finishRespectingMin,
+        });
+      };
+
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      cancelCloud = playCloudSpeech(text, {
+        lang: voiceMode,
+        gender: cloudStatus.gender,
+        rate: computeAdaptiveSpeechRate(options.speedMs),
+        volume,
+        onComplete: finishRespectingMin,
+      });
+    }
+  } else {
+    cancelCloud = playCloudSpeech(text, {
+      lang: voiceMode,
+      gender: cloudStatus.gender,
+      rate: computeAdaptiveSpeechRate(options.speedMs),
+      volume,
+      onComplete: finishRespectingMin,
+    });
   }
 
   return cleanup;
@@ -820,19 +946,53 @@ export function speakQuestionSequence(
   const prefs = getEffectiveSpeechSettings(overrides);
   const volume = getEffectiveSpeechVolume();
 
-  if (voiceMode === "off" || volume <= 0 || !("speechSynthesis" in window)) {
+  if (voiceMode === "off" || volume <= 0) {
     soundSynth.playFlashCue("number");
     return;
   }
 
-  try {
-    window.speechSynthesis.cancel();
-    const parts = series.map((n) => formatTermSpeechText(n, voiceMode));
-    const text = parts.join(voiceMode === "arabic" ? " ، " : ", ");
-    const utterance = createConfiguredUtterance(text, voiceMode, prefs, 800);
-    window.speechSynthesis.speak(utterance);
-  } catch {
-    // Ignore
+  const parts = series.map((n) => formatTermSpeechText(n, voiceMode));
+  const text = parts.join(voiceMode === "arabic" ? " ، " : ", ");
+  const cloudStatus = shouldUseCloudSpeech(voiceMode, prefs);
+
+  if (cloudStatus.useCloud) {
+    playCloudSpeech(text, {
+      lang: voiceMode,
+      gender: cloudStatus.gender,
+      rate: 1.1,
+      volume,
+    });
+    return;
+  }
+
+  if ("speechSynthesis" in window) {
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = createConfiguredUtterance(text, voiceMode, prefs, 800);
+      utterance.onerror = () => {
+        playCloudSpeech(text, {
+          lang: voiceMode,
+          gender: cloudStatus.gender,
+          rate: 1.1,
+          volume,
+        });
+      };
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      playCloudSpeech(text, {
+        lang: voiceMode,
+        gender: cloudStatus.gender,
+        rate: 1.1,
+        volume,
+      });
+    }
+  } else {
+    playCloudSpeech(text, {
+      lang: voiceMode,
+      gender: cloudStatus.gender,
+      rate: 1.1,
+      volume,
+    });
   }
 }
 
@@ -849,44 +1009,116 @@ export function speakSorobanCountdown(
 
   const prefs = getEffectiveSpeechSettings(overrides);
   const volume = getEffectiveSpeechVolume();
-  if (voiceMode === "off" || volume <= 0 || !("speechSynthesis" in window)) return;
+  if (voiceMode === "off" || volume <= 0) return;
 
-  try {
-    window.speechSynthesis.cancel();
-    const arMap: Record<number, string> = { 3: "ثلاثة", 2: "اثنان", 1: "واحد", 0: "ابدأ" };
-    const enMap: Record<number, string> = { 3: "Three", 2: "Two", 1: "One", 0: "Go" };
-    const text = voiceMode === "arabic" ? arMap[count] || "" : enMap[count] || "";
-    if (!text) return;
+  const arMap: Record<number, string> = { 3: "ثلاثة", 2: "اثنان", 1: "واحد", 0: "ابدأ" };
+  const enMap: Record<number, string> = { 3: "Three", 2: "Two", 1: "One", 0: "Go" };
+  const text = voiceMode === "arabic" ? arMap[count] || "" : enMap[count] || "";
+  if (!text) return;
 
-    const utterance = createConfiguredUtterance(text, voiceMode, prefs, 750);
-    window.speechSynthesis.speak(utterance);
-  } catch {
-    // Ignore
+  const cloudStatus = shouldUseCloudSpeech(voiceMode, prefs);
+
+  if (cloudStatus.useCloud) {
+    playCloudSpeech(text, {
+      lang: voiceMode,
+      gender: cloudStatus.gender,
+      rate: 1.15,
+      volume,
+    });
+    return;
+  }
+
+  if ("speechSynthesis" in window) {
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = createConfiguredUtterance(text, voiceMode, prefs, 750);
+      utterance.onerror = () => {
+        playCloudSpeech(text, {
+          lang: voiceMode,
+          gender: cloudStatus.gender,
+          rate: 1.15,
+          volume,
+        });
+      };
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      playCloudSpeech(text, {
+        lang: voiceMode,
+        gender: cloudStatus.gender,
+        rate: 1.15,
+        volume,
+      });
+    }
+  } else {
+    playCloudSpeech(text, {
+      lang: voiceMode,
+      gender: cloudStatus.gender,
+      rate: 1.15,
+      volume,
+    });
   }
 }
 
 /**
  * Speaks a test sample phrase immediately using chosen language & device voice.
+ * Returns true if speech was triggered successfully.
  */
 export function speakTestSample(
   langMode: "arabic" | "english",
   overrides?: Partial<SpeechPreferences>
 ): boolean {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
+  if (typeof window === "undefined") return false;
   const prefs = getEffectiveSpeechSettings(overrides);
   const volume = getEffectiveSpeechVolume();
   if (volume <= 0) return false;
 
-  try {
-    window.speechSynthesis.cancel();
-    const sampleTerms = [25, -7, 14.5];
-    const sampleText = sampleTerms
-      .map((t) => formatTermSpeechText(t, langMode))
-      .join(langMode === "arabic" ? " ، " : ", ");
-    const utterance = createConfiguredUtterance(sampleText, langMode, prefs, 850);
-    window.speechSynthesis.speak(utterance);
+  const sampleTerms = [25, -7, 14.5];
+  const sampleText = sampleTerms
+    .map((t) => formatTermSpeechText(t, langMode))
+    .join(langMode === "arabic" ? " ، " : ", ");
+
+  const cloudStatus = shouldUseCloudSpeech(langMode, prefs);
+
+  if (cloudStatus.useCloud) {
+    playCloudSpeech(sampleText, {
+      lang: langMode,
+      gender: cloudStatus.gender,
+      rate: 1.05,
+      volume,
+    });
     return true;
-  } catch {
-    return false;
   }
+
+  if ("speechSynthesis" in window) {
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = createConfiguredUtterance(sampleText, langMode, prefs, 850);
+      utterance.onerror = () => {
+        playCloudSpeech(sampleText, {
+          lang: langMode,
+          gender: cloudStatus.gender,
+          rate: 1.05,
+          volume,
+        });
+      };
+      window.speechSynthesis.speak(utterance);
+      return true;
+    } catch {
+      playCloudSpeech(sampleText, {
+        lang: langMode,
+        gender: cloudStatus.gender,
+        rate: 1.05,
+        volume,
+      });
+      return true;
+    }
+  }
+
+  playCloudSpeech(sampleText, {
+    lang: langMode,
+    gender: cloudStatus.gender,
+    rate: 1.05,
+    volume,
+  });
+  return true;
 }

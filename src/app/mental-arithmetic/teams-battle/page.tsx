@@ -27,6 +27,7 @@ import {
   speakSorobanCountdown,
   warmupSpeechEngine,
   formatTermSpeechText,
+  prefetchCloudSpeech,
 } from "@/lib/soroban-engine";
 import { soundSynth } from "@/lib/audio-synthesizer";
 import { getWhatsAppLink } from "@/lib/constants";
@@ -252,6 +253,13 @@ export default function TeamsBattlePage() {
     // Start 3.. 2.. 1 countdown
     setStage("countdown");
     setCountdownNum(3);
+
+    // Prefetch all cloud audio clips during countdown so numbers playback instantly
+    const battleVoice = voiceMode;
+    if (battleVoice === "arabic" || battleVoice === "english") {
+      const phrases = generated.map((n) => formatTermSpeechText(n, battleVoice));
+      prefetchCloudSpeech(phrases, battleVoice);
+    }
 
     setTimeout(() => {
       arenaCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
