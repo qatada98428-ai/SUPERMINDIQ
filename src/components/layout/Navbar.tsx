@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import BrandLogo from "@/components/ui/BrandLogo";
 import AudioControlPanel from "@/components/ui/AudioControlPanel";
+import PodiumIcon from "@/components/ui/PodiumIcon";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
 import { usePWA } from "@/context/PWAContext";
@@ -137,7 +138,7 @@ export default function Navbar() {
                     />
                   </button>
 
-                  {/* Mega Dropdown with 3 Categories of Soft 3D Capsules */}
+                  {/* Mega Dropdown with 3 Main Sections of Soft 3D Programs */}
                   {programsOpen && (
                     <>
                       <div
@@ -145,10 +146,10 @@ export default function Navbar() {
                         onClick={() => setProgramsOpen(false)}
                         aria-hidden="true"
                       />
-                      <div className="absolute top-full start-0 mt-2.5 w-[340px] sm:w-[420px] p-4 clay-card bg-white/98 dark:bg-[#1E1B3E]/98 z-50 border-2 border-brand-500/30 dark:border-brand-500/40 shadow-2xl rounded-3xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-150">
-                        {/* 1. الحساب الذهني وأقسامه الستة */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                      <div className="absolute top-full start-0 mt-2.5 w-[350px] sm:w-[440px] p-4 clay-card bg-white/98 dark:bg-[#1E1B3E]/98 z-50 border-2 border-brand-500/35 dark:border-brand-500/45 shadow-2xl rounded-[2rem] space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                        {/* 1. أولاً: قسم الحساب الذهني */}
+                        <div className="p-3 rounded-2xl bg-gradient-to-br from-brand-50/70 via-indigo-50/40 to-slate-50/50 dark:from-brand-950/40 dark:via-indigo-950/30 dark:to-slate-900/60 border border-brand-200/80 dark:border-brand-800/50 space-y-2.5 shadow-sm">
+                          <div className="flex items-center justify-between pb-1.5 border-b border-brand-200/50 dark:border-brand-800/40">
                             <Link
                               href="/mental-arithmetic"
                               onClick={() => {
@@ -157,8 +158,18 @@ export default function Navbar() {
                               }}
                               className="text-xs font-black text-brand-700 dark:text-brand-300 hover:underline flex items-center gap-1.5"
                             >
-                              <span>🧮 الحساب الذهني (Mental Math)</span>
-                              <span className="text-[10px] text-slate-400">عرض الكل ⬅</span>
+                              <span className="text-base">🧮</span>
+                              <span>أولاً: قسم الحساب الذهني</span>
+                            </Link>
+                            <Link
+                              href="/mental-arithmetic"
+                              onClick={() => {
+                                playFx("pop");
+                                setProgramsOpen(false);
+                              }}
+                              className="text-[10px] font-black px-2 py-0.5 rounded-full bg-brand-100 dark:bg-brand-900/70 text-brand-800 dark:text-brand-200 hover:scale-105 transition-transform"
+                            >
+                              عرض الكل ⬅
                             </Link>
                           </div>
 
@@ -169,9 +180,9 @@ export default function Navbar() {
                                 playFx("pop");
                                 setProgramsOpen(false);
                               }}
-                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/40 dark:hover:bg-violet-900/50 text-violet-800 dark:text-violet-200 border border-violet-200/80 dark:border-violet-800/50 active:scale-95"
+                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-violet-50/90 hover:bg-violet-100 dark:bg-violet-950/50 dark:hover:bg-violet-900/60 text-violet-900 dark:text-violet-200 border border-violet-200 dark:border-violet-800/60 active:scale-95 shadow-sm"
                             >
-                              <span>🧮</span>
+                              <span className="text-sm">🧮</span>
                               <span className="truncate">العداد (السوروبان)</span>
                             </Link>
 
@@ -181,10 +192,10 @@ export default function Navbar() {
                                 playFx("pop");
                                 setProgramsOpen(false);
                               }}
-                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/50 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-800/50 active:scale-95"
+                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-amber-50/90 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 text-amber-950 dark:text-amber-200 border border-amber-200 dark:border-amber-800/60 active:scale-95 shadow-sm"
                             >
-                              <span>⚡</span>
-                              <span className="truncate">فلاش أنزان</span>
+                              <span className="text-sm">⚡</span>
+                              <span className="truncate">فلاش أنزان السريع</span>
                             </Link>
 
                             <Link
@@ -193,9 +204,9 @@ export default function Navbar() {
                                 playFx("pop");
                                 setProgramsOpen(false);
                               }}
-                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-950/40 dark:hover:bg-yellow-900/50 text-yellow-900 dark:text-yellow-200 border border-yellow-200/80 dark:border-yellow-800/50 active:scale-95"
+                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-yellow-50/90 hover:bg-yellow-100 dark:bg-yellow-950/50 dark:hover:bg-yellow-900/60 text-yellow-950 dark:text-yellow-200 border border-yellow-200 dark:border-yellow-800/60 active:scale-95 shadow-sm"
                             >
-                              <span>🏆</span>
+                              <span className="text-sm">🏆</span>
                               <span className="truncate">محاكي المسابقات</span>
                             </Link>
 
@@ -205,10 +216,10 @@ export default function Navbar() {
                                 playFx("pop");
                                 setProgramsOpen(false);
                               }}
-                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/40 dark:hover:bg-sky-900/50 text-sky-800 dark:text-sky-200 border border-sky-200/80 dark:border-sky-800/50 active:scale-95"
+                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-sky-50/90 hover:bg-sky-100 dark:bg-sky-950/50 dark:hover:bg-sky-900/60 text-sky-900 dark:text-sky-200 border border-sky-200 dark:border-sky-800/60 active:scale-95 shadow-sm"
                             >
-                              <span>👥</span>
-                              <span className="truncate">تحدي الفرق</span>
+                              <PodiumIcon className="w-4 h-4 text-sky-600 dark:text-sky-300 shrink-0" />
+                              <span className="truncate">حلبة تحدي الفرق</span>
                             </Link>
 
                             <Link
@@ -217,9 +228,9 @@ export default function Navbar() {
                                 playFx("pop");
                                 setProgramsOpen(false);
                               }}
-                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-800 dark:text-rose-200 border border-rose-200/80 dark:border-rose-800/50 active:scale-95"
+                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-rose-50/90 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-900 dark:text-rose-200 border border-rose-200 dark:border-rose-800/60 active:scale-95 shadow-sm"
                             >
-                              <span>🎈</span>
+                              <span className="text-sm">🎈</span>
                               <span className="truncate">تفجير البالونات</span>
                             </Link>
 
@@ -229,67 +240,67 @@ export default function Navbar() {
                                 playFx("pop");
                                 setProgramsOpen(false);
                               }}
-                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-800/50 active:scale-95"
+                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-emerald-50/90 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/60 active:scale-95 shadow-sm"
                             >
-                              <span>✖️➗</span>
+                              <span className="text-sm">✖️➗</span>
                               <span className="truncate">الضرب والقسمة</span>
                             </Link>
                           </div>
                         </div>
 
-                        {/* 2. أسئلة الذكاء */}
-                        <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
-                          <Link
-                            href="/intelligence"
-                            onClick={() => {
-                              playFx("pop");
-                              setProgramsOpen(false);
-                            }}
-                            className="p-2.5 rounded-2xl bg-gradient-to-r from-purple-50 via-indigo-50 to-brand-50 dark:from-purple-950/40 dark:via-indigo-950/40 dark:to-brand-950/40 border border-purple-200 dark:border-purple-800/60 flex items-center justify-between hover:scale-[1.01] active:scale-95 transition-all"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <span className="text-lg">🧩</span>
-                              <div className="text-right">
-                                <div className="text-xs font-black text-[#261E58] dark:text-[#F3F0FD]">
-                                  أسئلة وتحديات الذكاء
-                                </div>
-                                <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                                  ألغاز التفكير المنطقي واختبارات الأولمبياد
-                                </div>
+                        {/* 2. ثانياً: قسم أسئلة وتحديات الذكاء */}
+                        <Link
+                          href="/intelligence"
+                          onClick={() => {
+                            playFx("pop");
+                            setProgramsOpen(false);
+                          }}
+                          className="p-3 rounded-2xl bg-gradient-to-r from-violet-50/90 via-fuchsia-50/60 to-purple-50/90 dark:from-violet-950/40 dark:via-fuchsia-950/30 dark:to-purple-950/40 border border-violet-300/80 dark:border-violet-700/60 flex items-center justify-between hover:scale-[1.01] active:scale-95 transition-all shadow-sm group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white flex items-center justify-center font-black text-lg shadow-md group-hover:rotate-6 transition-transform">
+                              🧩
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs font-black text-[#261E58] dark:text-[#F3F0FD]">
+                                ثانياً: قسم أسئلة وتحديات الذكاء
+                              </div>
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                ألغاز التفكير المنطقي واختبارات الأولمبياد الرسمية
                               </div>
                             </div>
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-200/60 text-purple-900 dark:bg-purple-900/60 dark:text-purple-200">
-                              تحدي
-                            </span>
-                          </Link>
-                        </div>
+                          </div>
+                          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-violet-600 text-white shadow-sm shrink-0">
+                            تحديات حماسية 🔥
+                          </span>
+                        </Link>
 
-                        {/* 3. أسرار الأرقام (رياضيات الفيدا للمتوسطة والإعدادية) */}
-                        <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
-                          <Link
-                            href="/secrets-of-numbers"
-                            onClick={() => {
-                              playFx("pop");
-                              setProgramsOpen(false);
-                            }}
-                            className="p-2.5 rounded-2xl bg-gradient-to-r from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/40 dark:via-yellow-950/40 dark:to-orange-950/40 border border-amber-300 dark:border-amber-700/60 flex items-center justify-between hover:scale-[1.01] active:scale-95 transition-all"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <span className="text-lg">✨</span>
-                              <div className="text-right">
-                                <div className="text-xs font-black text-amber-950 dark:text-amber-200">
-                                  أسرار الأرقام • رياضيات الفيدا
-                                </div>
-                                <div className="text-[10px] text-amber-800/80 dark:text-amber-300">
-                                  مهارات الضرب السريع والتربيع لطلاب المتوسطة والإعدادية
-                                </div>
+                        {/* 3. ثالثاً: قسم أسرار الرياضيات */}
+                        <Link
+                          href="/secrets-of-numbers"
+                          onClick={() => {
+                            playFx("pop");
+                            setProgramsOpen(false);
+                          }}
+                          className="p-3 rounded-2xl bg-gradient-to-r from-amber-50/90 via-yellow-50/70 to-orange-50/90 dark:from-amber-950/40 dark:via-yellow-950/30 dark:to-orange-950/40 border border-amber-300 dark:border-amber-700/60 flex items-center justify-between hover:scale-[1.01] active:scale-95 transition-all shadow-sm group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center font-black text-lg shadow-md group-hover:-rotate-6 transition-transform">
+                              ✨
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs font-black text-amber-950 dark:text-amber-200">
+                                ثالثاً: قسم أسرار الرياضيات
+                              </div>
+                              <div className="text-[10px] text-amber-800/80 dark:text-amber-300 mt-0.5">
+                                رياضيات الفيدا وحيل الحساب السريع للمتوسطة والإعدادية
                               </div>
                             </div>
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 shadow-sm animate-pulse">
-                              جديد 🚀
-                            </span>
-                          </Link>
-                        </div>
+                          </div>
+                          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-500 text-slate-950 font-black shadow-sm shrink-0 animate-pulse">
+                            جديد خارق 🚀
+                          </span>
+                        </Link>
                       </div>
                     </>
                   )}
@@ -762,97 +773,137 @@ export default function Navbar() {
             </Link>
           )}
 
-          {/* كبسولات برامج العقل الخارق للهاتف */}
-          <div className="clay-card-sm p-3.5 bg-[#F6F4FE] dark:bg-[#211E42] space-y-2.5">
-            <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800 pb-2">
+          {/* كبسولات برامج العقل الخارق للهاتف مقسمة 3 أقسام رئيسية */}
+          <div className="clay-card-sm p-3.5 bg-[#F6F4FE] dark:bg-[#211E42] space-y-3">
+            <div className="flex items-center justify-between border-b border-brand-200/60 dark:border-brand-800 pb-2">
               <span className="text-xs font-black text-[#261E58] dark:text-[#F3F0FD] flex items-center gap-1.5">
                 <Brain className="w-4 h-4 text-brand-600" />
                 <span>برامج العقل الخارق</span>
               </span>
-              <Link
-                href="/mental-arithmetic"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-[11px] font-bold text-brand-600 dark:text-brand-300"
-              >
-                الحساب الذهني ⬅
-              </Link>
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300">
+                3 أقسام احترافية ⭐
+              </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-1.5">
-              <Link
-                href="/mental-arithmetic/abacus"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-white dark:bg-slate-800/80 text-violet-800 dark:text-violet-200 border border-violet-200/80 dark:border-violet-800/40"
-              >
-                <span>🧮</span>
-                <span className="truncate">العداد (السوروبان)</span>
-              </Link>
+            {/* 1. أولاً: قسم الحساب الذهني */}
+            <div className="p-2.5 rounded-2xl bg-white/80 dark:bg-slate-900/60 border border-brand-200/60 dark:border-brand-800/40 space-y-2">
+              <div className="flex items-center justify-between">
+                <Link
+                  href="/mental-arithmetic"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-xs font-black text-brand-700 dark:text-brand-300 flex items-center gap-1 hover:underline"
+                >
+                  <span>🧮 أولاً: قسم الحساب الذهني</span>
+                </Link>
+                <Link
+                  href="/mental-arithmetic"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-[10px] font-bold text-slate-500 dark:text-slate-400"
+                >
+                  الكل ⬅
+                </Link>
+              </div>
 
-              <Link
-                href="/mental-arithmetic/flash-anzan"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-white dark:bg-slate-800/80 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-800/40"
-              >
-                <span>⚡</span>
-                <span className="truncate">فلاش أنزان</span>
-              </Link>
+              <div className="grid grid-cols-2 gap-1.5">
+                <Link
+                  href="/mental-arithmetic/abacus"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-violet-50/90 dark:bg-violet-950/40 text-violet-900 dark:text-violet-200 border border-violet-200/80 dark:border-violet-800/40"
+                >
+                  <span>🧮</span>
+                  <span className="truncate">العداد (السوروبان)</span>
+                </Link>
 
-              <Link
-                href="/mental-arithmetic/competition"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-white dark:bg-slate-800/80 text-yellow-900 dark:text-yellow-200 border border-yellow-200/80 dark:border-yellow-800/40"
-              >
-                <span>🏆</span>
-                <span className="truncate">محاكي المسابقات</span>
-              </Link>
+                <Link
+                  href="/mental-arithmetic/flash-anzan"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-800/40"
+                >
+                  <span>⚡</span>
+                  <span className="truncate">فلاش أنزان</span>
+                </Link>
 
-              <Link
-                href="/mental-arithmetic/teams-battle"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-white dark:bg-slate-800/80 text-sky-800 dark:text-sky-200 border border-sky-200/80 dark:border-sky-800/40"
-              >
-                <span>👥</span>
-                <span className="truncate">تحدي الفرق</span>
-              </Link>
+                <Link
+                  href="/mental-arithmetic/competition"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-yellow-50/90 dark:bg-yellow-950/40 text-yellow-900 dark:text-yellow-200 border border-yellow-200/80 dark:border-yellow-800/40"
+                >
+                  <span>🏆</span>
+                  <span className="truncate">محاكي المسابقات</span>
+                </Link>
 
-              <Link
-                href="/mental-arithmetic/balloon-pop"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-white dark:bg-slate-800/80 text-rose-800 dark:text-rose-200 border border-rose-200/80 dark:border-rose-800/40"
-              >
-                <span>🎈</span>
-                <span className="truncate">تفجير البالونات</span>
-              </Link>
+                <Link
+                  href="/mental-arithmetic/teams-battle"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-sky-50/90 dark:bg-sky-950/40 text-sky-900 dark:text-sky-200 border border-sky-200/80 dark:border-sky-800/40"
+                >
+                  <PodiumIcon className="w-3.5 h-3.5 text-sky-600 dark:text-sky-300 shrink-0" />
+                  <span className="truncate">حلبة تحدي الفرق</span>
+                </Link>
 
-              <Link
-                href="/mental-arithmetic/multiplication-division"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-white dark:bg-slate-800/80 text-emerald-800 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-800/40"
-              >
-                <span>✖️➗</span>
-                <span className="truncate">الضرب والقسمة</span>
-              </Link>
+                <Link
+                  href="/mental-arithmetic/balloon-pop"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-rose-50/90 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border border-rose-200/80 dark:border-rose-800/40"
+                >
+                  <span>🎈</span>
+                  <span className="truncate">تفجير البالونات</span>
+                </Link>
+
+                <Link
+                  href="/mental-arithmetic/multiplication-division"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-800/40"
+                >
+                  <span>✖️➗</span>
+                  <span className="truncate">الضرب والقسمة</span>
+                </Link>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-slate-200/60 dark:border-slate-800">
-              <Link
-                href="/intelligence"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2 rounded-xl text-xs font-black flex items-center gap-1.5 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/40 dark:to-indigo-950/40 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-purple-800/50"
-              >
-                <span>🧩</span>
-                <span className="truncate">أسئلة الذكاء</span>
-              </Link>
+            {/* 2. ثانياً: قسم أسئلة وتحديات الذكاء */}
+            <Link
+              href="/intelligence"
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-2.5 rounded-2xl bg-gradient-to-r from-violet-50/90 to-purple-50/90 dark:from-violet-950/40 dark:to-purple-950/40 border border-violet-200 dark:border-violet-800/50 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-base">🧩</span>
+                <div className="text-right">
+                  <div className="text-xs font-black text-violet-950 dark:text-violet-200">
+                    ثانياً: قسم أسئلة وتحديات الذكاء
+                  </div>
+                  <div className="text-[10px] text-violet-700 dark:text-violet-300">
+                    الألغاز والمنطق وأولمبياد العباقرة
+                  </div>
+                </div>
+              </div>
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-600 text-white shrink-0">
+                تحدي 🔥
+              </span>
+            </Link>
 
-              <Link
-                href="/secrets-of-numbers"
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-2 rounded-xl text-xs font-black flex items-center gap-1.5 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/40 dark:to-yellow-950/40 text-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-700/50"
-              >
-                <span>✨</span>
-                <span className="truncate">أسرار الأرقام 🚀</span>
-              </Link>
-            </div>
+            {/* 3. ثالثاً: قسم أسرار الرياضيات */}
+            <Link
+              href="/secrets-of-numbers"
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-2.5 rounded-2xl bg-gradient-to-r from-amber-50/90 to-yellow-50/90 dark:from-amber-950/40 dark:to-yellow-950/40 border border-amber-300 dark:border-amber-700/50 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-base">✨</span>
+                <div className="text-right">
+                  <div className="text-xs font-black text-amber-950 dark:text-amber-200">
+                    ثالثاً: قسم أسرار الرياضيات
+                  </div>
+                  <div className="text-[10px] text-amber-800/90 dark:text-amber-300">
+                    رياضيات الفيدا للمتوسطة والإعدادية
+                  </div>
+                </div>
+              </div>
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 shrink-0 font-black">
+                جديد 🚀
+              </span>
+            </Link>
           </div>
 
           {/* عناصر التحكم السريعة (اللغة، الثيم، الصوت) */}

@@ -617,7 +617,7 @@ function FlashDisplay({
           key={idx}
           className="font-black tabular-nums text-white transition-all duration-75"
           style={{
-            fontSize: "clamp(5rem, 20vw, 11rem)",
+            fontSize: "clamp(6.5rem, 34vmin, 22rem)",
             textShadow: "0 0 60px rgba(255,255,255,0.6)",
             opacity: visible ? 1 : 0,
             transform: visible ? "scale(1)" : "scale(0.7)",

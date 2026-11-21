@@ -10,6 +10,7 @@ export type ClayIconName =
   | "shapes"
   | "brain"
   | "trophy"
+  | "podium"
   | "star"
   | "flame"
   | "book"
@@ -299,6 +300,55 @@ export default function ClayIcon({
               d="M32 18l2.2 4.4 4.8.7-3.5 3.4.8 4.8-4.3-2.3-4.3 2.3.8-4.8-3.5-3.4 4.8-.7L32 18z"
               fill="#FFFBEB"
             />
+          </svg>
+        );
+
+      case "podium":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-podium-gold`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#FDE047" />
+                <stop offset="60%" stopColor="#EAB308" />
+                <stop offset="100%" stopColor="#CA8A04" />
+              </linearGradient>
+              <linearGradient id={`${uid}-podium-silver`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#E2E8F0" />
+                <stop offset="70%" stopColor="#94A3B8" />
+                <stop offset="100%" stopColor="#64748B" />
+              </linearGradient>
+              <linearGradient id={`${uid}-podium-bronze`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#FDBA74" />
+                <stop offset="70%" stopColor="#EA580C" />
+                <stop offset="100%" stopColor="#9A3412" />
+              </linearGradient>
+              <linearGradient id={`${uid}-crown`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FEF08A" />
+                <stop offset="100%" stopColor="#F59E0B" />
+              </linearGradient>
+            </defs>
+            {/* Center #1 Podium */}
+            <rect x="23" y="24" width="18" height="28" rx="4" fill={`url(#${uid}-podium-gold)`} />
+            <rect x="25" y="26" width="14" height="3" rx="1.5" fill="#FFF" fillOpacity="0.6" />
+            <text x="32" y="42" textAnchor="middle" fill="#78350F" fontSize="11" fontWeight="900" fontFamily="sans-serif">1</text>
+            {/* Left #2 Podium */}
+            <rect x="6" y="32" width="17" height="20" rx="3.5" fill={`url(#${uid}-podium-silver)`} />
+            <rect x="8" y="34" width="13" height="2.5" rx="1.2" fill="#FFF" fillOpacity="0.55" />
+            <text x="14.5" y="46" textAnchor="middle" fill="#1E293B" fontSize="10" fontWeight="900" fontFamily="sans-serif">2</text>
+            {/* Right #3 Podium */}
+            <rect x="41" y="38" width="17" height="14" rx="3.5" fill={`url(#${uid}-podium-bronze)`} />
+            <rect x="43" y="40" width="13" height="2.5" rx="1.2" fill="#FFF" fillOpacity="0.55" />
+            <text x="49.5" y="49" textAnchor="middle" fill="#431407" fontSize="9.5" fontWeight="900" fontFamily="sans-serif">3</text>
+            {/* Crown on top of center podium */}
+            <path
+              d="M26 18l3 3 3-5 3 5 3-3v4H26v-4z"
+              fill={`url(#${uid}-crown)`}
+              stroke="#D97706"
+              strokeWidth="1.2"
+              strokeLinejoin="round"
+            />
+            <circle cx="21" cy="14" r="1.5" fill="#FBBF24" />
+            <circle cx="43" cy="15" r="1.5" fill="#FBBF24" />
           </svg>
         );
 

@@ -193,9 +193,9 @@ export default function MentalArithmeticPage() {
       enShortTagline: "Live multi-team racing arena and 3D podium",
       desc: "حلبة تنافسية جماعية للصفوف والمدارس بين الفرق (من فريقين إلى 5 فرق: A, B, C, D, E) مع قياس سرعة الإجابة بالمللي ثانية ومضمار سباق وتتويج بطل الأبطال.",
       enDesc: "Live classroom & school battle arena supporting 2 to 5 teams (A-E) with millisecond speed bonuses, animated race tracks, and victory podium.",
-      badge: "بطولة حية 🏆",
-      enBadge: "Live Arena 🏆",
-      icon: "trophy",
+      badge: "منصة التتويج 🥇",
+      enBadge: "Live Podium 🥇",
+      icon: "podium",
       tone: "mint",
       actionTheme: "mint",
       cardSurface:

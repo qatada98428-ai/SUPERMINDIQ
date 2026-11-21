@@ -30,6 +30,7 @@ import {
 } from "@/lib/soroban-engine";
 import { soundSynth } from "@/lib/audio-synthesizer";
 import { getWhatsAppLink } from "@/lib/constants";
+import PodiumIcon from "@/components/ui/PodiumIcon";
 
 // Available Team Presets
 interface Team {
@@ -418,7 +419,7 @@ export default function TeamsBattlePage() {
           </div>
 
           <h1 className="text-2xl sm:text-4xl font-black text-slate-900 flex items-center gap-2.5">
-            <Trophy className="w-8 h-8 text-amber-500" />
+            <PodiumIcon className="w-9 h-9 text-amber-500 shrink-0" />
             <span>حلبة تحدي الفرق | بطولة العقل الخارق</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
@@ -849,7 +850,7 @@ export default function TeamsBattlePage() {
                 <div
                   className="font-black text-amber-400 drop-shadow-[0_12px_32px_rgba(245,158,11,0.55)] select-none leading-none"
                   style={{
-                    fontSize: "clamp(6.5rem, 28vw, 12rem)",
+                    fontSize: "clamp(8rem, 35vmin, 20rem)",
                     fontFamily: "'Fredoka', 'Baloo Bhaijaan 2', 'Alexandria', sans-serif",
                   }}
                 >
@@ -875,7 +876,7 @@ export default function TeamsBattlePage() {
                             : "text-emerald-400 drop-shadow-[0_14px_35px_rgba(16,185,129,0.5)]"
                         }`}
                         style={{
-                          fontSize: "clamp(5.5rem, 26vmin, 16rem)",
+                          fontSize: "clamp(7rem, 36vmin, 24rem)",
                           fontFamily: "'Fredoka', 'Baloo Bhaijaan 2', 'Alexandria', sans-serif",
                         }}
                       >
@@ -1056,7 +1057,7 @@ export default function TeamsBattlePage() {
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/90 dark:border-slate-800 shadow-xl space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 text-xs font-bold">
-                <Trophy className="w-4 h-4 text-amber-500" />
+                <PodiumIcon className="w-4 h-4 text-amber-500 shrink-0" />
                 <span>مسار سباق الفرق نحو الكأس الذهبي</span>
               </div>
               <span className="text-xs font-bold text-slate-500">
@@ -1131,7 +1132,7 @@ export default function TeamsBattlePage() {
           {/* Top Championship Header */}
           <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white p-8 sm:p-14 border border-amber-500/40 shadow-2xl text-center space-y-5">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-400/20 text-amber-300 text-xs sm:text-sm font-bold border border-amber-400/30">
-              <Trophy className="w-4 h-4 text-amber-400" />
+              <PodiumIcon className="w-4 h-4 text-amber-400 shrink-0" />
               <span>منصة التتويج الرسمية — بطولة العقل الخارق</span>
             </div>
 

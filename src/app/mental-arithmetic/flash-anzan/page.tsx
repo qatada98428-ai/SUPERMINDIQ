@@ -620,19 +620,20 @@ export default function FlashAnzanPage() {
               <div className="z-10 animate-in zoom-in-95 fade-in duration-75 flex flex-col items-center justify-center max-w-full">
                 <div
                   dir="ltr"
-                  className={`${
-                    digits >= 4
-                      ? "text-5xl sm:text-8xl md:text-[10rem]"
-                      : digits === 3
-                      ? "text-6xl sm:text-9xl md:text-[11rem]"
-                      : "text-7xl sm:text-[11rem] md:text-[13rem]"
-                  } font-black tracking-normal sm:tracking-widest select-none leading-none px-5 sm:px-8 py-3 sm:py-4 rounded-3xl sm:rounded-[3.5rem] bg-slate-900/80 border-4 border-amber-400/40 shadow-2xl backdrop-blur-sm transition-all max-w-full ${
+                  className={`font-black tracking-normal select-none leading-none px-4 sm:px-10 py-3 sm:py-6 rounded-3xl sm:rounded-[3.5rem] bg-slate-900/90 border-4 border-amber-400/50 shadow-2xl backdrop-blur-sm transition-all max-w-full text-center ${
                     currentNumber < 0
                       ? "text-rose-400 drop-shadow-[0_14px_35px_rgba(244,63,94,0.45)]"
                       : "text-emerald-400 drop-shadow-[0_14px_35px_rgba(16,185,129,0.45)]"
                   }`}
-                  style={{ fontFamily: "'Fredoka', 'Baloo Bhaijaan 2', 'Alexandria', sans-serif" }}
-                >
+                  style={{
+                    fontSize:
+                      digits >= 4
+                        ? "clamp(4.5rem, 24vmin, 14rem)"
+                        : digits === 3
+                        ? "clamp(5.5rem, 28vmin, 17rem)"
+                        : "clamp(7rem, 36vmin, 24rem)",
+                    fontFamily: "'Fredoka', 'Baloo Bhaijaan 2', 'Alexandria', sans-serif",
+                  }}>
                   {numeralSystem === "arabic"
                     ? (currentNumber < 0 ? "−" : "+") + toArabicNumerals(Math.abs(currentNumber))
                     : currentNumber > 0
