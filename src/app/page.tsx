@@ -389,7 +389,7 @@ export default function HomePage() {
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -bottom-24 -left-24 h-80 w-80 rounded-full bg-[#48CEBC]/15 blur-3xl"
+          className="pointer-events-none absolute -bottom-24 -left-24 h-80 w-80 rounded-full bg-[#A78BFA]/15 blur-3xl"
         />
 
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
@@ -768,11 +768,11 @@ export default function HomePage() {
       {/* 3. CORE PILLARS + MINT MATH FUN BANNER (MATCHING SCREEN 2) */}
       <section className="py-10 sm:py-16">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
-          {/* Mint 3D Banner matching Screen 2 ("Let's Make Math Fun!") */}
-          <div className="clay-banner-mint relative overflow-hidden p-6 sm:p-9 lg:p-10">
+          {/* Royal Lavender 3D Banner */}
+          <div className="clay-banner-lavender relative overflow-hidden p-6 sm:p-9 lg:p-10 text-white rounded-[2.5rem] shadow-2xl">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
               <div className="lg:col-span-7 text-center lg:text-start">
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/85 px-4 py-1 text-xs sm:text-sm font-black text-[#0F766E] mb-3 shadow-sm">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/20 border border-white/30 px-4 py-1 text-xs sm:text-sm font-black text-amber-300 mb-3 shadow-sm">
                   <ClayIcon name="trophy" tone="none" size="xs" />
                   <span>
                     {isEn
@@ -780,12 +780,12 @@ export default function HomePage() {
                       : "ركائز التفوق الذهني في المنصة"}
                   </span>
                 </div>
-                <h2 className="text-2xl sm:text-4xl font-black text-[#0F2F2E] leading-tight mb-3">
+                <h2 className="text-2xl sm:text-4xl font-black text-white leading-tight mb-3">
                   {isEn
                     ? "Let's Make Mental Math Fun & Unforgettable!"
                     : "لنجعل الحساب الذهني رحلةً ممتعة ومُلهمة!"}
                 </h2>
-                <p className="text-sm sm:text-base font-medium text-[#114542] leading-relaxed max-w-2xl mx-auto lg:mx-0">
+                <p className="text-sm sm:text-base font-medium text-white/90 leading-relaxed max-w-2xl mx-auto lg:mx-0">
                   {isEn
                     ? "Complete tools crafted with mental arithmetic experts to stimulate both brain hemispheres simultaneously."
                     : "أدوات متكاملة لبناء عبقرية الحساب وسرعة البديهة، صُممت بالتعاون مع خبراء الحساب الذهني لتطوير شقي الدماغ بالتزامن."}
@@ -793,7 +793,7 @@ export default function HomePage() {
               </div>
 
               <div className="lg:col-span-5">
-                <div className="rounded-[24px] overflow-hidden shadow-clay border-2 border-white/60 aspect-video bg-[#65DDD0]">
+                <div className="rounded-[24px] overflow-hidden shadow-clay border-2 border-white/40 aspect-video bg-[#5438E8]/40">
                   <Image
                     src="/images/clay/math-fun-mascot.jpg"
                     alt="طفل وطفلة متحمسين يحملان كأساً ومعداد سوروبان بجانب السبورة"
@@ -1176,27 +1176,27 @@ export default function HomePage() {
       {/* 6. OFFICIAL WHATSAPP CONTACT CALLOUT */}
       <section className="py-8 sm:py-10">
         <div className="container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-          <div className="clay-banner-mint p-6 sm:p-9 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="clay-banner-lavender p-6 sm:p-9 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 text-white rounded-[2rem] shadow-xl">
             <div className="flex items-start gap-4 max-w-xl">
               <ClayIcon
                 name="chat"
                 tone="none"
                 size="xl"
-                className="hidden sm:inline-flex drop-shadow-md"
+                className="hidden sm:inline-flex drop-shadow-md text-amber-300"
               />
               <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/85 px-3.5 py-1 text-xs font-extrabold text-[#0F766E] mb-3">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/20 border border-white/30 px-3.5 py-1 text-xs font-extrabold text-amber-300 mb-3">
                   <MessageCircle className="w-4 h-4" />
                   <span>
                     {isEn ? "Direct Official Support" : "التواصل الرسمي المباشر"}
                   </span>
                 </div>
-                <h3 className="text-xl sm:text-2xl font-black text-[#0F2F2E] mb-2 leading-snug">
+                <h3 className="text-xl sm:text-2xl font-black text-white mb-2 leading-snug">
                   {isEn
                     ? "Need Accreditation, Curriculum Orders, or School Activation?"
                     : "هل ترغب بطلب المناهج، الاعتماد الرسمي، أو تفعيل باقات المراكز؟"}
                 </h3>
-                <p className="text-sm font-medium text-[#114542] leading-relaxed">
+                <p className="text-sm font-medium text-white/90 leading-relaxed">
                   {isEn
                     ? "Contact SUPER MIND administration directly via WhatsApp or visit our contact page for official channels."
                     : "تواصل مباشرة مع إدارة برنامج العقل الخارق عبر الواتساب الرسمي أو استعرض جميع قنوات التواصل."}

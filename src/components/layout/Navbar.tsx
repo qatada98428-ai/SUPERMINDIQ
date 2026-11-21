@@ -39,6 +39,7 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [programsOpen, setProgramsOpen] = useState(false);
+  const [activeNavCapsule, setActiveNavCapsule] = useState<"mental" | "iq" | "vedic">("mental");
   const [audioMenuOpen, setAudioMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -146,161 +147,298 @@ export default function Navbar() {
                         onClick={() => setProgramsOpen(false)}
                         aria-hidden="true"
                       />
-                      <div className="absolute top-full start-0 mt-2.5 w-[350px] sm:w-[440px] p-4 clay-card bg-white/98 dark:bg-[#1E1B3E]/98 z-50 border-2 border-brand-500/35 dark:border-brand-500/45 shadow-2xl rounded-[2rem] space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-150">
-                        {/* 1. أولاً: قسم الحساب الذهني */}
-                        <div className="p-3 rounded-2xl bg-gradient-to-br from-brand-50/70 via-indigo-50/40 to-slate-50/50 dark:from-brand-950/40 dark:via-indigo-950/30 dark:to-slate-900/60 border border-brand-200/80 dark:border-brand-800/50 space-y-2.5 shadow-sm">
-                          <div className="flex items-center justify-between pb-1.5 border-b border-brand-200/50 dark:border-brand-800/40">
-                            <Link
-                              href="/mental-arithmetic"
-                              onClick={() => {
-                                playFx("pop");
-                                setProgramsOpen(false);
-                              }}
-                              className="text-xs font-black text-brand-700 dark:text-brand-300 hover:underline flex items-center gap-1.5"
-                            >
-                              <span className="text-base">🧮</span>
-                              <span>أولاً: قسم الحساب الذهني</span>
-                            </Link>
-                            <Link
-                              href="/mental-arithmetic"
-                              onClick={() => {
-                                playFx("pop");
-                                setProgramsOpen(false);
-                              }}
-                              className="text-[10px] font-black px-2 py-0.5 rounded-full bg-brand-100 dark:bg-brand-900/70 text-brand-800 dark:text-brand-200 hover:scale-105 transition-transform"
-                            >
-                              عرض الكل ⬅
-                            </Link>
+                      <div className="absolute top-full start-0 mt-2.5 w-[360px] sm:w-[480px] p-4 sm:p-5 clay-card bg-white/98 dark:bg-[#1E1B3E]/98 z-50 border-2 border-brand-500/35 dark:border-brand-500/45 shadow-2xl rounded-[2rem] space-y-4 animate-in fade-in slide-in-from-top-2 duration-150">
+                        {/* Top Header Row */}
+                        <div className="flex items-center justify-between pb-2 border-b border-brand-100 dark:border-brand-900/40">
+                          <div className="flex items-center gap-2">
+                            <Brain className="w-5 h-5 text-brand-600 dark:text-brand-300" />
+                            <span className="text-sm font-black text-[#261E58] dark:text-white">
+                              برامج العقل الخارق
+                            </span>
                           </div>
-
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <Link
-                              href="/mental-arithmetic/abacus"
-                              onClick={() => {
-                                playFx("pop");
-                                setProgramsOpen(false);
-                              }}
-                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-violet-50/90 hover:bg-violet-100 dark:bg-violet-950/50 dark:hover:bg-violet-900/60 text-violet-900 dark:text-violet-200 border border-violet-200 dark:border-violet-800/60 active:scale-95 shadow-sm"
-                            >
-                              <span className="text-sm">🧮</span>
-                              <span className="truncate">العداد (السوروبان)</span>
-                            </Link>
-
-                            <Link
-                              href="/mental-arithmetic/flash-anzan"
-                              onClick={() => {
-                                playFx("pop");
-                                setProgramsOpen(false);
-                              }}
-                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-amber-50/90 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 text-amber-950 dark:text-amber-200 border border-amber-200 dark:border-amber-800/60 active:scale-95 shadow-sm"
-                            >
-                              <span className="text-sm">⚡</span>
-                              <span className="truncate">فلاش أنزان السريع</span>
-                            </Link>
-
-                            <Link
-                              href="/mental-arithmetic/competition"
-                              onClick={() => {
-                                playFx("pop");
-                                setProgramsOpen(false);
-                              }}
-                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-yellow-50/90 hover:bg-yellow-100 dark:bg-yellow-950/50 dark:hover:bg-yellow-900/60 text-yellow-950 dark:text-yellow-200 border border-yellow-200 dark:border-yellow-800/60 active:scale-95 shadow-sm"
-                            >
-                              <span className="text-sm">🏆</span>
-                              <span className="truncate">محاكي المسابقات</span>
-                            </Link>
-
-                            <Link
-                              href="/mental-arithmetic/teams-battle"
-                              onClick={() => {
-                                playFx("pop");
-                                setProgramsOpen(false);
-                              }}
-                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-sky-50/90 hover:bg-sky-100 dark:bg-sky-950/50 dark:hover:bg-sky-900/60 text-sky-900 dark:text-sky-200 border border-sky-200 dark:border-sky-800/60 active:scale-95 shadow-sm"
-                            >
-                              <PodiumIcon className="w-4 h-4 text-sky-600 dark:text-sky-300 shrink-0" />
-                              <span className="truncate">حلبة تحدي الفرق</span>
-                            </Link>
-
-                            <Link
-                              href="/mental-arithmetic/balloon-pop"
-                              onClick={() => {
-                                playFx("pop");
-                                setProgramsOpen(false);
-                              }}
-                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-rose-50/90 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-900 dark:text-rose-200 border border-rose-200 dark:border-rose-800/60 active:scale-95 shadow-sm"
-                            >
-                              <span className="text-sm">🎈</span>
-                              <span className="truncate">تفجير البالونات</span>
-                            </Link>
-
-                            <Link
-                              href="/mental-arithmetic/multiplication-division"
-                              onClick={() => {
-                                playFx("pop");
-                                setProgramsOpen(false);
-                              }}
-                              className="p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-emerald-50/90 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/60 active:scale-95 shadow-sm"
-                            >
-                              <span className="text-sm">✖️➗</span>
-                              <span className="truncate">الضرب والقسمة</span>
-                            </Link>
-                          </div>
+                          <Link
+                            href="/mental-arithmetic"
+                            onClick={() => {
+                              playFx("pop");
+                              setProgramsOpen(false);
+                            }}
+                            className="text-[11px] font-black text-brand-600 dark:text-brand-300 hover:underline flex items-center gap-1"
+                          >
+                            <span>فتح الصفحة كاملة</span>
+                            <span>⬅</span>
+                          </Link>
                         </div>
 
-                        {/* 2. ثانياً: قسم أسئلة وتحديات الذكاء */}
-                        <Link
-                          href="/intelligence"
-                          onClick={() => {
-                            playFx("pop");
-                            setProgramsOpen(false);
-                          }}
-                          className="p-3 rounded-2xl bg-gradient-to-r from-violet-50/90 via-fuchsia-50/60 to-purple-50/90 dark:from-violet-950/40 dark:via-fuchsia-950/30 dark:to-purple-950/40 border border-violet-300/80 dark:border-violet-700/60 flex items-center justify-between hover:scale-[1.01] active:scale-95 transition-all shadow-sm group"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white flex items-center justify-center font-black text-lg shadow-md group-hover:rotate-6 transition-transform">
-                              🧩
-                            </div>
-                            <div className="text-right">
-                              <div className="text-xs font-black text-[#261E58] dark:text-[#F3F0FD]">
-                                ثانياً: قسم أسئلة وتحديات الذكاء
-                              </div>
-                              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                                ألغاز التفكير المنطقي واختبارات الأولمبياد الرسمية
-                              </div>
-                            </div>
-                          </div>
-                          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-violet-600 text-white shadow-sm shrink-0">
-                            تحديات حماسية 🔥
-                          </span>
-                        </Link>
+                        {/* The 3 Interactive Main Capsules */}
+                        <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100/90 dark:bg-slate-900/70 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              playFx("click");
+                              setActiveNavCapsule("mental");
+                            }}
+                            className={`py-2 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 ${
+                              activeNavCapsule === "mental"
+                                ? "bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-md scale-102"
+                                : "text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-white"
+                            }`}
+                          >
+                            <span>🧮</span>
+                            <span className="truncate">الحساب الذهني</span>
+                          </button>
 
-                        {/* 3. ثالثاً: قسم أسرار الرياضيات */}
-                        <Link
-                          href="/secrets-of-numbers"
-                          onClick={() => {
-                            playFx("pop");
-                            setProgramsOpen(false);
-                          }}
-                          className="p-3 rounded-2xl bg-gradient-to-r from-amber-50/90 via-yellow-50/70 to-orange-50/90 dark:from-amber-950/40 dark:via-yellow-950/30 dark:to-orange-950/40 border border-amber-300 dark:border-amber-700/60 flex items-center justify-between hover:scale-[1.01] active:scale-95 transition-all shadow-sm group"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center font-black text-lg shadow-md group-hover:-rotate-6 transition-transform">
-                              ✨
+                          <button
+                            type="button"
+                            onClick={() => {
+                              playFx("click");
+                              setActiveNavCapsule("iq");
+                            }}
+                            className={`py-2 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 ${
+                              activeNavCapsule === "iq"
+                                ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md scale-102"
+                                : "text-slate-600 dark:text-slate-300 hover:text-violet-600 dark:hover:text-white"
+                            }`}
+                          >
+                            <span>🧩</span>
+                            <span className="truncate">أسئلة الذكاء</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              playFx("click");
+                              setActiveNavCapsule("vedic");
+                            }}
+                            className={`py-2 px-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 active:scale-95 ${
+                              activeNavCapsule === "vedic"
+                                ? "bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md scale-102"
+                                : "text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-white"
+                            }`}
+                          >
+                            <span>✨</span>
+                            <span className="truncate">أسرار الرياضيات</span>
+                          </button>
+                        </div>
+
+                        {/* Capsule 1 Content: أقسام الحساب الذهني الستة */}
+                        {activeNavCapsule === "mental" && (
+                          <div className="space-y-2.5 animate-in fade-in duration-150">
+                            <div className="flex items-center justify-between text-[11px] font-black text-brand-700 dark:text-brand-300 px-1">
+                              <span>أقسام منظومة الحساب الذهني (6 أقسام):</span>
+                              <Link
+                                href="/mental-arithmetic"
+                                onClick={() => setProgramsOpen(false)}
+                                className="underline hover:text-brand-600"
+                              >
+                                عرض الكل
+                              </Link>
                             </div>
-                            <div className="text-right">
-                              <div className="text-xs font-black text-amber-950 dark:text-amber-200">
-                                ثالثاً: قسم أسرار الرياضيات
-                              </div>
-                              <div className="text-[10px] text-amber-800/80 dark:text-amber-300 mt-0.5">
-                                رياضيات الفيدا وحيل الحساب السريع للمتوسطة والإعدادية
-                              </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Link
+                                href="/mental-arithmetic/abacus"
+                                onClick={() => {
+                                  playFx("pop");
+                                  setProgramsOpen(false);
+                                }}
+                                className="p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-violet-50/90 hover:bg-violet-100 dark:bg-violet-950/50 dark:hover:bg-violet-900/60 text-violet-900 dark:text-violet-200 border border-violet-200 dark:border-violet-800/60 active:scale-95 shadow-sm"
+                              >
+                                <span className="text-base">🧮</span>
+                                <span className="truncate">العداد (السوروبان)</span>
+                              </Link>
+
+                              <Link
+                                href="/mental-arithmetic/flash-anzan"
+                                onClick={() => {
+                                  playFx("pop");
+                                  setProgramsOpen(false);
+                                }}
+                                className="p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-amber-50/90 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 text-amber-950 dark:text-amber-200 border border-amber-200 dark:border-amber-800/60 active:scale-95 shadow-sm"
+                              >
+                                <span className="text-base">⚡</span>
+                                <span className="truncate">فلاش أنزان السريع</span>
+                              </Link>
+
+                              <Link
+                                href="/mental-arithmetic/competition"
+                                onClick={() => {
+                                  playFx("pop");
+                                  setProgramsOpen(false);
+                                }}
+                                className="p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-yellow-50/90 hover:bg-yellow-100 dark:bg-yellow-950/50 dark:hover:bg-yellow-900/60 text-yellow-950 dark:text-yellow-200 border border-yellow-200 dark:border-yellow-800/60 active:scale-95 shadow-sm"
+                              >
+                                <span className="text-base">🏆</span>
+                                <span className="truncate">محاكي المسابقات</span>
+                              </Link>
+
+                              <Link
+                                href="/mental-arithmetic/teams-battle"
+                                onClick={() => {
+                                  playFx("pop");
+                                  setProgramsOpen(false);
+                                }}
+                                className="p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-sky-50/90 hover:bg-sky-100 dark:bg-sky-950/50 dark:hover:bg-sky-900/60 text-sky-900 dark:text-sky-200 border border-sky-200 dark:border-sky-800/60 active:scale-95 shadow-sm"
+                              >
+                                <PodiumIcon className="w-4 h-4 text-sky-600 dark:text-sky-300 shrink-0" />
+                                <span className="truncate">حلبة تحدي الفرق</span>
+                              </Link>
+
+                              <Link
+                                href="/mental-arithmetic/balloon-pop"
+                                onClick={() => {
+                                  playFx("pop");
+                                  setProgramsOpen(false);
+                                }}
+                                className="p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-rose-50/90 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-900 dark:text-rose-200 border border-rose-200 dark:border-rose-800/60 active:scale-95 shadow-sm"
+                              >
+                                <span className="text-base">🎈</span>
+                                <span className="truncate">تفجير البالونات</span>
+                              </Link>
+
+                              <Link
+                                href="/mental-arithmetic/multiplication-division"
+                                onClick={() => {
+                                  playFx("pop");
+                                  setProgramsOpen(false);
+                                }}
+                                className="p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-emerald-50/90 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/60 active:scale-95 shadow-sm"
+                              >
+                                <span className="text-base">✖️➗</span>
+                                <span className="truncate">الضرب والقسمة</span>
+                              </Link>
                             </div>
                           </div>
-                          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-500 text-slate-950 font-black shadow-sm shrink-0 animate-pulse">
-                            جديد خارق 🚀
-                          </span>
-                        </Link>
+                        )}
+
+                        {/* Capsule 2 Content: أقسام أسئلة وتحديات الذكاء */}
+                        {activeNavCapsule === "iq" && (
+                          <div className="space-y-2.5 animate-in fade-in duration-150">
+                            <div className="flex items-center justify-between text-[11px] font-black text-violet-700 dark:text-violet-300 px-1">
+                              <span>أقسام تحديات وأولمبياد الذكاء:</span>
+                              <Link
+                                href="/intelligence"
+                                onClick={() => setProgramsOpen(false)}
+                                className="underline hover:text-violet-600"
+                              >
+                                استكشاف بنك الأسئلة
+                              </Link>
+                            </div>
+                            <div className="grid grid-cols-1 gap-2">
+                              <Link
+                                href="/intelligence/quiz"
+                                onClick={() => {
+                                  playFx("pop");
+                                  setProgramsOpen(false);
+                                }}
+                                className="p-3 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white flex items-center justify-between shadow-md hover:scale-[1.01] active:scale-95 transition-all"
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <span className="text-xl">🧩</span>
+                                  <div className="text-right">
+                                    <div className="text-xs font-black">بدء اختبار الذكاء المباشر</div>
+                                    <div className="text-[10px] text-white/80">ألغاز التفكير المنطقي والأنماط</div>
+                                  </div>
+                                </div>
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-white text-violet-900">
+                                  ابدأ الآن 🔥
+                                </span>
+                              </Link>
+
+                              <Link
+                                href="/intelligence"
+                                onClick={() => {
+                                  playFx("pop");
+                                  setProgramsOpen(false);
+                                }}
+                                className="p-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between bg-violet-50/90 hover:bg-violet-100 dark:bg-violet-950/50 dark:hover:bg-violet-900/60 text-violet-900 dark:text-violet-200 border border-violet-200 dark:border-violet-800/60 active:scale-95 shadow-sm"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span>🏅</span>
+                                  <span>أولمبياد الكانغورو والعباقرة</span>
+                                </div>
+                                <span className="text-[10px] font-black text-violet-600 dark:text-violet-400">
+                                  الابتدائي والمتوسط ⬅
+                                </span>
+                              </Link>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Capsule 3 Content: أقسام أسرار الرياضيات */}
+                        {activeNavCapsule === "vedic" && (
+                          <div className="space-y-2.5 animate-in fade-in duration-150">
+                            <div className="flex items-center justify-between text-[11px] font-black text-amber-800 dark:text-amber-300 px-1">
+                              <span>مستويات أكاديمية أسرار الرياضيات (4 مستويات):</span>
+                              <Link
+                                href="/secrets-of-numbers"
+                                onClick={() => setProgramsOpen(false)}
+                                className="underline hover:text-amber-600"
+                              >
+                                فتح الأكاديمية (20 درساً)
+                              </Link>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Link
+                                href="/secrets-of-numbers"
+                                onClick={() => {
+                                  playFx("pop");
+                                  setProgramsOpen(false);
+                                }}
+                                className="p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-emerald-50/90 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/60 active:scale-95 shadow-sm"
+                              >
+                                <span className="text-sm">🟢</span>
+                                <div className="text-right min-w-0">
+                                  <div className="font-black truncate">المستوى الأول</div>
+                                  <div className="text-[9px] text-emerald-700 dark:text-emerald-300 truncate">أساسيات الحساب السريع</div>
+                                </div>
+                              </Link>
+
+                              <Link
+                                href="/secrets-of-numbers"
+                                onClick={() => {
+                                  playFx("pop");
+                                  setProgramsOpen(false);
+                                }}
+                                className="p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-sky-50/90 hover:bg-sky-100 dark:bg-sky-950/50 dark:hover:bg-sky-900/60 text-sky-900 dark:text-sky-200 border border-sky-200 dark:border-sky-800/60 active:scale-95 shadow-sm"
+                              >
+                                <span className="text-sm">🔵</span>
+                                <div className="text-right min-w-0">
+                                  <div className="font-black truncate">المستوى الثاني</div>
+                                  <div className="text-[9px] text-sky-700 dark:text-sky-300 truncate">مهارات الضرب السريع</div>
+                                </div>
+                              </Link>
+
+                              <Link
+                                href="/secrets-of-numbers"
+                                onClick={() => {
+                                  playFx("pop");
+                                  setProgramsOpen(false);
+                                }}
+                                className="p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-purple-50/90 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-purple-800/60 active:scale-95 shadow-sm"
+                              >
+                                <span className="text-sm">🟣</span>
+                                <div className="text-right min-w-0">
+                                  <div className="font-black truncate">المستوى الثالث</div>
+                                  <div className="text-[9px] text-purple-700 dark:text-purple-300 truncate">التربيع والجذور</div>
+                                </div>
+                              </Link>
+
+                              <Link
+                                href="/secrets-of-numbers"
+                                onClick={() => {
+                                  playFx("pop");
+                                  setProgramsOpen(false);
+                                }}
+                                className="p-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-amber-50/90 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 text-amber-950 dark:text-amber-200 border border-amber-200 dark:border-amber-800/60 active:scale-95 shadow-sm"
+                              >
+                                <span className="text-sm">🟠</span>
+                                <div className="text-right min-w-0">
+                                  <div className="font-black truncate">المستوى الرابع</div>
+                                  <div className="text-[9px] text-amber-800 dark:text-amber-200 truncate">التطبيقات والكسور</div>
+                                </div>
+                              </Link>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </>
                   )}
@@ -773,137 +911,214 @@ export default function Navbar() {
             </Link>
           )}
 
-          {/* كبسولات برامج العقل الخارق للهاتف مقسمة 3 أقسام رئيسية */}
+          {/* كبسولات برامج العقل الخارق للهاتف مقسمة 3 كبسولات تفاعلية */}
           <div className="clay-card-sm p-3.5 bg-[#F6F4FE] dark:bg-[#211E42] space-y-3">
             <div className="flex items-center justify-between border-b border-brand-200/60 dark:border-brand-800 pb-2">
               <span className="text-xs font-black text-[#261E58] dark:text-[#F3F0FD] flex items-center gap-1.5">
                 <Brain className="w-4 h-4 text-brand-600" />
                 <span>برامج العقل الخارق</span>
               </span>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300">
-                3 أقسام احترافية ⭐
-              </span>
+              <Link
+                href="/mental-arithmetic"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-[10px] font-black px-2 py-0.5 rounded-full bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300 hover:underline"
+              >
+                فتح الصفحة كاملة ⬅
+              </Link>
             </div>
 
-            {/* 1. أولاً: قسم الحساب الذهني */}
-            <div className="p-2.5 rounded-2xl bg-white/80 dark:bg-slate-900/60 border border-brand-200/60 dark:border-brand-800/40 space-y-2">
-              <div className="flex items-center justify-between">
-                <Link
-                  href="/mental-arithmetic"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-xs font-black text-brand-700 dark:text-brand-300 flex items-center gap-1 hover:underline"
-                >
-                  <span>🧮 أولاً: قسم الحساب الذهني</span>
-                </Link>
-                <Link
-                  href="/mental-arithmetic"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-[10px] font-bold text-slate-500 dark:text-slate-400"
-                >
-                  الكل ⬅
-                </Link>
-              </div>
+            {/* 3 Mobile Capsule Switcher Tabs */}
+            <div className="grid grid-cols-3 gap-1.5 p-1 bg-white/70 dark:bg-slate-900/60 rounded-xl border border-brand-200/60 dark:border-brand-800/40">
+              <button
+                type="button"
+                onClick={() => {
+                  playFx("click");
+                  setActiveNavCapsule("mental");
+                }}
+                className={`py-1.5 px-1 rounded-lg text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
+                  activeNavCapsule === "mental"
+                    ? "bg-brand-600 text-white shadow-sm"
+                    : "text-slate-600 dark:text-slate-300"
+                }`}
+              >
+                <span>🧮</span>
+                <span className="truncate">الحساب</span>
+              </button>
 
-              <div className="grid grid-cols-2 gap-1.5">
-                <Link
-                  href="/mental-arithmetic/abacus"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-violet-50/90 dark:bg-violet-950/40 text-violet-900 dark:text-violet-200 border border-violet-200/80 dark:border-violet-800/40"
-                >
-                  <span>🧮</span>
-                  <span className="truncate">العداد (السوروبان)</span>
-                </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  playFx("click");
+                  setActiveNavCapsule("iq");
+                }}
+                className={`py-1.5 px-1 rounded-lg text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
+                  activeNavCapsule === "iq"
+                    ? "bg-violet-600 text-white shadow-sm"
+                    : "text-slate-600 dark:text-slate-300"
+                }`}
+              >
+                <span>🧩</span>
+                <span className="truncate">الذكاء</span>
+              </button>
 
-                <Link
-                  href="/mental-arithmetic/flash-anzan"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-800/40"
-                >
-                  <span>⚡</span>
-                  <span className="truncate">فلاش أنزان</span>
-                </Link>
-
-                <Link
-                  href="/mental-arithmetic/competition"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-yellow-50/90 dark:bg-yellow-950/40 text-yellow-900 dark:text-yellow-200 border border-yellow-200/80 dark:border-yellow-800/40"
-                >
-                  <span>🏆</span>
-                  <span className="truncate">محاكي المسابقات</span>
-                </Link>
-
-                <Link
-                  href="/mental-arithmetic/teams-battle"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-sky-50/90 dark:bg-sky-950/40 text-sky-900 dark:text-sky-200 border border-sky-200/80 dark:border-sky-800/40"
-                >
-                  <PodiumIcon className="w-3.5 h-3.5 text-sky-600 dark:text-sky-300 shrink-0" />
-                  <span className="truncate">حلبة تحدي الفرق</span>
-                </Link>
-
-                <Link
-                  href="/mental-arithmetic/balloon-pop"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-rose-50/90 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border border-rose-200/80 dark:border-rose-800/40"
-                >
-                  <span>🎈</span>
-                  <span className="truncate">تفجير البالونات</span>
-                </Link>
-
-                <Link
-                  href="/mental-arithmetic/multiplication-division"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-800/40"
-                >
-                  <span>✖️➗</span>
-                  <span className="truncate">الضرب والقسمة</span>
-                </Link>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  playFx("click");
+                  setActiveNavCapsule("vedic");
+                }}
+                className={`py-1.5 px-1 rounded-lg text-[11px] font-black transition-all flex items-center justify-center gap-1 ${
+                  activeNavCapsule === "vedic"
+                    ? "bg-amber-500 text-slate-950 font-black shadow-sm"
+                    : "text-slate-600 dark:text-slate-300"
+                }`}
+              >
+                <span>✨</span>
+                <span className="truncate">الأسرار</span>
+              </button>
             </div>
 
-            {/* 2. ثانياً: قسم أسئلة وتحديات الذكاء */}
-            <Link
-              href="/intelligence"
-              onClick={() => setMobileMenuOpen(false)}
-              className="p-2.5 rounded-2xl bg-gradient-to-r from-violet-50/90 to-purple-50/90 dark:from-violet-950/40 dark:to-purple-950/40 border border-violet-200 dark:border-violet-800/50 flex items-center justify-between"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-base">🧩</span>
-                <div className="text-right">
-                  <div className="text-xs font-black text-violet-950 dark:text-violet-200">
-                    ثانياً: قسم أسئلة وتحديات الذكاء
-                  </div>
-                  <div className="text-[10px] text-violet-700 dark:text-violet-300">
-                    الألغاز والمنطق وأولمبياد العباقرة
-                  </div>
-                </div>
-              </div>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-600 text-white shrink-0">
-                تحدي 🔥
-              </span>
-            </Link>
+            {/* Sub-sections for selected capsule on mobile */}
+            {activeNavCapsule === "mental" && (
+              <div className="space-y-1.5 animate-in fade-in duration-150">
+                <div className="grid grid-cols-2 gap-1.5">
+                  <Link
+                    href="/mental-arithmetic/abacus"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-violet-50/90 dark:bg-violet-950/40 text-violet-900 dark:text-violet-200 border border-violet-200/80 dark:border-violet-800/40"
+                  >
+                    <span>🧮</span>
+                    <span className="truncate">العداد (السوروبان)</span>
+                  </Link>
 
-            {/* 3. ثالثاً: قسم أسرار الرياضيات */}
-            <Link
-              href="/secrets-of-numbers"
-              onClick={() => setMobileMenuOpen(false)}
-              className="p-2.5 rounded-2xl bg-gradient-to-r from-amber-50/90 to-yellow-50/90 dark:from-amber-950/40 dark:to-yellow-950/40 border border-amber-300 dark:border-amber-700/50 flex items-center justify-between"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-base">✨</span>
-                <div className="text-right">
-                  <div className="text-xs font-black text-amber-950 dark:text-amber-200">
-                    ثالثاً: قسم أسرار الرياضيات
-                  </div>
-                  <div className="text-[10px] text-amber-800/90 dark:text-amber-300">
-                    رياضيات الفيدا للمتوسطة والإعدادية
-                  </div>
+                  <Link
+                    href="/mental-arithmetic/flash-anzan"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-800/40"
+                  >
+                    <span>⚡</span>
+                    <span className="truncate">فلاش أنزان</span>
+                  </Link>
+
+                  <Link
+                    href="/mental-arithmetic/competition"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-yellow-50/90 dark:bg-yellow-950/40 text-yellow-900 dark:text-yellow-200 border border-yellow-200/80 dark:border-yellow-800/40"
+                  >
+                    <span>🏆</span>
+                    <span className="truncate">محاكي المسابقات</span>
+                  </Link>
+
+                  <Link
+                    href="/mental-arithmetic/teams-battle"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-sky-50/90 dark:bg-sky-950/40 text-sky-900 dark:text-sky-200 border border-sky-200/80 dark:border-sky-800/40"
+                  >
+                    <PodiumIcon className="w-3.5 h-3.5 text-sky-600 dark:text-sky-300 shrink-0" />
+                    <span className="truncate">حلبة تحدي الفرق</span>
+                  </Link>
+
+                  <Link
+                    href="/mental-arithmetic/balloon-pop"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-rose-50/90 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border border-rose-200/80 dark:border-rose-800/40"
+                  >
+                    <span>🎈</span>
+                    <span className="truncate">تفجير البالونات</span>
+                  </Link>
+
+                  <Link
+                    href="/mental-arithmetic/multiplication-division"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 border border-emerald-200/80 dark:border-emerald-800/40"
+                  >
+                    <span>✖️➗</span>
+                    <span className="truncate">الضرب والقسمة</span>
+                  </Link>
                 </div>
               </div>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 shrink-0 font-black">
-                جديد 🚀
-              </span>
-            </Link>
+            )}
+
+            {activeNavCapsule === "iq" && (
+              <div className="space-y-1.5 animate-in fade-in duration-150">
+                <Link
+                  href="/intelligence/quiz"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white flex items-center justify-between text-xs font-black shadow-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <span>🧩</span>
+                    <span>بدء اختبار الذكاء المباشر</span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-white text-violet-900">
+                    ابدأ 🔥
+                  </span>
+                </Link>
+
+                <Link
+                  href="/intelligence"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 rounded-xl text-xs font-bold flex items-center justify-between bg-violet-50/90 dark:bg-violet-950/40 text-violet-900 dark:text-violet-200 border border-violet-200/80 dark:border-violet-800/40"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>🏅</span>
+                    <span>أولمبياد الكانغورو والعباقرة</span>
+                  </div>
+                  <span className="text-[10px] text-violet-600 dark:text-violet-400">
+                    دخول ⬅
+                  </span>
+                </Link>
+              </div>
+            )}
+
+            {activeNavCapsule === "vedic" && (
+              <div className="space-y-1.5 animate-in fade-in duration-150">
+                <Link
+                  href="/secrets-of-numbers"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white flex items-center justify-between text-xs font-black shadow-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <span>✨</span>
+                    <span>أكاديمية أسرار الرياضيات (20 درساً)</span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-950 text-amber-300 font-black">
+                    دخول 🚀
+                  </span>
+                </Link>
+
+                <div className="grid grid-cols-2 gap-1.5 text-[11px] font-bold">
+                  <Link
+                    href="/secrets-of-numbers"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-900/60 border border-amber-200 text-slate-800 dark:text-slate-200 text-center truncate"
+                  >
+                    🟢 المستوى 1: الأساسيات
+                  </Link>
+                  <Link
+                    href="/secrets-of-numbers"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-900/60 border border-amber-200 text-slate-800 dark:text-slate-200 text-center truncate"
+                  >
+                    🔵 المستوى 2: مهارات الضرب
+                  </Link>
+                  <Link
+                    href="/secrets-of-numbers"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-900/60 border border-amber-200 text-slate-800 dark:text-slate-200 text-center truncate"
+                  >
+                    🟣 المستوى 3: التربيع والجذور
+                  </Link>
+                  <Link
+                    href="/secrets-of-numbers"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="p-1.5 rounded-lg bg-white/80 dark:bg-slate-900/60 border border-amber-200 text-slate-800 dark:text-slate-200 text-center truncate"
+                  >
+                    🟠 المستوى 4: التطبيقات
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* عناصر التحكم السريعة (اللغة، الثيم، الصوت) */}

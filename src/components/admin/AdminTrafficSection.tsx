@@ -17,10 +17,13 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import type {
-  TrafficFilterKey,
-  TrafficReportResponse,
-  TrafficChartPoint,
+import {
+  type TrafficFilterKey,
+  type TrafficReportResponse,
+  type TrafficChartPoint,
+  type DailyTrafficRow,
+  resolveTrafficDateRange,
+  buildTrafficReport,
 } from "@/lib/traffic-analytics";
 
 const FILTER_OPTIONS: Array<{ id: TrafficFilterKey; label: string }> = [
@@ -279,14 +282,55 @@ export default function AdminTrafficSection() {
       setError(null);
       setHoveredBucket(null);
 
+      // 1. Try Direct Supabase Query first (Zero server-hop, instant, enforces RLS is_admin())
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        try {
+          const resolved = resolveTrafficDateRange({
+            filter: targetFilter,
+            from: customRange?.from,
+            to: customRange?.to,
+          });
+
+          if (resolved.ok) {
+            const [{ data: metaRow }, { data: rows }] = await Promise.all([
+              supabase
+                .from("site_traffic_meta")
+                .select("tracking_start_date")
+                .eq("id", 1)
+                .maybeSingle(),
+              supabase
+                .from("site_traffic_daily")
+                .select("traffic_date, visits, pageviews")
+                .gte("traffic_date", resolved.range.from)
+                .lte("traffic_date", resolved.range.to)
+                .order("traffic_date", { ascending: true }),
+            ]);
+
+            const directReport = buildTrafficReport({
+              range: resolved.range,
+              trackingStartDate:
+                metaRow && typeof metaRow.tracking_start_date === "string"
+                  ? metaRow.tracking_start_date
+                  : null,
+              rows: (rows || []) as DailyTrafficRow[],
+            });
+
+            setReport(directReport);
+            setLoading(false);
+            return;
+          }
+        } catch (directErr) {
+          console.warn("Direct Supabase query hitch, trying API route fallback:", directErr);
+        }
+      }
+
+      // 2. Server API Route Fallback
       try {
         let accessToken = session?.access_token ?? null;
-        if (!accessToken) {
-          const supabase = getSupabaseClient();
-          if (supabase) {
-            const { data } = await supabase.auth.getSession();
-            accessToken = data.session?.access_token ?? null;
-          }
+        if (!accessToken && supabase) {
+          const { data } = await supabase.auth.getSession();
+          accessToken = data.session?.access_token ?? null;
         }
 
         if (!accessToken) {

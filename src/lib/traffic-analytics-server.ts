@@ -51,8 +51,10 @@ export function createSupabaseTrafficStore(accessToken?: string): TrafficStore |
   if (!env) return null;
 
   const clientKey = env.serviceRoleKey || env.anonKey;
-  const headers: Record<string, string> = {};
-  if (!env.serviceRoleKey && accessToken) {
+  const headers: Record<string, string> = {
+    apikey: clientKey,
+  };
+  if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
   }
 
@@ -343,7 +345,11 @@ export async function handleAdminTrafficRequest(
   } catch (err) {
     console.error("Failed to query admin traffic analytics:", err);
     return NextResponse.json(
-      { error: "Unable to load traffic analytics data from Supabase." },
+      {
+        error:
+          "Unable to load traffic analytics data from Supabase: " +
+          (err instanceof Error ? err.message : String(err)),
+      },
       { status: 500 }
     );
   }
