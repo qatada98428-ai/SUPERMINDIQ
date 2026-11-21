@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { PWAProvider } from "@/context/PWAContext";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import WhatsAppFloating from "@/components/ui/WhatsAppFloating";
@@ -96,17 +97,19 @@ export default function RootLayout({
         />
         <AppProvider>
           <AuthProvider>
-            <ClayMotionProvider>
-              <Navbar />
-              <WelcomePrayerModal />
-              <GuestProgressMigrationPrompt />
-              <main className="flex-1 flex flex-col">
-                <ClayPageTransition>{children}</ClayPageTransition>
-              </main>
-              <Footer />
-              <WhatsAppFloating />
-              <PWAInstallBanner />
-            </ClayMotionProvider>
+            <PWAProvider>
+              <ClayMotionProvider>
+                <Navbar />
+                <WelcomePrayerModal />
+                <GuestProgressMigrationPrompt />
+                <main className="flex-1 flex flex-col">
+                  <ClayPageTransition>{children}</ClayPageTransition>
+                </main>
+                <Footer />
+                <WhatsAppFloating />
+                <PWAInstallBanner />
+              </ClayMotionProvider>
+            </PWAProvider>
           </AuthProvider>
         </AppProvider>
         <Analytics />

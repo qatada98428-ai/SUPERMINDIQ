@@ -23,15 +23,19 @@ import {
   ArrowRight,
   ArrowLeft,
   SlidersHorizontal,
+  Download,
+  Smartphone,
 } from "lucide-react";
 import BrandLogo from "@/components/ui/BrandLogo";
 import AudioControlPanel from "@/components/ui/AudioControlPanel";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
+import { usePWA } from "@/context/PWAContext";
 
 export default function Navbar() {
   const { language, theme, soundEnabled, toggleLanguage, toggleTheme, toggleSound, playFx } = useApp();
   const { user, profile, role, isGuest, signOut } = useAuth();
+  const { isStandalone, installApp } = usePWA();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [audioMenuOpen, setAudioMenuOpen] = useState(false);
   const pathname = usePathname();
@@ -230,6 +234,22 @@ export default function Navbar() {
             </div>
           </div>
 
+          {/* Install App Button (When opened from browser) */}
+          {!isStandalone && (
+            <button
+              type="button"
+              onClick={() => {
+                playFx("pop");
+                installApp();
+              }}
+              title={isEn ? "Install SUPER MIND App" : "تثبيت تطبيق العقل الخارق"}
+              className="clay-pill hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-brand-700 dark:text-brand-300 font-black text-xs bg-gradient-to-r from-amber-50 via-brand-50 to-indigo-50 dark:from-amber-950/40 dark:via-brand-950/40 dark:to-indigo-950/40 border border-amber-300/80 dark:border-amber-600/60 shadow-[0_4px_12px_-4px_rgba(245,158,11,0.35)] hover:scale-105 active:scale-95 transition-all"
+            >
+              <Download className="w-3.5 h-3.5 text-amber-500 animate-pulse shrink-0" />
+              <span>{isEn ? "Install App" : "تثبيت التطبيق 📱"}</span>
+            </button>
+          )}
+
           {/* Auth Controls */}
           {!isGuest && user ? (
             <div className="flex items-center gap-1.5">
@@ -272,6 +292,22 @@ export default function Navbar() {
             >
               {isEn ? "Sign In" : "تسجيل الدخول"}
             </Link>
+          )}
+
+          {/* Mobile Install Pill (< 640px) */}
+          {!isStandalone && (
+            <button
+              type="button"
+              onClick={() => {
+                playFx("pop");
+                installApp();
+              }}
+              title={isEn ? "Install App" : "تثبيت التطبيق"}
+              className="clay-pill flex sm:hidden items-center gap-1 px-2.5 py-1.5 text-brand-700 dark:text-brand-200 font-black text-[11px] bg-gradient-to-r from-amber-100/90 to-brand-100/90 dark:from-amber-950/50 dark:to-brand-950/50 border border-amber-400/80 shadow-sm active:scale-95 shrink-0"
+            >
+              <Download className="w-3 h-3 text-amber-600 dark:text-amber-400 animate-pulse shrink-0" />
+              <span>{isEn ? "Install" : "تثبيت"}</span>
+            </button>
           )}
 
           {/* Mobile Quick Settings Button (< 640px only) */}
@@ -392,6 +428,35 @@ export default function Navbar() {
           <div className="clay-card-sm p-3.5 bg-[#F6F4FE] dark:bg-[#211E42]">
             <AudioControlPanel compact />
           </div>
+
+          {!isStandalone && (
+            <div className="clay-card-sm p-3 bg-gradient-to-r from-amber-50 via-brand-50 to-indigo-50 dark:from-amber-950/40 dark:via-brand-950/40 dark:to-indigo-950/40 border border-amber-300/80 dark:border-amber-700/60 flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#1a1738] border border-amber-400/60 flex items-center justify-center shadow-sm shrink-0">
+                  <Smartphone className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="text-right min-w-0">
+                  <div className="text-xs font-black text-[#261E58] dark:text-[#F3F0FD] truncate">
+                    تثبيت تطبيق SUPER MIND
+                  </div>
+                  <div className="text-[10px] text-[#635A94] dark:text-[#B6B0E3] truncate">
+                    تشغيل سريع وتدريب شاشة كاملة بدون متصفح
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  playFx("pop");
+                  setMobileMenuOpen(false);
+                  installApp();
+                }}
+                className="clay-btn-purple px-3 py-1.5 text-xs font-black shrink-0 !rounded-xl"
+              >
+                تثبيت الآن 📲
+              </button>
+            </div>
+          )}
 
           <div className="pt-1 space-y-2">
             {!isGuest && user ? (
