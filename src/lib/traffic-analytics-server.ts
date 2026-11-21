@@ -63,54 +63,67 @@ export function createSupabaseTrafficStore(accessToken?: string): TrafficStore |
 
   return {
     async recordEvent({ trafficDate, sessionId, eventId }) {
-      const { data, error } = await supabase.rpc("record_site_traffic", {
-        p_traffic_date: trafficDate,
-        p_session_id: sessionId,
-        p_event_id: eventId,
-      });
+      try {
+        const { data, error } = await supabase.rpc("record_site_traffic", {
+          p_traffic_date: trafficDate,
+          p_session_id: sessionId,
+          p_event_id: eventId,
+        });
 
-      if (error) {
-        throw new Error(`Traffic RPC failed: ${error.message}`);
+        if (error) {
+          console.warn("Traffic RPC warning (table/func not ready):", error.message);
+          return { recorded: false, duplicate: false, visitIncremented: false, pageviewIncremented: false };
+        }
+
+        const payload = (data ?? {}) as Record<string, unknown>;
+        return {
+          recorded: Boolean(payload.recorded),
+          duplicate: Boolean(payload.duplicate),
+          visitIncremented: Boolean(payload.visit_incremented),
+          pageviewIncremented: Boolean(payload.pageview_incremented),
+        };
+      } catch (err) {
+        console.warn("Traffic RPC not ready in Supabase:", err);
+        return { recorded: false, duplicate: false, visitIncremented: false, pageviewIncremented: false };
       }
-
-      const payload = (data ?? {}) as Record<string, unknown>;
-      return {
-        recorded: Boolean(payload.recorded),
-        duplicate: Boolean(payload.duplicate),
-        visitIncremented: Boolean(payload.visit_incremented),
-        pageviewIncremented: Boolean(payload.pageview_incremented),
-      };
     },
 
     async getTrafficData({ from, to }) {
-      const { data: metaRow, error: metaError } = await supabase
-        .from("site_traffic_meta")
-        .select("tracking_start_date")
-        .eq("id", 1)
-        .maybeSingle();
+      try {
+        const { data: metaRow, error: metaError } = await supabase
+          .from("site_traffic_meta")
+          .select("tracking_start_date")
+          .eq("id", 1)
+          .maybeSingle();
 
-      if (metaError) {
-        throw new Error(`Traffic meta query failed: ${metaError.message}`);
+        if (metaError) {
+          console.warn("Traffic meta table query warning:", metaError.message);
+          return { trackingStartDate: null, rows: [] };
+        }
+
+        const { data: rows, error: rowsError } = await supabase
+          .from("site_traffic_daily")
+          .select("traffic_date, visits, pageviews")
+          .gte("traffic_date", from)
+          .lte("traffic_date", to)
+          .order("traffic_date", { ascending: true });
+
+        if (rowsError) {
+          console.warn("Traffic daily table query warning:", rowsError.message);
+          return { trackingStartDate: null, rows: [] };
+        }
+
+        return {
+          trackingStartDate:
+            metaRow && typeof metaRow.tracking_start_date === "string"
+              ? metaRow.tracking_start_date
+              : null,
+          rows: (rows ?? []) as DailyTrafficRow[],
+        };
+      } catch (err) {
+        console.warn("Traffic tables not ready in Supabase:", err);
+        return { trackingStartDate: null, rows: [] };
       }
-
-      const { data: rows, error: rowsError } = await supabase
-        .from("site_traffic_daily")
-        .select("traffic_date, visits, pageviews")
-        .gte("traffic_date", from)
-        .lte("traffic_date", to)
-        .order("traffic_date", { ascending: true });
-
-      if (rowsError) {
-        throw new Error(`Traffic daily query failed: ${rowsError.message}`);
-      }
-
-      return {
-        trackingStartDate:
-          metaRow && typeof metaRow.tracking_start_date === "string"
-            ? metaRow.tracking_start_date
-            : null,
-        rows: (rows ?? []) as DailyTrafficRow[],
-      };
     },
   };
 }
