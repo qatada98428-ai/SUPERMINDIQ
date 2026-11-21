@@ -4,14 +4,28 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, Info, X, Play } from "lucide-react";
+import {
+  CheckCircle2,
+  Info,
+  X,
+  Play,
+  Sparkles,
+  ArrowLeft,
+  GraduationCap,
+  Clock,
+  ChevronLeft,
+} from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import ClayIcon, { ClayBadgeTone, ClayIconName } from "@/components/design-system/ClayIcon";
 import {
   ClayActionCircle,
   ClayActionTheme,
 } from "@/components/design-system/ClayMotion";
+import { INTELLIGENCE_BRANCHES } from "@/lib/kangaroo-data";
+import { VEDIC_LEVELS, VedicLesson } from "@/lib/vedic-math-data";
+import VedicLessonModal from "@/components/vedic/VedicLessonModal";
 
+type MainProgramSection = "mental-math" | "intelligence" | "vedic";
 type CategoryFilter = "all" | "basics" | "speed" | "competitions";
 
 interface MentalModule {
@@ -44,8 +58,11 @@ interface MentalModule {
 export default function MentalArithmeticPage() {
   const { language, playFx } = useApp();
   const isEn = language === "en";
+
+  const [activeProgram, setActiveProgram] = useState<MainProgramSection>("mental-math");
   const [filter, setFilter] = useState<CategoryFilter>("all");
   const [selectedModule, setSelectedModule] = useState<MentalModule | null>(null);
+  const [activeVedicLesson, setActiveVedicLesson] = useState<VedicLesson | null>(null);
 
   const closeModal = useCallback(() => {
     playFx("modal_close");
@@ -78,33 +95,32 @@ export default function MentalArithmeticPage() {
       href: "/learn",
       title: "قسم التعليم والمراحل",
       enTitle: "Learning Stages",
-      shortTagline: "تعلّم قواعد السوروبان من الصفر خطوة بخطوة",
-      enShortTagline: "Learn Soroban rules step by step from zero",
-      desc: "شرح تفصيلي متدرج يبدأ من أهمية الحساب الذهني في عصر التكنولوجيا، تمثيل الأرقام على المعداد، الجمع والطرح البسيط، مكملات الخمسة والعشرة، وحتى الضرب والقسمة مع معداد حي متحرك.",
-      enDesc: "Step-by-step illustrated curriculum starting from mental math basics, bead representation, simple operations, 5 & 10 complements, up to multiplication and division with a live Soroban.",
-      badge: "10 مراحل شاملة 📖",
-      enBadge: "10 Stages 📖",
-      icon: "book",
+      shortTagline: "منهج السوروبان والجمع والطرح التأسيسي",
+      enShortTagline: "Foundational Soroban & step-by-step arithmetic",
+      desc: "مسار تعليمي تفاعلي متكامل للأطفال والمبتدئين يبدأ من التعرف على المعداد والخرزات، وصولاً إلى أصدقاء الخمسة والعشرة والعمليات المزدوجة.",
+      enDesc: "Comprehensive interactive learning path starting with Soroban beads up to Small & Big Friends complements and compound rules.",
+      badge: "منهج تفاعلي 🎓",
+      enBadge: "Interactive Course 🎓",
+      icon: "soroban",
       tone: "lavender",
       actionTheme: "purple",
       cardSurface:
-        "bg-gradient-to-br from-white via-[#FAF8FF] to-[#EFEAFF] dark:from-[#1E1B3E] dark:via-[#1C1A3A] dark:to-[#2B2258] border-[#E0D6FF] dark:border-[#493D8A]/70",
+        "bg-gradient-to-br from-white via-[#FAF8FF] to-[#EDE7FF] dark:from-[#1E1B3E] dark:via-[#1C1A3A] dark:to-[#221B48] border-[#E1D8FA] dark:border-[#382E6E]/70",
       hoverRing:
-        "hover:border-[#7C5CFC] hover:shadow-[0_22px_40px_-10px_rgba(124,92,252,0.28)]",
-      stageBg: "from-[#F3EEFF] to-[#E4DAFF] dark:from-[#2C255A] dark:to-[#211C45]",
+        "hover:border-[#6344F5] hover:shadow-[0_22px_40px_-10px_rgba(99,68,245,0.25)]",
+      stageBg: "from-[#F1EDFF] to-[#DED4FF] dark:from-[#251E52] dark:to-[#1C1642]",
       modalHeaderBg: "from-[#8B6EFF] to-[#6344F5]",
-      ctaBg: "bg-[#F2EEFF] hover:bg-[#E7DFFF] dark:bg-[#2B245A] dark:hover:bg-[#352C6E] text-[#5B3CE8] dark:text-[#C5B6FF]",
-      iconMotion:
-        "group-hover:-translate-y-1.5 group-hover:-rotate-6 group-hover:scale-110",
+      ctaBg: "bg-[#EFEAFF] hover:bg-[#E3DCFF] dark:bg-[#251E52] dark:hover:bg-[#2E2566] text-brand-700 dark:text-brand-300",
+      iconMotion: "group-hover:-translate-y-1.5 group-hover:scale-110",
       bullets: [
-        "شرح مبسط مدعوم بمعداد فيزيائي يوضح تمثيل كل قاعدة",
-        "أمثلة تطبيقية واختبارات قياس استيعاب فورية",
-        "تدرّج واضح يناسب المبتدئين وحتى المستويات المتقدمة",
+        "دروس تفاعلية لتمثيل الأرقام على السوروبان وقراءة الخرزات",
+        "تمارين موجهة لأصدقاء الخمسة (+1, +2, +3, +4)",
+        "تمارين متقدمة لأصدقاء العشرة والعمليات المركبة",
       ],
       enBullets: [
-        "Visual Soroban demonstrations illustrating every rule",
-        "Worked examples and instant comprehension checks",
-        "Smooth progression from beginner to advanced levels",
+        "Interactive bead representation and Soroban reading lessons",
+        "Guided exercises for Small Friends (+1, +2, +3, +4)",
+        "Advanced Big Friends practice and compound rules",
       ],
       cta: "ابدأ التعلم",
       enCta: "Start Learning",
@@ -113,65 +129,63 @@ export default function MentalArithmeticPage() {
       id: "abacus",
       category: "basics",
       href: "/mental-arithmetic/abacus",
-      title: "المعداد الحر (السوروبان)",
-      enTitle: "Interactive Soroban",
-      shortTagline: "حرّك خرزات 3D باللمس وشكّل الأرقام بمتعة",
-      enShortTagline: "Slide 3D beads smoothly by touch and build numbers",
-      desc: "لوحة معداد ياباني ثلاثية الأبعاد مفتوحة بالكامل؛ تحريك سلس باللمس والسحب والنقر، تصفير بضغطة زر، وتدريب حر على تشكيل الأرقام وإجراء العمليات الحسابية.",
-      enDesc: "Realistic 3D Japanese Soroban simulation supporting smooth touch dragging, 3 to 17 custom columns, one-tap reset, and target number challenges.",
-      badge: "3 إلى 17 عموداً 🧮",
-      enBadge: "3-17 Rods 🧮",
+      title: "العداد (السوروبان)",
+      enTitle: "Virtual Soroban Abacus",
+      shortTagline: "عداد ياباني ثلاثي الأبعاد مع أصوات الخرزات",
+      enShortTagline: "3D virtual Soroban with physical bead sound effects",
+      desc: "معداد ياباني افتراضي متكامل يحاكي المعداد الحقيقي بدقة فيزيائية وصوت حركة خرزات حقيقي، مخصص لتطوير التخيل البصري والحساب اليدوي السريع.",
+      enDesc: "Full-fidelity interactive Japanese abacus with physical bead click audio, designed to sharpen mental visualization and tactile finger arithmetic.",
+      badge: "محاكي واقعي 🧮",
+      enBadge: "Realistic Simulator 🧮",
       icon: "soroban",
-      tone: "peach",
-      actionTheme: "orange",
+      tone: "lavender",
+      actionTheme: "purple",
       cardSurface:
-        "bg-gradient-to-br from-white via-[#FFFBF5] to-[#FFF0D8] dark:from-[#1E1B3E] dark:via-[#1C1A3A] dark:to-[#352414] border-[#F9DFBA] dark:border-[#6B4720]/70",
+        "bg-gradient-to-br from-white via-[#FAF8FF] to-[#EDE7FF] dark:from-[#1E1B3E] dark:via-[#1C1A3A] dark:to-[#221B48] border-[#E1D8FA] dark:border-[#382E6E]/70",
       hoverRing:
-        "hover:border-[#F59E0B] hover:shadow-[0_22px_40px_-10px_rgba(245,158,11,0.28)]",
-      stageBg: "from-[#FFF6E5] to-[#FFE4BA] dark:from-[#432B14] dark:to-[#2F1D0C]",
-      modalHeaderBg: "from-[#FFA94D] to-[#EA6D15]",
-      ctaBg: "bg-[#FFF3DE] hover:bg-[#FFE8C2] dark:bg-[#3A2815] dark:hover:bg-[#49321A] text-[#C8640A] dark:text-[#FCD34D]",
-      iconMotion:
-        "group-hover:-translate-y-1.5 group-hover:rotate-6 group-hover:scale-110",
+        "hover:border-[#6344F5] hover:shadow-[0_22px_40px_-10px_rgba(99,68,245,0.25)]",
+      stageBg: "from-[#F1EDFF] to-[#DED4FF] dark:from-[#251E52] dark:to-[#1C1642]",
+      modalHeaderBg: "from-[#8B6EFF] to-[#6344F5]",
+      ctaBg: "bg-[#EFEAFF] hover:bg-[#E3DCFF] dark:bg-[#251E52] dark:hover:bg-[#2E2566] text-brand-700 dark:text-brand-300",
+      iconMotion: "group-hover:-translate-y-1.5 group-hover:scale-110",
       bullets: [
-        "يبدأ بالشكل الرسمي (3 أعمدة) مع إمكانية التوسيع حتى 17 عموداً",
-        "تحريك سلس لخرزات 3D باللمس والسحب مع صوت نقر ناعم",
-        "وضع التحدي والهدف (Target Mode) لاختبار تمثيل الأرقام",
+        "محاكاة واقعية لحركة الخرزات الخماسية والأحادية مع الصوت",
+        "زر تصفير سريع (Zeroing) لمطابقة مسابقات الحساب الحقيقية",
+        "قراءة رقمية فورية مع توضيح القيمة المكانية لكل عمود",
       ],
       enBullets: [
-        "Starts with 3 official columns and expands up to 17 rods",
-        "Realistic 3D beads with smooth touch dragging and soft clicks",
-        "Target challenge mode for interactive number practice",
+        "Realistic upper (5s) and lower (1s) bead motion with sound",
+        "Quick reset / zeroing bar matching real tournament Sorobans",
+        "Instant digital readout with place value column breakdown",
       ],
       cta: "ابدأ التدريب",
-      enCta: "Start Training",
+      enCta: "Start Practice",
     },
     {
       id: "flash-anzan",
       category: "speed",
       href: "/mental-arithmetic/flash-anzan",
-      title: "فلاش أنزان السريع",
-      enTitle: "Flash Anzan Trainer",
-      shortTagline: "ومضات أرقام سريعة لتقوية التخيّل والبديهة",
-      enShortTagline: "Rapid flashing numbers to build mental imagery",
-      desc: "تمرين ومضات الأرقام المتلاحقة بسرعة قابلة للتخصيص من 0.2 ثانية إلى 3 ثوانٍ، مع دعم نطق الأرقام بالصوت العربي والإنكليزي، لتطوير التخيل الذهني والتركيز الفائق.",
-      enDesc: "Flashing number trainer with customizable speeds from 0.2s to 3.0s, Arabic & English voice support, and photographic memory drills.",
-      badge: "وميض سريع ⚡",
-      enBadge: "Flash Speed ⚡",
+      title: "فلاش أنزان (الأرقام الوامضة)",
+      enTitle: "Flash Anzan",
+      shortTagline: "تدريب الوميض السريع وتنمية التخيل الذهني",
+      enShortTagline: "High-speed mental flashing numbers training",
+      desc: "الأداة الأولى في العالم العربي للتدريب على سرعة وميض الأرقام (فلاش أنزان) مع تحكم دقيق بالسرعة (من 0.2 ثانية إلى 3 ثوانٍ) ونطق صوتي واضح وتوليد أرقام ذكي.",
+      enDesc: "Premier Flash Anzan speed builder featuring precision speeds (0.2s - 3.0s), natural voice dictation, and smart arithmetic generation.",
+      badge: "سرعة خارقة ⚡",
+      enBadge: "Super Speed ⚡",
       icon: "flash",
       tone: "gold",
       actionTheme: "gold",
       cardSurface:
-        "bg-gradient-to-br from-white via-[#FFFCF2] to-[#FFF4CF] dark:from-[#1E1B3E] dark:via-[#1C1A3A] dark:to-[#332912] border-[#F8E29D] dark:border-[#6B541B]/70",
+        "bg-gradient-to-br from-white via-[#FFFDF5] to-[#FEF3C7] dark:from-[#1E1B3E] dark:via-[#1F1C36] dark:to-[#382D13] border-[#FDE68A] dark:border-[#594411]/70",
       hoverRing:
-        "hover:border-[#EAB308] hover:shadow-[0_22px_40px_-10px_rgba(234,179,8,0.28)]",
-      stageBg: "from-[#FFF9DC] to-[#FFE99C] dark:from-[#473410] dark:to-[#32240A]",
+        "hover:border-[#F59E0B] hover:shadow-[0_22px_40px_-10px_rgba(245,158,11,0.28)]",
+      stageBg: "from-[#FEF9C3] to-[#FDE047] dark:from-[#3D300F] dark:to-[#2B2107]",
       modalHeaderBg: "from-[#FBBF24] to-[#D97706]",
-      ctaBg: "bg-[#FFF6D6] hover:bg-[#FFECAD] dark:bg-[#3A2D12] dark:hover:bg-[#493918] text-[#B45309] dark:text-[#FDE047]",
-      iconMotion:
-        "group-hover:-translate-y-1.5 group-hover:scale-110 group-hover:rotate-3",
+      ctaBg: "bg-[#FEF3C7] hover:bg-[#FDE68A] dark:bg-[#34270C] dark:hover:bg-[#453412] text-[#B45309] dark:text-[#FCD34D]",
+      iconMotion: "group-hover:-translate-y-1.5 group-hover:scale-110",
       bullets: [
-        "تحكم مرن بالسرعة من 0.2 ثانية وحتى 3.0 ثوانٍ",
+        "تحكم دقيق بسرعة الوميض من 0.2 ثانية وحتى 3 ثوانٍ لكل رقم",
         "دعم النطق الصوتي للأرقام باللغتين العربية والإنجليزية",
         "إعدادات مخصصة للآحاد والعشرات والمئات وقواعد السوروبان",
       ],
@@ -187,7 +201,7 @@ export default function MentalArithmeticPage() {
       id: "teams-battle",
       category: "competitions",
       href: "/mental-arithmetic/teams-battle",
-      title: "تحدي الفرق والبطولات",
+      title: "حلبة تحدي الفرق والبطولات",
       enTitle: "Teams Battle Arena",
       shortTagline: "تنافس جماعي حي بين الفرق ومنصة تتويج",
       enShortTagline: "Live multi-team racing arena and 3D podium",
@@ -205,12 +219,11 @@ export default function MentalArithmeticPage() {
       stageBg: "from-[#E6FBF7] to-[#BEF0E7] dark:from-[#16413E] dark:to-[#0F2E2B]",
       modalHeaderBg: "from-[#4EE1CC] to-[#1FA896]",
       ctaBg: "bg-[#E2FAF5] hover:bg-[#CCF5EC] dark:bg-[#143A36] dark:hover:bg-[#1B4A45] text-[#0D9488] dark:text-[#5EEAD4]",
-      iconMotion:
-        "group-hover:-translate-y-1.5 group-hover:scale-110",
+      iconMotion: "group-hover:-translate-y-1.5 group-hover:scale-110",
       bullets: [
         "دعم المنافسة بين فريقين وحتى 5 فرق بنفس الوقت",
         "حساب نقاط مكافأة السرعة بالمللي ثانية لكل إجابة صحيحة",
-        "مضمار سباق حي ومنصة تتويج احتفالية بالكؤوس",
+        "مضمار سباق حي ومنصة تتويج احتفالية بالكؤوس والميداليات",
       ],
       enBullets: [
         "Compete with 2 up to 5 teams simultaneously",
@@ -224,149 +237,109 @@ export default function MentalArithmeticPage() {
       id: "competition",
       category: "competitions",
       href: "/mental-arithmetic/competition",
-      title: "محاكي المسابقة الرسمي",
+      title: "محاكي المسابقات الرسمية",
       enTitle: "Competition Simulator",
-      shortTagline: "اختبارات موقوتة تحاكي البطولات العالمية",
-      enShortTagline: "Timed competition sheets mirroring world championships",
-      desc: "محاكي أوراق المسابقات القياسية؛ اختر وقتاً محدداً (من 5 إلى 30 دقيقة) أو تايمر مفتوح، حدد عدد الأسئلة ومستوى القواعد، واحصل على تصحيح فوري وكشف تفصيلي بالنتائج.",
-      enDesc: "Official tournament sheet simulator with configurable timers (5-30 min or stopwatch), multi-rule question groups, instant grading, and error review.",
-      badge: "اختبار رسمي 🏅",
-      enBadge: "Official 🏅",
-      icon: "medal",
-      tone: "indigo",
-      actionTheme: "indigo",
+      shortTagline: "محاكاة واقعية لاختبارات البطولات الدولية",
+      enShortTagline: "Realistic international championship simulator",
+      desc: "نظام محاكاة دقيق ومطابق لبطولات الحساب الذهني الرسمية (100 سؤال، توقيت تنازلي 10 دقائق، وحساب تلقائي لعلامة الطالب مع تقرير نقاط القوة والضعف).",
+      enDesc: "Official tournament simulator (100 questions, 10-minute countdown, instant score grading, and comprehensive performance diagnostics).",
+      badge: "محاكي رسمي 🏆",
+      enBadge: "Official Exam 🏆",
+      icon: "trophy",
+      tone: "gold",
+      actionTheme: "gold",
       cardSurface:
-        "bg-gradient-to-br from-white via-[#F6F8FF] to-[#E6ECFF] dark:from-[#1E1B3E] dark:via-[#1C1A3A] dark:to-[#1F2758] border-[#CBD6FF] dark:border-[#394794]/70",
+        "bg-gradient-to-br from-white via-[#FFFDF5] to-[#FEF3C7] dark:from-[#1E1B3E] dark:via-[#1F1C36] dark:to-[#382D13] border-[#FDE68A] dark:border-[#594411]/70",
       hoverRing:
-        "hover:border-[#6366F1] hover:shadow-[0_22px_40px_-10px_rgba(99,102,241,0.28)]",
-      stageBg: "from-[#ECF0FF] to-[#D1DCFF] dark:from-[#222B5C] dark:to-[#171E42]",
-      modalHeaderBg: "from-[#818CF8] to-[#4F46E5]",
-      ctaBg: "bg-[#EAEFFF] hover:bg-[#DCE4FF] dark:bg-[#232A5C] dark:hover:bg-[#2D3675] text-[#4338CA] dark:text-[#A5B4FC]",
-      iconMotion:
-        "group-hover:-translate-y-1.5 group-hover:scale-110 group-hover:rotate-3",
+        "hover:border-[#F59E0B] hover:shadow-[0_22px_40px_-10px_rgba(245,158,11,0.28)]",
+      stageBg: "from-[#FEF9C3] to-[#FDE047] dark:from-[#3D300F] dark:to-[#2B2107]",
+      modalHeaderBg: "from-[#FBBF24] to-[#D97706]",
+      ctaBg: "bg-[#FEF3C7] hover:bg-[#FDE68A] dark:bg-[#34270C] dark:hover:bg-[#453412] text-[#B45309] dark:text-[#FCD34D]",
+      iconMotion: "group-hover:-translate-y-1.5 group-hover:scale-110",
       bullets: [
-        "مؤقت مرن من 5 إلى 30 دقيقة أو عداد مفتوح",
-        "تصحيح آلي فوري مع كشف مراجعة الأخطاء وقابلية الطباعة",
-        "مجموعات أسئلة متعددة المستويات والقواعد",
+        "محاكاة واقعية لورقة الاختبار والعد التنازلي التنافسي",
+        "أقسام متدرجة: آحاد بسيطة، أصدقاء 5، أصدقاء 10، وعشرات",
+        "تحليل فوري لدقة وسرعة الإجابة مع شهادة إنجاز",
       ],
       enBullets: [
-        "Flexible countdown (5-30m) or open stopwatch mode",
-        "Instant automated grading with full mistake review",
-        "Multi-rule question groups for championship prep",
+        "Realistic exam sheet layout with competitive countdown timer",
+        "Tiered sections: simple units, friends of 5, 10, and tens",
+        "Instant accuracy & speed analytics with achievement award",
       ],
       cta: "ابدأ التدريب",
-      enCta: "Start Simulator",
+      enCta: "Start Exam",
     },
     {
       id: "balloon-pop",
       category: "competitions",
       href: "/mental-arithmetic/balloon-pop",
-      title: "لعبة صيد البالونات",
-      enTitle: "Balloon Pop Math",
-      shortTagline: "احسب ذهنياً واصطد البالونة الصحيحة بسرعة!",
-      enShortTagline: "Solve fast and pop the flying answer balloon!",
-      desc: "تُعرض أرقام الفلاش أنزان مع نطق صوتي واضح، ثم تطير بالونات ملونة تحمل أرقاماً مختلفة — اصطد البالونة التي تحمل الإجابة الصحيحة قبل اختفائها!",
-      enDesc: "Flash numbers appear with clear voice guidance, then colorful floating balloons rise — pop the matching answer balloon to score points!",
-      badge: "لعبة ممتعة 🎈",
-      enBadge: "Fun Game 🎈",
+      title: "تحدي تفجير البالونات",
+      enTitle: "Balloon Pop Arena",
+      shortTagline: "لعبة حماسية ثلاثية الأبعاد لسرعة البديهة",
+      enShortTagline: "3D gamified reflex and mental arithmetic challenge",
+      desc: "لعبة حماسية سريعة يتمرن فيها الطالب على حل العمليات الذهنية السريعة واختيار البالون الذي يحمل الناتج الصحيح قبل صعوده، مع مؤثرات صوتية وبصرية رائعة.",
+      enDesc: "Exciting 3D reflex game where learners solve operations and pop the balloon carrying the correct result before it floats away.",
+      badge: "لعبة حماسية 🎈",
+      enBadge: "Active Game 🎈",
       icon: "game",
       tone: "pink",
       actionTheme: "rose",
       cardSurface:
-        "bg-gradient-to-br from-white via-[#FFF7FA] to-[#FFE6EF] dark:from-[#1E1B3E] dark:via-[#1C1A3A] dark:to-[#3E192D] border-[#FCCADB] dark:border-[#752B4D]/70",
+        "bg-gradient-to-br from-white via-[#FFF5F8] to-[#FFE4EC] dark:from-[#1E1B3E] dark:via-[#1F172E] dark:to-[#381427] border-[#FECDD9] dark:border-[#591B3A]/70",
       hoverRing:
-        "hover:border-[#F43F5E] hover:shadow-[0_22px_40px_-10px_rgba(244,63,94,0.28)]",
-      stageBg: "from-[#FFF0F5] to-[#FFD4E3] dark:from-[#4A1B33] dark:to-[#331123]",
+        "hover:border-[#E11D48] hover:shadow-[0_22px_40px_-10px_rgba(225,29,72,0.28)]",
+      stageBg: "from-[#FFE4EC] to-[#FDA4AF] dark:from-[#3D1426] dark:to-[#2B0E1B]",
       modalHeaderBg: "from-[#FB7185] to-[#E11D48]",
-      ctaBg: "bg-[#FFEAF1] hover:bg-[#FFD9E6] dark:bg-[#411B2E] dark:hover:bg-[#52223A] text-[#E11D48] dark:text-[#FDA4AF]",
-      iconMotion:
-        "group-hover:-translate-y-1.5 group-hover:-rotate-6 group-hover:scale-110",
+      ctaBg: "bg-[#FFE4EC] hover:bg-[#FECDD9] dark:bg-[#341121] dark:hover:bg-[#45162B] text-[#BE123C] dark:text-[#FDA4AF]",
+      iconMotion: "group-hover:-translate-y-1.5 group-hover:scale-110",
       bullets: [
-        "تحكم كامل بسرعة الوميض وقواعد البسيط ومركب 5 و 10",
-        "تدعم اللعب الفردي أو التنافس الحماسي بين 4 فرق",
-        "دمج رائع بين متعة الألعاب وتنمية سرعة الحساب",
+        "أجواء لعب محفزة مع أصوات فرقعة بالونات حقيقية",
+        "مستويات صعوبة متعددة مناسبة لجميع الأعمار",
+        "تحدي ضد الزمن لتعزيز سرعة الاستجابة والتركيز",
       ],
       enBullets: [
-        "Full control over speed and Soroban complement rules",
-        "Supports solo play or exciting 4-team competition",
-        "Combines playful arcade action with rapid mental math",
+        "Rewarding gameplay with satisfying balloon pop sound effects",
+        "Multiple difficulty levels suitable for all age groups",
+        "Time-attack mode that boosts reflexes and laser focus",
       ],
       cta: "ابدأ التدريب",
-      enCta: "Play & Train",
+      enCta: "Play Now",
     },
     {
-      id: "multiplication",
-      category: "basics",
-      href: "/mental-arithmetic/multiplication",
-      title: "محاكي الضرب والقسمة",
-      enTitle: "Multiply & Divide",
-      shortTagline: "أتقن جدول الضرب والعمليات الكبيرة حتى 5 مراتب",
-      enShortTagline: "Master times tables and multi-digit Soroban ops",
-      desc: "فعالية مميزة لاختبار وحفظ جدول الضرب من 1 إلى 10، متبوعة بمحاكي فيزيائي لتطبيق الضرب حتى 5 مراتب (تمثيل الأعداد يساراً وترحيل البواقي يميناً) والقسمة العكسية.",
-      enDesc: "Qualification test for times tables 1-10 followed by a visual Soroban simulator for multi-digit multiplication and reverse division.",
-      badge: "حتى 5 مراتب ✖️",
-      enBadge: "Up to 5 Digits ✖️",
-      icon: "plusMinus",
-      tone: "emerald",
-      actionTheme: "emerald",
-      cardSurface:
-        "bg-gradient-to-br from-white via-[#F5FEF9] to-[#E3FBEF] dark:from-[#1E1B3E] dark:via-[#1C1A3A] dark:to-[#133827] border-[#BFEFCE] dark:border-[#206644]/70",
-      hoverRing:
-        "hover:border-[#10B981] hover:shadow-[0_22px_40px_-10px_rgba(16,185,129,0.28)]",
-      stageBg: "from-[#EAFCF1] to-[#BEF4D6] dark:from-[#13422B] dark:to-[#0C2D1D]",
-      modalHeaderBg: "from-[#34D399] to-[#059669]",
-      ctaBg: "bg-[#E6FAEF] hover:bg-[#D2F5E2] dark:bg-[#133A27] dark:hover:bg-[#1A4B33] text-[#059669] dark:text-[#6EE7B7]",
-      iconMotion:
-        "group-hover:-translate-y-1 group-hover:rotate-6 group-hover:scale-110",
-      bullets: [
-        "اختبار تأهيلي تفاعلي لحفظ جدول الضرب من 1 إلى 10",
-        "محاكاة حية لترحيل البواقي وتوزيع الخانات على السوروبان",
-        "تغطية كاملة لتمارين الضرب والقسمة العكسية",
-      ],
-      enBullets: [
-        "Interactive times table qualification test (1 to 10)",
-        "Visual rod-by-rod carry animation on the Soroban",
-        "Full support for multi-digit multiplication & division",
-      ],
-      cta: "ابدأ التعلم",
-      enCta: "Start Learning",
-    },
-    {
-      id: "intelligence",
+      id: "multiplication-division",
       category: "speed",
-      href: "/intelligence",
-      title: "أسئلة الذكاء والمنطق",
-      enTitle: "IQ & Logic Puzzles",
-      shortTagline: "ألغاز ومسائل أولمبياد تنمّي التفكير الإبداعي",
-      enShortTagline: "Olympiad logic puzzles to spark creative thinking",
-      desc: "بنك أسئلة واختبارات تفاعلية حية مقسمة حسب المراحل الدراسية لتعزيز التفكير المنطقي والهندسي وحل المعضلات الرياضية خطوة بخطوة.",
-      enDesc: "Interactive question bank categorized by school grade levels to sharpen analytical, geometric, and logical problem solving.",
-      badge: "تجريبي 🧠",
-      enBadge: "Beta 🧠",
-      icon: "brain",
-      tone: "sky",
-      actionTheme: "sky",
+      href: "/mental-arithmetic/multiplication-division",
+      title: "الضرب والقسمة السريعة",
+      enTitle: "Speed Multiplication & Division",
+      shortTagline: "قواعد السوروبان للضرب والقسمة الذهنية",
+      enShortTagline: "Soroban multiplication & division speed rules",
+      desc: "تمارين مخصصة لإتقان الضرب والقسمة على المعداد السوروبان وذهنياً، تبدأ من جداول الضرب الأساسية وصولاً إلى ضرب وقسمة أعداد من خانتين وثلاث خانات.",
+      enDesc: "Dedicated speed trainer for Soroban and mental multiplication & division, scaling from times tables to multi-digit operations.",
+      badge: "مهارات متقدمة ✖️➗",
+      enBadge: "Advanced Skills ✖️➗",
+      icon: "math123",
+      tone: "lavender",
+      actionTheme: "purple",
       cardSurface:
-        "bg-gradient-to-br from-white via-[#F5FAFF] to-[#E5F2FF] dark:from-[#1E1B3E] dark:via-[#1C1A3A] dark:to-[#16304F] border-[#C6E1FF] dark:border-[#26548A]/70",
+        "bg-gradient-to-br from-white via-[#FAF8FF] to-[#EDE7FF] dark:from-[#1E1B3E] dark:via-[#1C1A3A] dark:to-[#221B48] border-[#E1D8FA] dark:border-[#382E6E]/70",
       hoverRing:
-        "hover:border-[#3B82F6] hover:shadow-[0_22px_40px_-10px_rgba(59,130,246,0.28)]",
-      stageBg: "from-[#EEF7FF] to-[#CCE5FF] dark:from-[#163458] dark:to-[#0F243F]",
-      modalHeaderBg: "from-[#60A5FA] to-[#2563EB]",
-      ctaBg: "bg-[#EAF4FF] hover:bg-[#D8EBFF] dark:bg-[#163050] dark:hover:bg-[#1E406A] text-[#2563EB] dark:text-[#7DD3FC]",
-      iconMotion:
-        "group-hover:-translate-y-1.5 group-hover:scale-110 group-hover:-rotate-3",
+        "hover:border-[#6344F5] hover:shadow-[0_22px_40px_-10px_rgba(99,68,245,0.25)]",
+      stageBg: "from-[#F1EDFF] to-[#DED4FF] dark:from-[#251E52] dark:to-[#1C1642]",
+      modalHeaderBg: "from-[#8B6EFF] to-[#6344F5]",
+      ctaBg: "bg-[#EFEAFF] hover:bg-[#E3DCFF] dark:bg-[#251E52] dark:hover:bg-[#2E2566] text-brand-700 dark:text-brand-300",
+      iconMotion: "group-hover:-translate-y-1.5 group-hover:scale-110",
       bullets: [
-        "أسئلة مصنفة بدقة حسب الصفوف والمراحل الدراسية",
-        "تفسير واضح لخطوات الحل الذكي بعد كل سؤال",
-        "تمارين أنماط وهندسة وتفكير منطقي تحفيزية",
+        "طريقة السوروبان لتحديد الخانات الناتجة وحفظ الوسيط",
+        "توليد ذكي لمسائل الضرب من 1×1 وحتى 3×2 خانات",
+        "قسمة مباشرة مع إظهار خطوات الباقي خطوة بخطوة",
       ],
       enBullets: [
-        "Questions thoughtfully grouped by school grade level",
-        "Clear step-by-step explanations after every answer",
-        "Engaging pattern, geometry, and logic challenges",
+        "Soroban rod-positioning and intermediate place holder method",
+        "Smart problem generator from 1x1 up to 3x2 digits",
+        "Step-by-step long division breakdown with remainder analysis",
       ],
-      cta: "ابدأ التعلم",
-      enCta: "Start Learning",
+      cta: "ابدأ التدريب",
+      enCta: "Start Practice",
     },
   ];
 
@@ -374,36 +347,37 @@ export default function MentalArithmeticPage() {
     filter === "all" ? modules : modules.filter((m) => m.category === filter);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
-      {/* Screen-2 Inspired Mint Hero Banner with Excited Kids, Trophy, Soroban & Chalkboard */}
-      <div className="clay-banner-mint relative overflow-hidden p-6 sm:p-9">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-          <div className="lg:col-span-7 space-y-3 text-center lg:text-start">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/85 px-4 py-1 text-xs sm:text-sm font-black text-[#0F766E] shadow-sm">
-              <ClayIcon name="math123" tone="none" size="xs" />
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10" dir="rtl">
+      {/* Soft 3D Royal Lavender Hero Banner (Matching the top theme) */}
+      <div className="clay-banner-lavender relative overflow-hidden p-6 sm:p-10 text-white rounded-[2.5rem] shadow-2xl">
+        <div className="absolute -top-16 -left-16 w-72 h-72 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center relative z-10">
+          <div className="lg:col-span-7 space-y-4 text-center lg:text-start">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/20 border border-white/30 px-4 py-1 text-xs sm:text-sm font-black text-amber-300 shadow-sm">
+              <ClayIcon name="brain" tone="none" size="xs" />
               <span>
                 {isEn
-                  ? "SUPER MIND Mental Arithmetic Hub"
-                  : "منظومة الحساب الذهني | برنامج العقل الخارق"}
+                  ? "SUPER MIND Platform Programs"
+                  : "منظومة العقل الخارق | الأجنحة الثلاثية الرسمية"}
               </span>
             </div>
-            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-[#0F2F2E] tracking-tight leading-tight">
+            <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight leading-tight">
               {isEn
-                ? "Let's Make Mental Math Fun!"
-                : "أقسام الحساب الذهني والتدريب العقلي"}
+                ? "Super Mind Adventure Programs"
+                : "برامج العقل الخارق والتدريب الذهني"}
             </h1>
-            <p className="text-sm sm:text-base font-medium text-[#114542] leading-relaxed">
+            <p className="text-sm sm:text-base font-medium text-white/90 leading-relaxed max-w-2xl">
               {isEn
-                ? "Pick your adventure card and start learning or training right away!"
-                : "اختر مغامرتك التدريبية وابدأ التعلم والتدريب مباشرة بلمسة واحدة!"}
+                ? "Explore our 3 specialized wings: Mental Math, IQ Challenges, and Vedic Math Secrets!"
+                : "اختر مغامرتك التدريبية بين 3 أقسام تخصصية حماسية: الحساب الذهني، وتحديات الذكاء، وأسرار الرياضيات!"}
             </p>
           </div>
 
           <div className="lg:col-span-5">
-            <div className="rounded-[24px] overflow-hidden shadow-clay border-2 border-white/60 aspect-video bg-[#65DDD0]">
+            <div className="rounded-[24px] overflow-hidden shadow-clay border-2 border-white/40 aspect-video bg-[#5438E8]/40 backdrop-blur-sm">
               <Image
                 src="/images/clay/math-fun-mascot.jpg"
-                alt="طفل وطفلة متحمسين يحملان كأساً ومعداد سوروبان بجانب السبورة"
+                alt="أبطال العقل الخارق مع كؤوس ومعداد السوروبان"
                 width={960}
                 height={540}
                 priority
@@ -414,112 +388,455 @@ export default function MentalArithmeticPage() {
         </div>
       </div>
 
-      {/* Category Filter Pills */}
-      <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
-        {tabs.map((tab) => {
-          const active = filter === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => {
-                setFilter(tab.id);
-                playFx("toggle");
-              }}
-              className={`px-5 py-2.5 text-xs sm:text-sm font-black transition-all active:scale-95 ${
-                active
-                  ? "clay-btn-purple !rounded-full"
-                  : "clay-pill text-[#4C4578] dark:text-[#D9D5F5] hover:text-brand-600"
-              }`}
-            >
-              {isEn ? tab.enLabel : tab.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* 3 Main Energetic Program Wings (Buttons) */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl sm:text-2xl font-black text-[#261E58] dark:text-white flex items-center gap-2.5">
+            <Sparkles className="w-6 h-6 text-amber-500" />
+            <span>أقسام برامج العقل الخارق الثلاثة:</span>
+          </h2>
+          <span className="text-xs font-black px-3 py-1 rounded-full bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300">
+            اختر القسم المطلوب 🚀
+          </span>
+        </div>
 
-      {/* Clean Illustrated Soft 3D Adventure Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {visibleModules.map((mod, idx) => (
-          <motion.div
-            key={mod.id}
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28, delay: Math.min(idx * 0.04, 0.28) }}
-            className={`group relative overflow-hidden rounded-[30px] border p-5 sm:p-6 flex flex-col justify-between text-center shadow-[0_14px_30px_-10px_rgba(68,52,138,0.12),inset_0_3px_5px_rgba(255,255,255,0.95)] dark:shadow-[0_14px_30px_-10px_rgba(4,3,15,0.6),inset_0_2px_4px_rgba(167,153,255,0.1)] transition-all duration-300 ease-out hover:-translate-y-1.5 active:scale-[0.98] ${mod.cardSurface} ${mod.hoverRing}`}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* 1. قسم الحساب الذهني */}
+          <button
+            type="button"
+            onClick={() => {
+              playFx("toggle");
+              setActiveProgram("mental-math");
+            }}
+            className={`p-5 rounded-3xl border-2 text-right transition-all flex flex-col justify-between space-y-3.5 active:scale-95 shadow-md ${
+              activeProgram === "mental-math"
+                ? "bg-gradient-to-br from-brand-600 via-indigo-600 to-purple-600 text-white border-brand-400 ring-4 ring-brand-500/20 shadow-xl -translate-y-1.5"
+                : "bg-white dark:bg-[#1E1B3E] border-brand-200 dark:border-brand-800 text-slate-800 dark:text-white hover:border-brand-400 hover:-translate-y-0.5"
+            }`}
           >
-            {/* Full-Card Clickable Link Overlay (Valid Semantic HTML, Card-Wide Tap Target) */}
-            <Link
-              href={mod.href}
-              onClick={() => playFx("pop")}
-              aria-label={`${isEn ? mod.enTitle : mod.title} - ${isEn ? mod.enCta : mod.cta}`}
-              className="absolute inset-0 z-10 rounded-[30px] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/40"
-            />
-
-            {/* Top Subtle Badge */}
-            <div className="relative flex justify-center mb-3 pointer-events-none">
-              <span className="clay-pill px-3 py-1 text-[11px] font-black text-[#3F3A66] dark:text-[#E5E2FA]">
-                {isEn ? mod.enBadge : mod.badge}
+            <div className="flex items-center justify-between">
+              <span className="w-12 h-12 rounded-2xl bg-white/20 border border-white/40 flex items-center justify-center text-2xl shadow-sm">
+                🧮
+              </span>
+              <span
+                className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
+                  activeProgram === "mental-math"
+                    ? "bg-amber-400 text-slate-950 font-black shadow-sm"
+                    : "bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300"
+                }`}
+              >
+                الأقسام الستة 🌟
               </span>
             </div>
-
-            {/* Big Illustrated 3D Icon Stage + Compact "معلومات القسم" (i) Button */}
-            <div className="flex flex-col items-center gap-3 my-2">
-              <div
-                className={`pointer-events-none w-24 h-24 rounded-[28px] bg-gradient-to-br ${mod.stageBg} flex items-center justify-center shadow-[inset_0_2px_6px_rgba(255,255,255,0.85),0_10px_20px_-8px_rgba(48,35,118,0.16)] dark:shadow-[inset_0_2px_6px_rgba(255,255,255,0.08),0_10px_20px_-8px_rgba(0,0,0,0.45)] transition-transform duration-300 group-hover:scale-105`}
+            <div>
+              <h3 className="text-base sm:text-lg font-black leading-snug">
+                أولاً: قسم الحساب الذهني
+              </h3>
+              <p
+                className={`text-xs mt-1 leading-relaxed ${
+                  activeProgram === "mental-math"
+                    ? "text-white/85"
+                    : "text-slate-500 dark:text-slate-400"
+                }`}
               >
-                <ClayIcon
-                  name={mod.icon}
-                  tone={mod.tone}
-                  size="xl"
-                  className={mod.iconMotion}
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  playFx("modal_open");
-                  setSelectedModule(mod);
-                }}
-                aria-label={
-                  isEn
-                    ? `Section info: ${mod.enTitle}`
-                    : `معلومات القسم: ${mod.title}`
-                }
-                className="relative z-20 clay-pill inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-extrabold text-[#4E477A] dark:text-[#DAD6F7] hover:text-brand-600 dark:hover:text-white hover:scale-105 active:scale-95 transition-all"
-              >
-                <Info className="w-3.5 h-3.5 text-brand-500 dark:text-brand-300" />
-                <span>{isEn ? "Section Info" : "معلومات القسم"}</span>
-              </button>
+                العداد السوروبان، فلاش أنزان، محاكي المسابقات، حلبة تحدي الفرق، تفجير البالونات، والضرب والقسمة.
+              </p>
             </div>
+            <span className="text-[11px] font-black underline flex items-center gap-1">
+              <span>عرض الأدوات والتمارين ⬅</span>
+            </span>
+          </button>
 
-            {/* Crisp Title & Single-Line Motivating Description */}
-            <div className="pointer-events-none space-y-1.5 mt-3 mb-5">
-              <h2 className="text-lg sm:text-xl font-black text-[#1E1B3A] dark:text-white leading-snug">
-                {isEn ? mod.enTitle : mod.title}
-              </h2>
-              <p className="text-xs font-semibold text-[#5E5985] dark:text-[#BEB9E2] line-clamp-1">
-                {isEn ? mod.enShortTagline : mod.shortTagline}
+          {/* 2. قسم أسئلة وتحديات الذكاء */}
+          <button
+            type="button"
+            onClick={() => {
+              playFx("toggle");
+              setActiveProgram("intelligence");
+            }}
+            className={`p-5 rounded-3xl border-2 text-right transition-all flex flex-col justify-between space-y-3.5 active:scale-95 shadow-md ${
+              activeProgram === "intelligence"
+                ? "bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 text-white border-violet-400 ring-4 ring-violet-500/20 shadow-xl -translate-y-1.5"
+                : "bg-white dark:bg-[#1E1B3E] border-violet-200 dark:border-violet-800 text-slate-800 dark:text-white hover:border-violet-400 hover:-translate-y-0.5"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="w-12 h-12 rounded-2xl bg-white/20 border border-white/40 flex items-center justify-center text-2xl shadow-sm">
+                🧩
+              </span>
+              <span
+                className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
+                  activeProgram === "intelligence"
+                    ? "bg-amber-400 text-slate-950 font-black shadow-sm"
+                    : "bg-violet-100 dark:bg-violet-900/60 text-violet-700 dark:text-violet-300"
+                }`}
+              >
+                ألغاز وأولمبياد 🔥
+              </span>
+            </div>
+            <div>
+              <h3 className="text-base sm:text-lg font-black leading-snug">
+                ثانياً: قسم أسئلة وتحديات الذكاء
+              </h3>
+              <p
+                className={`text-xs mt-1 leading-relaxed ${
+                  activeProgram === "intelligence"
+                    ? "text-white/85"
+                    : "text-slate-500 dark:text-slate-400"
+                }`}
+              >
+                بنك أسئلة الذكاء والتفكير المنطقي وأولمبياد العباقرة حسب المراحل والصفوف المدرسية.
+              </p>
+            </div>
+            <span className="text-[11px] font-black underline flex items-center gap-1">
+              <span>استكشف بنك الأسئلة ⬅</span>
+            </span>
+          </button>
+
+          {/* 3. قسم أسرار الرياضيات */}
+          <button
+            type="button"
+            onClick={() => {
+              playFx("toggle");
+              setActiveProgram("vedic");
+            }}
+            className={`p-5 rounded-3xl border-2 text-right transition-all flex flex-col justify-between space-y-3.5 active:scale-95 shadow-md ${
+              activeProgram === "vedic"
+                ? "bg-gradient-to-br from-amber-500 via-orange-600 to-amber-700 text-white border-amber-400 ring-4 ring-amber-500/20 shadow-xl -translate-y-1.5"
+                : "bg-white dark:bg-[#1E1B3E] border-amber-200 dark:border-amber-800 text-slate-800 dark:text-white hover:border-amber-400 hover:-translate-y-0.5"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="w-12 h-12 rounded-2xl bg-white/20 border border-white/40 flex items-center justify-center text-2xl shadow-sm">
+                ✨
+              </span>
+              <span
+                className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
+                  activeProgram === "vedic"
+                    ? "bg-slate-950 text-amber-300 font-black shadow-sm"
+                    : "bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200"
+                }`}
+              >
+                4 مستويات و 20 قاعدة 🚀
+              </span>
+            </div>
+            <div>
+              <h3 className="text-base sm:text-lg font-black leading-snug">
+                ثالثاً: قسم أسرار الرياضيات
+              </h3>
+              <p
+                className={`text-xs mt-1 leading-relaxed ${
+                  activeProgram === "vedic"
+                    ? "text-white/85"
+                    : "text-slate-500 dark:text-slate-400"
+                }`}
+              >
+                مهارات وحيل رياضيات الفيدا والحساب السريع لطلاب الابتدائية والمتوسطة والإعدادية.
+              </p>
+            </div>
+            <span className="text-[11px] font-black underline flex items-center gap-1">
+              <span>فتح أكاديمية الأسرار ⬅</span>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 1. VIEW FOR: أولاً: قسم الحساب الذهني                                      */}
+      {/* ========================================================================= */}
+      {activeProgram === "mental-math" && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Category Filter Pills */}
+          <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
+            {tabs.map((tab) => {
+              const active = filter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setFilter(tab.id);
+                    playFx("toggle");
+                  }}
+                  className={`px-5 py-2.5 text-xs sm:text-sm font-black transition-all active:scale-95 ${
+                    active
+                      ? "clay-btn-purple !rounded-full shadow-md"
+                      : "clay-pill text-[#4C4578] dark:text-[#D9D5F5] hover:text-brand-600"
+                  }`}
+                >
+                  {isEn ? tab.enLabel : tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Clean Illustrated Soft 3D Adventure Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {visibleModules.map((mod, idx) => (
+              <motion.div
+                key={mod.id}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.28, delay: Math.min(idx * 0.04, 0.28) }}
+                className={`group relative overflow-hidden rounded-[30px] border p-5 sm:p-6 flex flex-col justify-between text-center shadow-[0_14px_30px_-10px_rgba(68,52,138,0.12),inset_0_3px_5px_rgba(255,255,255,0.95)] dark:shadow-[0_14px_30px_-10px_rgba(4,3,15,0.6),inset_0_2px_4px_rgba(167,153,255,0.1)] transition-all duration-300 ease-out hover:-translate-y-1.5 active:scale-[0.98] ${mod.cardSurface} ${mod.hoverRing}`}
+              >
+                {/* Full-Card Clickable Link Overlay */}
+                <Link
+                  href={mod.href}
+                  onClick={() => playFx("pop")}
+                  aria-label={`${isEn ? mod.enTitle : mod.title} - ${isEn ? mod.enCta : mod.cta}`}
+                  className="absolute inset-0 z-10 rounded-[30px] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/40"
+                />
+
+                {/* Top Subtle Badge */}
+                <div className="relative flex justify-center mb-3 pointer-events-none">
+                  <span className="clay-pill px-3 py-1 text-[11px] font-black text-[#3F3A66] dark:text-[#E5E2FA]">
+                    {isEn ? mod.enBadge : mod.badge}
+                  </span>
+                </div>
+
+                {/* Big Illustrated 3D Icon Stage + Compact "معلومات القسم" (i) Button */}
+                <div className="flex flex-col items-center gap-3 my-2">
+                  <div
+                    className={`pointer-events-none w-24 h-24 rounded-[28px] bg-gradient-to-br ${mod.stageBg} flex items-center justify-center shadow-[inset_0_2px_6px_rgba(255,255,255,0.85),0_10px_20px_-8px_rgba(48,35,118,0.16)] dark:shadow-[inset_0_2px_6px_rgba(255,255,255,0.08),0_10px_20px_-8px_rgba(0,0,0,0.45)] transition-transform duration-300 group-hover:scale-105`}
+                  >
+                    <ClayIcon
+                      name={mod.icon}
+                      tone={mod.tone}
+                      size="xl"
+                      className={mod.iconMotion}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playFx("modal_open");
+                      setSelectedModule(mod);
+                    }}
+                    aria-label={
+                      isEn
+                        ? `Section info: ${mod.enTitle}`
+                        : `معلومات القسم: ${mod.title}`
+                    }
+                    className="relative z-20 clay-pill inline-flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-extrabold text-[#4E477A] dark:text-[#DAD6F7] hover:text-brand-600 dark:hover:text-white hover:scale-105 active:scale-95 transition-all"
+                  >
+                    <Info className="w-3.5 h-3.5 text-brand-500 dark:text-brand-300" />
+                    <span>{isEn ? "Section Info" : "معلومات القسم"}</span>
+                  </button>
+                </div>
+
+                {/* Crisp Title & Single-Line Motivating Description */}
+                <div className="pointer-events-none space-y-1.5 mt-3 mb-5">
+                  <h2 className="text-lg sm:text-xl font-black text-[#1E1B3A] dark:text-white leading-snug">
+                    {isEn ? mod.enTitle : mod.title}
+                  </h2>
+                  <p className="text-xs font-semibold text-[#5E5985] dark:text-[#BEB9E2] line-clamp-1">
+                    {isEn ? mod.enShortTagline : mod.shortTagline}
+                  </p>
+                </div>
+
+                {/* Clear Visual CTA Strip */}
+                <div
+                  className={`pointer-events-none w-full flex items-center justify-between px-4 py-2.5 rounded-2xl transition-all shadow-xs font-black text-xs sm:text-sm ${mod.ctaBg}`}
+                >
+                  <span>{isEn ? mod.enCta : mod.cta}</span>
+                  <ClayActionCircle
+                    variant="play"
+                    size="sm"
+                    theme={mod.actionTheme}
+                  />
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2. VIEW FOR: ثانياً: قسم أسئلة وتحديات الذكاء                             */}
+      {/* ========================================================================= */}
+      {activeProgram === "intelligence" && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-violet-50 via-purple-50 to-indigo-50 dark:from-violet-950/40 dark:via-purple-950/40 dark:to-indigo-950/40 border border-violet-200 dark:border-violet-800 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+            <div className="space-y-2 text-center md:text-start">
+              <span className="text-xs font-black px-3 py-1 rounded-full bg-violet-600 text-white">
+                أولمبياد كانغارو والتفكير المنطقي 🧩
+              </span>
+              <h3 className="text-2xl sm:text-3xl font-black text-[#261E58] dark:text-white">
+                بنك أسئلة الذكاء لجميع الصفوف المدرسية
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-xl">
+                مسائل تفكير ذكية مختارة بعناية لقياس الاستنتاج المنطقي، الأنماط الهندسية، والبديهة الرياضية مع شرح فوري لخطوات الحل.
               </p>
             </div>
 
-            {/* Clear Visual "ابدأ التعلم / ابدأ التدريب" CTA Strip */}
-            <div
-              className={`pointer-events-none w-full flex items-center justify-between px-4 py-2.5 rounded-2xl transition-all shadow-xs font-black text-xs sm:text-sm ${mod.ctaBg}`}
-            >
-              <span>{isEn ? mod.enCta : mod.cta}</span>
-              <ClayActionCircle
-                variant="play"
-                size="sm"
-                theme={mod.actionTheme}
-              />
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              <Link
+                href="/intelligence/quiz"
+                onClick={() => playFx("pop")}
+                className="clay-btn-purple px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-2 shadow-lg"
+              >
+                <span>بدء تدريب الذكاء الشامل</span>
+                <Play className="w-4 h-4 fill-current" />
+              </Link>
+              <Link
+                href="/intelligence"
+                onClick={() => playFx("pop")}
+                className="clay-pill px-5 py-3 text-xs font-bold"
+              >
+                <span>استعراض الفروع والصفوف</span>
+              </Link>
             </div>
-          </motion.div>
-        ))}
-      </div>
+          </div>
 
-      {/* 3D Claymorphism Section Info Modal */}
+          {/* Grade Level Branches Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {INTELLIGENCE_BRANCHES.map((branch) => (
+              <div
+                key={branch.id}
+                className="clay-card !p-6 bg-white dark:bg-[#1E1B3E] border border-violet-200/80 dark:border-violet-800/60 rounded-3xl flex flex-col justify-between space-y-4 shadow-sm"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="clay-pill px-3 py-1 text-xs font-black text-brand-700 dark:text-brand-300 flex items-center gap-1.5">
+                      <GraduationCap className="w-4 h-4" />
+                      <span>{branch.gradesText}</span>
+                    </span>
+                    <span className="text-xs text-slate-500 font-bold flex items-center gap-1 font-mono">
+                      <Clock className="w-3.5 h-3.5 text-amber-500" />
+                      <span>{branch.durationMinutes} دقيقة</span>
+                    </span>
+                  </div>
+
+                  <h4 className="text-lg font-black text-slate-900 dark:text-white">
+                    {branch.title}
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {branch.description}
+                  </p>
+
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {branch.sampleTopics.map((topic, i) => (
+                      <span
+                        key={i}
+                        className="px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1"
+                      >
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                        <span>{topic}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <Link
+                    href={`/intelligence/quiz?level=${branch.gradeCode}`}
+                    onClick={() => playFx("pop")}
+                    className="clay-btn-purple w-full py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-2"
+                  >
+                    <span>ابدأ اختبار {branch.gradesText}</span>
+                    <ArrowLeft className="w-4 h-4" />
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. VIEW FOR: ثالثاً: قسم أسرار الرياضيات                                  */}
+      {/* ========================================================================= */}
+      {activeProgram === "vedic" && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 dark:from-amber-950/40 dark:via-orange-950/40 dark:to-yellow-950/40 border border-amber-300 dark:border-amber-700/60 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+            <div className="space-y-2 text-center md:text-start">
+              <span className="text-xs font-black px-3 py-1 rounded-full bg-amber-500 text-slate-950">
+                منهج الفيدا والحساب الذهني السريع (4 مستويات) ✨
+              </span>
+              <h3 className="text-2xl sm:text-3xl font-black text-amber-950 dark:text-amber-100">
+                أكاديمية أسرار الأرقام والرياضيات
+              </h3>
+              <p className="text-xs sm:text-sm text-amber-900/80 dark:text-amber-300 max-w-xl">
+                20 قاعدة تعليمية وتطبيقية مؤكدة رياضياً لحل أصعب العمليات في ثوانٍ معدودة. اختر أي درس لفتحه وتجربته واختبار سرعتك فيه!
+              </p>
+            </div>
+
+            <Link
+              href="/secrets-of-numbers"
+              onClick={() => playFx("pop")}
+              className="clay-btn-amber px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-2 shadow-lg shrink-0"
+            >
+              <span>فتح الأكاديمية بالكامل (20 درساً) 🚀</span>
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+          </div>
+
+          {/* 4 Levels Preview Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {VEDIC_LEVELS.map((level) => (
+              <div
+                key={level.id}
+                className="clay-card !p-6 bg-white dark:bg-[#1E1B3E] border border-amber-200 dark:border-amber-800 rounded-3xl flex flex-col justify-between space-y-4 shadow-sm"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 font-black text-sm flex items-center justify-center shadow-sm">
+                      {level.id}
+                    </span>
+                    <span className="text-xs text-slate-500 font-bold">
+                      {level.lessons.length} دروس معتمدة
+                    </span>
+                  </div>
+
+                  <h4 className="text-lg font-black text-slate-900 dark:text-white">
+                    {level.titleAr}
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {level.taglineAr}
+                  </p>
+
+                  <div className="space-y-1.5 pt-1">
+                    {level.lessons.slice(0, 3).map((lesson) => (
+                      <button
+                        key={lesson.id}
+                        type="button"
+                        onClick={() => {
+                          playFx("modal_open");
+                          setActiveVedicLesson(lesson);
+                        }}
+                        className="w-full text-right p-2.5 rounded-xl bg-[#F8F6FE] dark:bg-[#25214D] hover:bg-brand-50 text-xs font-black text-slate-800 dark:text-slate-200 flex items-center justify-between transition-colors"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>{lesson.icon}</span>
+                          <span>{lesson.titleAr}</span>
+                        </span>
+                        <span className="text-[10px] text-brand-600 dark:text-brand-300 font-bold">
+                          فتح الدرس ⬅
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <Link
+                    href={`/secrets-of-numbers`}
+                    onClick={() => playFx("pop")}
+                    className="clay-pill w-full py-2.5 text-xs font-black flex items-center justify-center gap-2 text-amber-900 dark:text-amber-200"
+                  >
+                    <span>استعراض جميع دروس المستوى {level.id}</span>
+                    <ChevronLeft className="w-4 h-4" />
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 3D Claymorphism Section Info Modal for Mental Modules */}
       <AnimatePresence>
         {selectedModule && (
           <motion.div
@@ -539,13 +856,13 @@ export default function MentalArithmeticPage() {
               initial={{ opacity: 0, scale: 0.92, y: 18 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.94, y: 12 }}
-              transition={{ type: "spring", stiffness: 280, damping: 24 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
               onClick={(e) => e.stopPropagation()}
-              className="clay-card w-full max-w-lg overflow-hidden p-0"
+              className="clay-card relative w-full max-w-xl max-h-[90vh] overflow-y-auto !p-0 border-2 border-white/80 dark:border-[#382E6E] shadow-2xl bg-white dark:bg-[#1C183D] rounded-[32px]"
             >
-              {/* Colored 3D Header matched to Section Theme */}
+              {/* Modal Colored Header */}
               <div
-                className={`relative bg-gradient-to-br ${selectedModule.modalHeaderBg} p-6 sm:p-7 text-white`}
+                className={`p-6 sm:p-7 bg-gradient-to-r ${selectedModule.modalHeaderBg} text-white rounded-t-[30px] relative`}
               >
                 <button
                   type="button"
@@ -632,6 +949,14 @@ export default function MentalArithmeticPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Vedic Lesson Modal Viewer */}
+      {activeVedicLesson && (
+        <VedicLessonModal
+          lesson={activeVedicLesson}
+          onClose={() => setActiveVedicLesson(null)}
+        />
+      )}
     </div>
   );
 }
