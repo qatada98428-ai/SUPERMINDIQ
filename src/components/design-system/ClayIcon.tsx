@@ -460,15 +460,64 @@ export default function ClayIcon({
         return (
           <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
             <defs>
-              <linearGradient id={`${uid}-gr`} x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#60A5FA" />
-                <stop offset="100%" stopColor="#4F46E5" />
+              <linearGradient id={`${uid}-grCap`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#818CF8" />
+                <stop offset="45%" stopColor="#6366F1" />
+                <stop offset="100%" stopColor="#4338CA" />
+              </linearGradient>
+              <linearGradient id={`${uid}-grSkull`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#4338CA" />
+                <stop offset="100%" stopColor="#312E81" />
+              </linearGradient>
+              <linearGradient id={`${uid}-grGold`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FEF08A" />
+                <stop offset="50%" stopColor="#F59E0B" />
+                <stop offset="100%" stopColor="#D97706" />
+              </linearGradient>
+              <linearGradient id={`${uid}-scroll`} x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#FFFBEB" />
+                <stop offset="100%" stopColor="#FEF3C7" />
               </linearGradient>
             </defs>
-            <path d="M32 14L8 25l24 11 24-11-24-11z" fill={`url(#${uid}-gr)`} />
-            <path d="M18 31v11c0 4 6.3 8 14 8s14-4 14-8V31l-14 6.4L18 31z" fill="#4338CA" />
-            <path d="M51 27v14" stroke="#FBBF24" strokeWidth="3" strokeLinecap="round" />
-            <circle cx="51" cy="43" r="3.5" fill="#F59E0B" />
+            {/* Diploma Scroll under Cap */}
+            <rect x="14" y="44" width="36" height="7.5" rx="3.75" fill={`url(#${uid}-scroll)`} stroke="#FDE68A" strokeWidth="1" />
+            <rect x="29.5" y="43" width="5" height="9.5" rx="2" fill="#EF4444" />
+
+            {/* Cap Skull Underbody */}
+            <path
+              d="M19 28v9c0 4.8 5.8 8.8 13 8.8s13-4 13-8.8v-9l-13 6L19 28z"
+              fill={`url(#${uid}-grSkull)`}
+            />
+
+            {/* Cap Diamond Top (Mortarboard) */}
+            <path
+              d="M32 9L9 21.5l23 12 23-12L32 9z"
+              fill={`url(#${uid}-grCap)`}
+              stroke="#A5B4FC"
+              strokeWidth="1.2"
+              strokeLinejoin="round"
+            />
+            {/* 3D Highlight Curve */}
+            <path
+              d="M32 10.5L11 21.5l21 11"
+              stroke="#FFF"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+              strokeOpacity="0.45"
+            />
+
+            {/* Golden Center Button */}
+            <ellipse cx="32" cy="21.5" rx="3.2" ry="2" fill={`url(#${uid}-grGold)`} />
+
+            {/* Golden Tassel */}
+            <path
+              d="M32 21.5c7.5 0 16.5 3 17.5 9v11"
+              stroke={`url(#${uid}-grGold)`}
+              strokeWidth="2.6"
+              strokeLinecap="round"
+            />
+            <ellipse cx="49.5" cy="41.5" rx="2.5" ry="3.5" fill={`url(#${uid}-grGold)`} />
+            <path d="M48 45h3" stroke="#B45309" strokeWidth="1" strokeLinecap="round" />
           </svg>
         );
 
