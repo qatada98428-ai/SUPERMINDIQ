@@ -9,6 +9,7 @@ import {
   MessageCircle,
   PlayCircle,
   ChevronLeft,
+  Sparkles,
 } from "lucide-react";
 import HeroIllustration from "@/components/home/HeroIllustration";
 import ClayIcon, { ClayBadgeTone, ClayIconName } from "@/components/design-system/ClayIcon";
@@ -19,6 +20,7 @@ import {
 } from "@/components/design-system/ClayMotion";
 import { getWhatsAppLink } from "@/lib/constants";
 import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
 
 interface SectionItem {
   href: string;
@@ -37,6 +39,7 @@ interface SectionItem {
 
 export default function HomePage() {
   const { language, playFx } = useApp();
+  const { user } = useAuth();
   const isEn = language === "en";
 
   const platformSections: SectionItem[] = [
@@ -367,6 +370,50 @@ export default function HomePage() {
         />
 
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+          {/* إشعار التسجيل بداخل الصفحة الرئيسية (يختفي فور تسجيل الطالب) */}
+          {!user && (
+            <motion.aside
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35 }}
+              aria-label="إشعار تسجيل الحساب"
+              className="mb-8 p-4 sm:p-5 rounded-3xl clay-card bg-gradient-to-r from-white via-[#F8F5FF] to-[#FFF9EE] dark:from-[#1E1B3E] dark:via-[#191637] dark:to-[#2B2117] border-2 border-brand-500/30 dark:border-brand-500/40 shadow-xl"
+            >
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5 text-center sm:text-start">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md">
+                    <Sparkles className="w-6 h-6 text-amber-300 animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-center sm:justify-start gap-2">
+                      <h3 className="text-base sm:text-lg font-black text-[#261E58] dark:text-[#F3F0FD]">
+                        {isEn ? "Join the Super Mind Community 🌟" : "انضم إلى عائلة العقل الخارق وسجّل حسابك الآن 🌟"}
+                      </h3>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-800 dark:text-amber-200">
+                        {isEn ? "Free Account" : "حساب مجاني"}
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-[#5D5589] dark:text-[#C5BFEE] mt-0.5 leading-relaxed">
+                      {isEn
+                        ? "Register to track your mental math scores, earn stars, and compete in official championships."
+                        : "سجّل حسابك لحفظ إنجازاتك في الحساب الذهني، وجمع النجوم، والمنافسة في البطولات والمسابقات الرسمية."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
+                  <Link
+                    href="/login"
+                    onClick={() => playFx("pop")}
+                    className="clay-btn-purple flex-1 sm:flex-initial px-5 py-2.5 !rounded-2xl text-xs sm:text-sm font-black text-center shadow-lg hover:scale-105 active:scale-95 transition-all"
+                  >
+                    {isEn ? "Sign In / Register Now 🚀" : "تسجيل الدخول / إنشاء حساب 🚀"}
+                  </Link>
+                </div>
+              </div>
+            </motion.aside>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
             {/* Hero Left/Start Content */}
             <div className="lg:col-span-7 text-center lg:text-start">

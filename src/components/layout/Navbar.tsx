@@ -12,7 +12,7 @@ import {
   VolumeX,
   Globe,
   Sparkles,
-  Calculator,
+  Brain,
   Award,
   Users,
   HelpCircle,
@@ -22,8 +22,6 @@ import {
   LogOut,
   ArrowRight,
   ArrowLeft,
-  SlidersHorizontal,
-  Download,
   Smartphone,
 } from "lucide-react";
 import BrandLogo from "@/components/ui/BrandLogo";
@@ -37,6 +35,7 @@ export default function Navbar() {
   const { user, profile, role, isGuest, signOut } = useAuth();
   const { isStandalone, installApp } = usePWA();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [audioMenuOpen, setAudioMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -57,8 +56,8 @@ export default function Navbar() {
 
   const navItems = [
     { href: "/", label: "الرئيسية", enLabel: "Home", icon: Sparkles },
-    { href: "/mental-arithmetic", label: "الحساب الذهني", enLabel: "Mental Math", icon: Calculator },
-    { href: "/trainers", label: "الاعتمادات والشركاء", enLabel: "Accreditations & Partners", icon: Award },
+    { href: "/mental-arithmetic", label: "برامج العقل الخارق", enLabel: "Super Mind Programs", icon: Brain },
+    { href: "/trainers", label: "الاعتمادات والشراكات", enLabel: "Accreditations & Partnerships", icon: Award },
     {
       href: "/supporters",
       label: "الداعمون",
@@ -153,106 +152,207 @@ export default function Navbar() {
               </Link>
             );
           })}
-        </nav>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Clay Pill Utilities */}
-          <div className="hidden sm:flex items-center gap-1 p-1 rounded-full bg-[#F2EFFE] dark:bg-[#242146] border border-[#E4DFF9] dark:border-[#38346B] shadow-inner">
-            {isHomePage && (
-              <button
-                onClick={() => {
-                  toggleLanguage();
-                  playFx("toggle");
-                }}
-                title={isEn ? "التبديل إلى العربية" : "Switch to English"}
-                className="clay-pill flex items-center gap-1 px-2.5 py-1.5 text-[#2E2759] dark:text-[#F5F4FD] text-xs font-black hover:scale-105 active:scale-95"
-              >
-                <Globe className="w-3.5 h-3.5 text-brand-600 dark:text-brand-300" />
-                <span>{isEn ? "عربي" : "EN"}</span>
-              </button>
-            )}
-
-            <button
-              onClick={() => {
-                toggleTheme();
-                playFx("toggle");
-              }}
-              title={theme === "dark" ? "الوضع الفاتح" : "الوضع الليلي"}
-              className="clay-pill p-1.5 text-[#2E2759] dark:text-[#F5F4FD] hover:scale-105 active:scale-95"
-            >
-              {theme === "dark" ? (
-                <Sun className="w-4 h-4 text-amber-400" />
-              ) : (
-                <Moon className="w-4 h-4 text-brand-600" />
-              )}
-            </button>
-
-            <div className="relative flex items-center gap-0.5">
-              <button
-                onClick={() => {
-                  const next = !soundEnabled;
-                  toggleSound();
-                  if (next) setTimeout(() => playFx("toggle"), 30);
-                }}
-                title={soundEnabled ? "كتم الصوت" : "تشغيل الصوت"}
-                className="clay-pill p-1.5 text-[#2E2759] dark:text-[#F5F4FD] hover:scale-105 active:scale-95"
-              >
-                {soundEnabled ? (
-                  <Volume2 className="w-4 h-4 text-emerald-500" />
-                ) : (
-                  <VolumeX className="w-4 h-4 text-slate-400" />
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  playFx("toggle");
-                  setAudioMenuOpen((v) => !v);
-                }}
-                title={isEn ? "Audio Settings" : "إعدادات الصوت ومستواه"}
-                aria-label={isEn ? "Audio Settings" : "إعدادات الصوت ومستواه"}
-                aria-expanded={audioMenuOpen}
-                className="clay-pill p-1.5 text-[#5E5985] dark:text-[#C8C3EC] hover:text-brand-600 hover:scale-105 active:scale-95"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-              </button>
-
-              {audioMenuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setAudioMenuOpen(false)}
-                    aria-hidden="true"
-                  />
-                  <div className="absolute top-full end-0 mt-2.5 w-72 p-4 clay-card bg-white dark:bg-[#1E1B3E] z-50 border border-[#E6E2FA] dark:border-[#343063] shadow-xl">
-                    <AudioControlPanel compact />
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Install App Button (When opened from browser) */}
-          {!isStandalone && (
+          {/* زر الخطوط: لاختيار اللغة والوضع الليلي/النهاري والتحكم بالأصوات وغيرها */}
+          <div className="relative">
             <button
               type="button"
               onClick={() => {
-                playFx("pop");
-                installApp();
+                playFx("toggle");
+                setSettingsOpen((v) => !v);
               }}
-              title={isEn ? "Install SUPER MIND App" : "تثبيت تطبيق العقل الخارق"}
-              className="clay-pill hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-brand-700 dark:text-brand-300 font-black text-xs bg-gradient-to-r from-amber-50 via-brand-50 to-indigo-50 dark:from-amber-950/40 dark:via-brand-950/40 dark:to-indigo-950/40 border border-amber-300/80 dark:border-amber-600/60 shadow-[0_4px_12px_-4px_rgba(245,158,11,0.35)] hover:scale-105 active:scale-95 transition-all"
+              title={isEn ? "Menu & Settings (Language, Theme, Sound)" : "الخطوط: إعدادات المنصة (اللغة، المظهر، الصوت)"}
+              aria-label={isEn ? "Menu & Settings" : "الخطوط: إعدادات المنصة"}
+              aria-expanded={settingsOpen}
+              className={`w-10 h-10 xl:w-auto xl:h-auto xl:px-3.5 xl:py-2 rounded-2xl text-[13px] font-black transition-all duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 ${
+                settingsOpen
+                  ? "clay-btn-purple !rounded-2xl shadow-lg"
+                  : "bg-[#F7F5FE] dark:bg-[#242146] text-[#4C4578] dark:text-[#D9D5F5] border border-[#E7E3FA] dark:border-[#363268] shadow-[0_4px_10px_-4px_rgba(68,52,138,0.1),inset_0_2px_2px_rgba(255,255,255,0.85)] dark:shadow-none hover:text-brand-600 dark:hover:text-brand-300 hover:-translate-y-0.5"
+              }`}
             >
-              <Download className="w-3.5 h-3.5 text-amber-500 animate-pulse shrink-0" />
-              <span>{isEn ? "Install App" : "تثبيت التطبيق 📱"}</span>
+              <Menu className="w-4 h-4 shrink-0 text-brand-600 dark:text-brand-300" />
+              <span className="hidden xl:inline">{isEn ? "Settings" : "الخيارات"}</span>
             </button>
-          )}
 
-          {/* Auth Controls */}
-          {!isGuest && user ? (
-            <div className="flex items-center gap-1.5">
+            {/* Dropdown Menu for الخطوط */}
+            {settingsOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setSettingsOpen(false)}
+                  aria-hidden="true"
+                />
+                <div className="absolute top-full end-0 mt-2.5 w-78 sm:w-80 p-4 clay-card bg-white/98 dark:bg-[#1E1B3E]/98 z-50 border border-[#E6E2FA] dark:border-[#343063] shadow-2xl rounded-3xl space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="flex items-center justify-between border-b border-[#E6E2FA] dark:border-[#343063] pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Menu className="w-4 h-4 text-brand-600 dark:text-brand-300" />
+                      <span className="text-xs font-black text-[#261E58] dark:text-[#F3F0FD]">
+                        {isEn ? "Platform Controls" : "إعدادات وتحكم المنصة"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSettingsOpen(false)}
+                      className="clay-pill p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                      title="إغلاق"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* 1. Language & Theme Controls */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toggleLanguage();
+                        playFx("toggle");
+                      }}
+                      className="clay-pill flex items-center justify-center gap-1.5 py-2 px-2.5 text-xs font-bold text-[#2E2759] dark:text-white hover:scale-105 active:scale-95"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-brand-600 dark:text-brand-300" />
+                      <span>{isEn ? "العربية" : "English"}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toggleTheme();
+                        playFx("toggle");
+                      }}
+                      className="clay-pill flex items-center justify-center gap-1.5 py-2 px-2.5 text-xs font-bold text-[#2E2759] dark:text-white hover:scale-105 active:scale-95"
+                    >
+                      {theme === "dark" ? (
+                        <>
+                          <Sun className="w-3.5 h-3.5 text-amber-400" />
+                          <span>{isEn ? "Light" : "وضع نهاري"}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Moon className="w-3.5 h-3.5 text-brand-600" />
+                          <span>{isEn ? "Dark" : "وضع ليلي"}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* 2. Sound Quick Toggle */}
+                  <div className="clay-card-sm p-2.5 bg-[#F6F4FE] dark:bg-[#211E42] flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !soundEnabled;
+                          toggleSound();
+                          if (next) setTimeout(() => playFx("toggle"), 30);
+                        }}
+                        className="clay-pill p-1.5 text-[#2E2759] dark:text-white hover:scale-105 active:scale-95"
+                        title={soundEnabled ? "كتم الصوت" : "تشغيل الصوت"}
+                      >
+                        {soundEnabled ? (
+                          <Volume2 className="w-4 h-4 text-emerald-500" />
+                        ) : (
+                          <VolumeX className="w-4 h-4 text-slate-400" />
+                        )}
+                      </button>
+                      <span className="text-xs font-bold text-[#3B3469] dark:text-[#D5D0F5]">
+                        {soundEnabled ? (isEn ? "Sound Enabled" : "الأصوات مفعّلة") : (isEn ? "Muted" : "الأصوات مكتومة")}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playFx("toggle");
+                        setAudioMenuOpen((v) => !v);
+                      }}
+                      className="clay-pill px-2.5 py-1 text-[11px] font-bold text-brand-600 dark:text-brand-300 hover:scale-105 active:scale-95"
+                    >
+                      {audioMenuOpen ? (isEn ? "Hide Volume" : "إخفاء الضبط") : (isEn ? "Volume & Voice" : "ضبط الأصوات")}
+                    </button>
+                  </div>
+
+                  {/* Expanded Audio Settings if toggled */}
+                  {audioMenuOpen && (
+                    <div className="clay-card-sm p-3 bg-[#F6F4FE] dark:bg-[#211E42] border border-[#E4DFF9] dark:border-[#363268]">
+                      <AudioControlPanel compact />
+                    </div>
+                  )}
+
+                  {/* 3. Install App Option (if not installed) */}
+                  {!isStandalone && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playFx("pop");
+                        setSettingsOpen(false);
+                        installApp();
+                      }}
+                      className="w-full clay-card-sm p-2.5 bg-gradient-to-r from-amber-50 to-brand-50 dark:from-amber-950/40 dark:to-brand-950/40 border border-amber-300/80 dark:border-amber-700/60 flex items-center justify-between hover:scale-[1.02] active:scale-95 transition-all text-start"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Smartphone className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                        <span className="text-xs font-black text-[#261E58] dark:text-[#F3F0FD]">
+                          {isEn ? "Install Platform App" : "تثبيت المنصة كتطبيق"}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-800 dark:text-amber-200">
+                        {isEn ? "Install" : "تثبيت"}
+                      </span>
+                    </button>
+                  )}
+
+                  {/* 4. Auth & Account status in menu */}
+                  <div className="pt-1 border-t border-[#E6E2FA] dark:border-[#343063]">
+                    {!isGuest && user ? (
+                      <div className="flex items-center justify-between">
+                        <Link
+                          href={role === "trainer" ? "/trainer" : "/dashboard"}
+                          onClick={() => {
+                            playFx("pop");
+                            setSettingsOpen(false);
+                          }}
+                          className="clay-pill px-3 py-1.5 text-brand-700 dark:text-brand-200 font-bold text-xs flex items-center gap-1.5"
+                        >
+                          <User className="w-3.5 h-3.5 text-brand-600 dark:text-brand-300" />
+                          <span className="truncate max-w-[120px]">{profile?.name || user.email?.split("@")[0]}</span>
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            signOut();
+                            playFx("toggle");
+                            setSettingsOpen(false);
+                          }}
+                          className="clay-pill p-1.5 text-rose-600 dark:text-rose-400 hover:scale-105 active:scale-95"
+                          title={isEn ? "Sign Out" : "تسجيل الخروج"}
+                        >
+                          <LogOut className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <Link
+                        href="/login"
+                        onClick={() => {
+                          playFx("pop");
+                          setSettingsOpen(false);
+                        }}
+                        className="clay-btn-purple w-full py-2 !rounded-xl font-bold text-xs text-center block"
+                      >
+                        {isEn ? "Sign In to Account" : "تسجيل الدخول للمنصة"}
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </nav>
+
+        {/* Action Controls (Clean, minimal, shows profile if logged in) */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {!isGuest && user && (
+            <div className="hidden sm:flex items-center gap-1.5">
               {role === "admin" && (
                 <Link
                   href="/admin"
@@ -267,57 +367,36 @@ export default function Navbar() {
               <Link
                 href={role === "trainer" ? "/trainer" : "/dashboard"}
                 onClick={() => playFx("pop")}
-                className="clay-pill px-2.5 sm:px-3.5 py-1.5 text-brand-700 dark:text-brand-200 font-bold text-[11px] sm:text-xs flex items-center gap-1.5 max-w-[96px] sm:max-w-[140px]"
+                className="clay-pill px-2.5 sm:px-3.5 py-1.5 text-brand-700 dark:text-brand-200 font-bold text-[11px] sm:text-xs flex items-center gap-1.5 max-w-[100px] sm:max-w-[140px]"
                 title={profile?.name || user.email || "حسابي"}
               >
                 <User className="w-3.5 h-3.5 shrink-0 text-brand-600 dark:text-brand-300" />
                 <span className="truncate">{profile?.name || user.email?.split("@")[0]}</span>
               </Link>
               <button
+                type="button"
                 onClick={() => {
                   signOut();
                   playFx("toggle");
                 }}
                 title={isEn ? "Sign Out" : "تسجيل الخروج"}
-                className="hidden sm:inline-flex clay-pill p-2 text-slate-500 hover:text-rose-600 dark:hover:text-rose-400"
+                className="clay-pill p-2 text-slate-500 hover:text-rose-600 dark:hover:text-rose-400"
               >
                 <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
-          ) : (
-            <Link
-              href="/login"
-              onClick={() => playFx("pop")}
-              className="clay-btn-purple px-3.5 sm:px-5 py-2 !rounded-2xl font-extrabold text-[11px] sm:text-sm whitespace-nowrap"
-            >
-              {isEn ? "Sign In" : "تسجيل الدخول"}
-            </Link>
           )}
 
-          {/* Mobile Install Pill (< 640px) */}
-          {!isStandalone && (
-            <button
-              type="button"
-              onClick={() => {
-                playFx("pop");
-                installApp();
-              }}
-              title={isEn ? "Install App" : "تثبيت التطبيق"}
-              className="clay-pill flex sm:hidden items-center gap-1 px-2.5 py-1.5 text-brand-700 dark:text-brand-200 font-black text-[11px] bg-gradient-to-r from-amber-100/90 to-brand-100/90 dark:from-amber-950/50 dark:to-brand-950/50 border border-amber-400/80 shadow-sm active:scale-95 shrink-0"
-            >
-              <Download className="w-3 h-3 text-amber-600 dark:text-amber-400 animate-pulse shrink-0" />
-              <span>{isEn ? "Install" : "تثبيت"}</span>
-            </button>
-          )}
-
-          {/* Mobile Quick Settings Button (< 640px only) */}
+          {/* Mobile Lines/Menu Button (الخطوط على الهواتف < 768px) */}
           <button
+            type="button"
             onClick={() => {
               playFx("toggle");
               setMobileMenuOpen(!mobileMenuOpen);
             }}
-            className="clay-pill p-2 text-[#2E2759] dark:text-[#F5F4FD] sm:hidden focus:outline-none"
-            aria-label={isEn ? "Quick Settings & Menu" : "الإعدادات والقائمة"}
+            className="clay-pill p-2 text-[#2E2759] dark:text-[#F5F4FD] md:hidden focus:outline-none"
+            aria-label={isEn ? "Quick Settings & Menu" : "الخطوط: الإعدادات والقائمة"}
+            title={isEn ? "Menu & Settings" : "الخطوط: الإعدادات والقائمة"}
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -378,9 +457,9 @@ export default function Navbar() {
         })}
       </nav>
 
-      {/* Mobile Utility Drawer (< 640px) */}
+      {/* Mobile Utility Drawer (< 768px) */}
       {mobileMenuOpen && (
-        <div className="sm:hidden max-h-[calc(100vh-7rem)] overflow-y-auto border-t border-[#E6E2FA] dark:border-[#2E2B57] bg-white/95 dark:bg-[#181636]/95 backdrop-blur-md px-4 pt-4 pb-6 space-y-4">
+        <div className="md:hidden max-h-[calc(100vh-7rem)] overflow-y-auto border-t border-[#E6E2FA] dark:border-[#2E2B57] bg-white/95 dark:bg-[#181636]/95 backdrop-blur-md px-4 pt-4 pb-6 space-y-4">
           <div className="clay-card-sm flex items-center justify-between p-3 bg-[#F6F4FE] dark:bg-[#211E42]">
             <div className="flex items-center gap-2">
               <button
