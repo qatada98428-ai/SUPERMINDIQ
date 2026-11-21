@@ -21,6 +21,7 @@ import {
   isCloudVoiceUri,
   CLOUD_VOICE_FEMALE_URI,
   CLOUD_VOICE_MALE_URI,
+  CLOUD_VOICE_MALE_2_URI,
 } from "@/lib/speech-engine";
 import {
   getRawBrowserVoices,
@@ -260,10 +261,13 @@ export default function VoiceSettingsPanel({
               {/* Cloud Studio Voices (Guaranteed zero-setup across all phones) */}
               <optgroup label={isEn ? "Smart Cloud Studio Voices (Universal)" : "أصوات النطق السحابي الذكي (تعمل على جميع الهواتف)"}>
                 <option value={CLOUD_VOICE_FEMALE_URI}>
-                  {isEn ? "Cloud Studio: Clear Female Voice ☁️" : "سحابي نقي: صوت أنثوي فائق الوضوح ☁️"}
+                  {isEn ? "Cloud Studio: Clear Female Voice 👩‍🏫 ☁️" : "سحابي نقي: صوت أنثوي فائق الوضوح 👩‍🏫 ☁️"}
                 </option>
                 <option value={CLOUD_VOICE_MALE_URI}>
-                  {isEn ? "Cloud Studio: Resonant Male Voice ☁️" : "سحابي نقي: صوت ذكوري وقور ☁️"}
+                  {isEn ? "Cloud Studio: Resonant Deep Male (Trainer Maged) 👨‍🏫 ☁️" : "سحابي ذكوري 1: وقور وعميق (المدرب ماجد) 👨‍🏫 ☁️"}
+                </option>
+                <option value={CLOUD_VOICE_MALE_2_URI}>
+                  {isEn ? "Cloud Studio: Energetic Clear Male (Trainer Tarik) ⚡ ☁️" : "سحابي ذكوري 2: شبابي وحيوي (المدرب طارق) ⚡ ☁️"}
                 </option>
               </optgroup>
 

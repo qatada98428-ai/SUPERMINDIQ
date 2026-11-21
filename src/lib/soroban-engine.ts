@@ -14,6 +14,7 @@ import {
   isCloudVoiceUri,
   CLOUD_VOICE_FEMALE_URI,
   CLOUD_VOICE_MALE_URI,
+  CLOUD_VOICE_MALE_2_URI,
   VoiceGender,
   SpeechPreferences,
 } from "@/lib/speech-engine";
@@ -30,6 +31,7 @@ export {
   prefetchCloudSpeech,
   CLOUD_VOICE_FEMALE_URI,
   CLOUD_VOICE_MALE_URI,
+  CLOUD_VOICE_MALE_2_URI,
 };
 
 export interface SorobanRodState {
@@ -661,22 +663,35 @@ export function shouldUseCloudSpeech(
 ): { useCloud: boolean; gender: VoiceGender } {
   const uri = langMode === "arabic" ? prefs.voiceUriAr : prefs.voiceUriEn;
   if (isCloudVoiceUri(uri)) {
+    let gender: VoiceGender = "female";
+    if (uri === CLOUD_VOICE_MALE_2_URI) {
+      gender = "male_2";
+    } else if (uri === CLOUD_VOICE_MALE_URI) {
+      gender = "male";
+    }
     return {
       useCloud: true,
-      gender: uri === CLOUD_VOICE_FEMALE_URI ? "female" : "male",
+      gender,
     };
   }
   const voices = getRawBrowserVoices();
   const hasLocal = hasLocalLanguageVoices(voices, langMode);
   if (!hasLocal) {
-    const isMale =
+    let gender: VoiceGender = "female";
+    if (uri.includes("male_2") || uri.includes("tarik")) {
+      gender = "male_2";
+    } else if (
       uri.toLowerCase().includes("male") ||
       uri.includes("ذكر") ||
       uri.includes("hamed") ||
-      uri.includes("shakir");
+      uri.includes("shakir") ||
+      uri.includes("naayf")
+    ) {
+      gender = "male";
+    }
     return {
       useCloud: true,
-      gender: isMale ? "male" : "female",
+      gender,
     };
   }
   return {
@@ -740,7 +755,25 @@ function createConfiguredUtterance(
   utterance.lang = voice?.lang || (langMode === "arabic" ? "ar-SA" : "en-US");
   const rate = speedMs !== undefined ? computeAdaptiveSpeechRate(speedMs) : 1.25;
   utterance.rate = Math.max(0.5, Math.min(2.0, rate));
-  utterance.pitch = 1.04;
+
+  const isMale2 =
+    targetUri === CLOUD_VOICE_MALE_2_URI ||
+    targetUri.includes("male_2") ||
+    targetUri.includes("tarik") ||
+    targetUri.includes("naayf");
+  const isMale1 =
+    targetUri === CLOUD_VOICE_MALE_URI ||
+    targetUri.includes("shakir") ||
+    targetUri.includes("maged") ||
+    targetUri.includes("male");
+
+  let pitch = 1.04;
+  if (isMale1) {
+    pitch = 0.84; // Deeper resonant tone
+  } else if (isMale2) {
+    pitch = 0.98; // Energetic, clear youth tone
+  }
+  utterance.pitch = pitch;
   utterance.volume = getEffectiveSpeechVolume();
   return utterance;
 }

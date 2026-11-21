@@ -8,13 +8,18 @@
 
 export type SpeechLanguageMode = "arabic" | "english" | "off";
 export type FlashTimingMode = "fixed" | "synced";
-export type VoiceGender = "male" | "female" | "unknown";
+export type VoiceGender = "male" | "male_2" | "female" | "unknown";
 
 export const CLOUD_VOICE_FEMALE_URI = "supermind_cloud_female";
 export const CLOUD_VOICE_MALE_URI = "supermind_cloud_male";
+export const CLOUD_VOICE_MALE_2_URI = "supermind_cloud_male_2";
 
 export function isCloudVoiceUri(uri?: string): boolean {
-  return uri === CLOUD_VOICE_FEMALE_URI || uri === CLOUD_VOICE_MALE_URI;
+  return (
+    uri === CLOUD_VOICE_FEMALE_URI ||
+    uri === CLOUD_VOICE_MALE_URI ||
+    uri === CLOUD_VOICE_MALE_2_URI
+  );
 }
 
 export interface RealVoiceOption {
@@ -419,8 +424,8 @@ export function discoverRealVoices(
       voiceURI: CLOUD_VOICE_FEMALE_URI,
       name:
         langMode === "arabic"
-          ? "سحابي نقي: صوت أنثوي فائق الوضوح ☁️"
-          : "Cloud Studio: Clear Female Voice ☁️",
+          ? "سحابي نقي: صوت أنثوي فائق الوضوح 👩‍🏫 ☁️"
+          : "Cloud Studio: Clear Female Voice 👩‍🏫 ☁️",
       lang: langMode === "arabic" ? "ar-SA" : "en-US",
       gender: "female",
       localService: false,
@@ -430,10 +435,21 @@ export function discoverRealVoices(
       voiceURI: CLOUD_VOICE_MALE_URI,
       name:
         langMode === "arabic"
-          ? "سحابي نقي: صوت ذكوري وقور ☁️"
-          : "Cloud Studio: Resonant Male Voice ☁️",
+          ? "سحابي ذكوري 1: صوت وقور وعميق (المدرب ماجد) 👨‍🏫 ☁️"
+          : "Cloud Studio: Resonant Deep Male (Trainer Maged) 👨‍🏫 ☁️",
       lang: langMode === "arabic" ? "ar-SA" : "en-US",
       gender: "male",
+      localService: false,
+      isCloud: true,
+    },
+    {
+      voiceURI: CLOUD_VOICE_MALE_2_URI,
+      name:
+        langMode === "arabic"
+          ? "سحابي ذكوري 2: صوت شبابي وحيوي (المدرب طارق) ⚡ ☁️"
+          : "Cloud Studio: Energetic Clear Male (Trainer Tarik) ⚡ ☁️",
+      lang: langMode === "arabic" ? "ar-SA" : "en-US",
+      gender: "male_2",
       localService: false,
       isCloud: true,
     },

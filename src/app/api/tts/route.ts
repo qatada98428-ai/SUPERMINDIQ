@@ -8,7 +8,8 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const rawText = searchParams.get("text")?.trim() || "";
   const lang = searchParams.get("lang") === "en" ? "en" : "ar";
-  const gender = searchParams.get("gender") === "male" ? "male" : "female";
+  const rawGender = searchParams.get("gender") || "female";
+  const gender = rawGender === "male_2" ? "male_2" : rawGender === "male" ? "male" : "female";
 
   if (!rawText) {
     return new NextResponse("Text parameter is required", { status: 400 });

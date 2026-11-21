@@ -26,7 +26,7 @@ export function getCloudTtsUrl(
   gender: VoiceGender = "female"
 ): string {
   const langCode = lang === "arabic" ? "ar" : "en";
-  const genderCode = gender === "male" ? "male" : "female";
+  const genderCode = gender === "male_2" ? "male_2" : gender === "male" ? "male" : "female";
   return `/api/tts?text=${encodeURIComponent(text)}&lang=${langCode}&gender=${genderCode}`;
 }
 
@@ -123,13 +123,18 @@ export function playCloudSpeech(
   const volume = options.volume !== undefined ? Math.max(0, Math.min(1, options.volume)) : 1.0;
   audio.volume = volume;
 
-  // Rate tuning (playbackRate works smoothly on HTMLAudioElement in all modern browsers)
-  if (options.rate && Number.isFinite(options.rate)) {
-    try {
-      audio.playbackRate = Math.max(0.7, Math.min(2.0, options.rate));
-    } catch {
-      // Ignore
+  // Rate tuning & Distinct Voice Persona Acoustics
+  const baseRate = options.rate && Number.isFinite(options.rate) ? options.rate : 1.0;
+  try {
+    if (gender === "male") {
+      audio.playbackRate = Math.max(0.65, Math.min(2.0, baseRate * 0.94));
+    } else if (gender === "male_2") {
+      audio.playbackRate = Math.max(0.7, Math.min(2.0, baseRate * 1.08));
+    } else {
+      audio.playbackRate = Math.max(0.7, Math.min(2.0, baseRate));
     }
+  } catch {
+    // Ignore
   }
 
   let settled = false;
