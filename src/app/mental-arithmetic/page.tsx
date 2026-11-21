@@ -401,30 +401,50 @@ export default function MentalArithmeticPage() {
       {/* الواجهة الرئيسية للكبسولات الثلاث (تظهر الكبسولات فقط دون تفاصيل أسفلها)   */}
       {/* ========================================================================= */}
       {activeProgram === "hub" && (
-        <div className="space-y-6 animate-in fade-in duration-200">
-          {/* بطاقة تعريفية مضغوطة مع المعداد السوروبان 1:4 */}
-          <div className="clay-card !p-4 sm:!p-5 bg-gradient-to-r from-brand-50/80 via-indigo-50/50 to-purple-50/80 dark:from-[#1E1B3E] dark:via-[#221D47] dark:to-[#191538] border border-brand-200/80 dark:border-brand-800/60 rounded-3xl shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="space-y-1.5 text-center md:text-start max-w-xl">
-              <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-brand-100 dark:bg-brand-900/60 text-brand-700 dark:text-brand-300">
-                أكاديمية العباقرة والتدريب الذهني 🌟
-              </span>
-              <h2 className="text-base sm:text-xl font-black text-[#261E58] dark:text-white">
-                اختر البرنامج المطلوب للدخول إلى تفاصيله:
-              </h2>
-              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
-                اضغط على أي كبسولة أدناه للدخول إلى أدواتها وتمارينها التدريبية فوراً.
-              </p>
-            </div>
-
-            <div className="w-full md:w-56 h-28 sm:h-32 rounded-2xl overflow-hidden shadow-clay border border-white/50 shrink-0">
+        <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-200">
+          {/* العرض السينمائي الشامل لأبطال العقل الخارق والمعداد الياباني 1:4 */}
+          <div className="relative rounded-3xl sm:rounded-[2.5rem] overflow-hidden shadow-2xl border-2 border-white/60 dark:border-brand-500/30 bg-gradient-to-br from-[#1E1838] via-[#2A1D54] to-[#16122E] group">
+            <div className="relative w-full aspect-[16/9] max-h-[480px] overflow-hidden">
               <Image
                 src="/images/clay/math-fun-mascot.jpg"
                 alt="أبطال العقل الخارق ومعداد السوروبان الياباني 1:4"
-                width={400}
-                height={225}
+                width={1376}
+                height={768}
                 priority
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700 ease-out"
               />
+
+              {/* تدرج سينمائي سفلي فخم للنصوص وقراءة أوضح */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
+
+              {/* شارات سينمائية علوية أنيقة */}
+              <div className="absolute top-3 sm:top-5 right-3 sm:right-5 flex flex-wrap items-center gap-2">
+                <span className="px-3 sm:px-4 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-white/25 text-white text-[11px] sm:text-xs font-black flex items-center gap-1.5 shadow-lg">
+                  <span>🌟</span>
+                  <span>أكاديمية العباقرة والتدريب الذهني</span>
+                </span>
+                <span className="px-3 py-1.5 rounded-full bg-amber-400 text-slate-950 text-[10px] sm:text-xs font-black shadow-lg">
+                  معداد سوروبان 1:4 أصلي 🧮
+                </span>
+              </div>
+
+              {/* تذييل سينمائي تفاعلي مع العنوان والتوجيه */}
+              <div className="absolute bottom-3 sm:bottom-6 inset-x-3 sm:inset-x-6 flex flex-col sm:flex-row sm:items-end justify-between gap-3 text-white">
+                <div className="space-y-1 max-w-xl">
+                  <h2 className="text-base sm:text-2xl md:text-3xl font-black drop-shadow-md text-white leading-tight">
+                    منظومة العقل الخارق والتدريب الذهني
+                  </h2>
+                  <p className="text-[11px] sm:text-sm text-white/90 font-medium drop-shadow leading-relaxed">
+                    اختر كبسولتك التدريبية أدناه للانطلاق نحو ألعاب السوروبان، تحديات الذكاء، وأسرار الحساب الفوري!
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[11px] sm:text-xs font-black px-3.5 py-1.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 text-amber-300 shadow-md">
+                    3 كبسولات تفاعلية 🚀
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
