@@ -112,8 +112,8 @@ export default function MentalArithmeticPage() {
       enDesc: "Comprehensive interactive learning path starting with Soroban beads up to Small & Big Friends complements and compound rules.",
       badge: "منهج تفاعلي 🎓",
       enBadge: "Interactive Course 🎓",
-      icon: "soroban",
-      tone: "lavender",
+      icon: "graduation",
+      tone: "indigo",
       actionTheme: "purple",
       cardSurface:
         "bg-gradient-to-br from-white via-[#FAF8FF] to-[#EDE7FF] dark:from-[#1E1B3E] dark:via-[#1C1A3A] dark:to-[#221B48] border-[#E1D8FA] dark:border-[#382E6E]/70",
