@@ -140,6 +140,8 @@ export default function TeamsBattlePage() {
   const [showDelayMs, setShowDelayMs] = useState<number>(700); // 0.7s Arabic sweet-spot
   const [totalRounds, setTotalRounds] = useState<number>(5);
   const [voiceMode, setVoiceMode] = useState<"arabic" | "english" | "off">("arabic");
+  const [answerMode, setAnswerMode] = useState<"typing" | "choices">("choices");
+  const [questionChoices, setQuestionChoices] = useState<number[]>([]);
 
   // Battle Runtime State
   const [stage, setStage] = useState<GameStage>("setup");
@@ -232,6 +234,20 @@ export default function TeamsBattlePage() {
     setCurrentSeries(generated);
     setCorrectAnswer(sum);
 
+    // توليد 4 اختيارات ذكية متقاربة للسؤال
+    const choicesSet = new Set<number>([sum]);
+    const deltas = [-1, 1, -2, 2, -10, 10, -5, 5, 3, -3, -4, 4];
+    const shuffledDeltas = [...deltas].sort(() => Math.random() - 0.5);
+    for (const d of shuffledDeltas) {
+      if (choicesSet.size >= 4) break;
+      choicesSet.add(sum + d);
+    }
+    while (choicesSet.size < 4) {
+      const randOffset = Math.floor(Math.random() * 10) + 1;
+      choicesSet.add(sum + (Math.random() > 0.5 ? randOffset : -randOffset));
+    }
+    setQuestionChoices(Array.from(choicesSet).sort(() => Math.random() - 0.5));
+
     // Start 3.. 2.. 1 countdown
     setStage("countdown");
     setCountdownNum(3);
@@ -305,15 +321,25 @@ export default function TeamsBattlePage() {
   }, [stage, currentSeries, showDelayMs, speakNumber]);
 
   // Submit Answer
-  const handleAnswerSubmit = (e?: React.FormEvent) => {
+  const handleAnswerSubmit = (e?: React.FormEvent, directVal?: number) => {
     if (e) e.preventDefault();
-    if (!userAnswer.trim() || stage !== "answering") return;
+    if (stage !== "answering") return;
+
+    let finalVal: number;
+    if (directVal !== undefined) {
+      finalVal = directVal;
+      setUserAnswer(directVal.toString());
+    } else {
+      if (!userAnswer.trim()) return;
+      finalVal = parseInt(userAnswer, 10);
+    }
+
+    if (isNaN(finalVal)) return;
 
     const timeTaken = Math.max(200, Date.now() - turnStartTimeRef.current);
     setAnswerTimeMs(timeTaken);
 
-    const parsed = parseInt(userAnswer, 10);
-    const isCorrect = parsed === correctAnswer;
+    const isCorrect = finalVal === correctAnswer;
     setIsLastAnswerCorrect(isCorrect);
 
     // Calculate score: 100 base points + speed bonus if under 3.5s
@@ -707,6 +733,35 @@ export default function TeamsBattlePage() {
                   </button>
                 </div>
               </div>
+
+              {/* Answer Mode (Multiple Choices vs Keypad) */}
+              <div className="space-y-2 col-span-full">
+                <label className="text-xs font-bold text-slate-300 block">طريقة إدخال الإجابة:</label>
+                <div className="grid grid-cols-2 gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setAnswerMode("choices")}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                      answerMode === "choices"
+                        ? "bg-amber-400 text-slate-950 font-black shadow-md"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    <span>🎯 اختيارات متعددة (4 بطاقات سريعة للمس)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAnswerMode("typing")}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                      answerMode === "typing"
+                        ? "bg-amber-400 text-slate-950 font-black shadow-md"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    <span>⌨️ كتابة الناتج (لوحة أرقام)</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Launch Tournament CTA */}
@@ -806,21 +861,21 @@ export default function TeamsBattlePage() {
               </div>
             )}
 
-            {/* Stage: Flashing Numbers (HUGE & CRYSTAL CLEAR LIKE FLASH ANZAN) */}
+            {/* Stage: Flashing Numbers (HUGE & CRYSTAL CLEAR - DYNAMIC TO SCREEN ORIENTATION & ROTATION) */}
             {stage === "flashing" && (
-              <div className="relative z-10 py-4 sm:py-8 space-y-6 my-auto w-full flex flex-col items-center justify-center">
-                <div className="min-h-[200px] sm:min-h-[260px] flex flex-col items-center justify-center w-full">
+              <div className="relative z-10 py-2 sm:py-6 space-y-4 my-auto w-full flex flex-col items-center justify-center min-h-[55vh] sm:min-h-[65vh] landscape:min-h-[75vh]">
+                <div className="flex-1 flex flex-col items-center justify-center w-full">
                   {isFlashVisible && currentFlashIdx >= 0 ? (
-                    <div className="animate-in zoom-in-95 fade-in duration-75 flex flex-col items-center justify-center">
+                    <div className="animate-in zoom-in-95 fade-in duration-75 flex flex-col items-center justify-center w-full">
                       <div
                         dir="ltr"
-                        className={`font-black tracking-normal sm:tracking-wider select-none leading-none px-5 sm:px-12 py-4 sm:py-6 rounded-3xl sm:rounded-[3rem] bg-slate-900/95 border-4 border-amber-400/50 shadow-2xl transition-all max-w-full ${
+                        className={`font-black tracking-normal select-none leading-none px-3 sm:px-10 py-3 sm:py-6 rounded-3xl sm:rounded-[3rem] bg-slate-900/95 border-4 border-amber-400/50 shadow-2xl transition-all w-full max-w-full text-center ${
                           currentSeries[currentFlashIdx] < 0
                             ? "text-rose-400 drop-shadow-[0_14px_35px_rgba(244,63,94,0.5)]"
                             : "text-emerald-400 drop-shadow-[0_14px_35px_rgba(16,185,129,0.5)]"
                         }`}
                         style={{
-                          fontSize: "clamp(3.2rem, 18vw, 11rem)",
+                          fontSize: "clamp(5.5rem, 26vmin, 16rem)",
                           fontFamily: "'Fredoka', 'Baloo Bhaijaan 2', 'Alexandria', sans-serif",
                         }}
                       >
@@ -863,61 +918,86 @@ export default function TeamsBattlePage() {
               </div>
             )}
 
-            {/* Stage: Answering (إدخال الحل وحساب زمن السرعة) */}
+            {/* Stage: Answering (إدخال الحل وحساب زمن السرعة - اختيارات متعددة أو كتابة) */}
             {stage === "answering" && (
-              <div className="relative z-10 max-w-md w-full mx-auto space-y-5 py-2 my-auto animate-in fade-in duration-200">
-                <div className="space-y-1.5">
+              <div className="relative z-10 max-w-lg w-full mx-auto space-y-5 py-2 my-auto animate-in fade-in duration-200">
+                <div className="space-y-1.5 text-center">
                   <span className="text-sm sm:text-base font-black text-amber-300 flex items-center justify-center gap-1.5">
                     <Timer className="w-5 h-5 animate-spin" />
-                    <span>انتهت الأرقام! أدخل الناتج الصحيح بأسرع ما يمكن:</span>
+                    <span>انتهت الأرقام! {answerMode === "choices" ? "المس الناتج الصحيح بأسرع ما يمكن:" : "أدخل الناتج الصحيح بأسرع ما يمكن:"}</span>
                   </span>
                   <p className="text-xs text-slate-300">كلما أسرعت في الإجابة حصد فريقك نقاط سرعة إضافية!</p>
                 </div>
 
-                <form onSubmit={handleAnswerSubmit} className="space-y-4">
-                  <input
-                    type="number"
-                    autoFocus
-                    placeholder="الناتج..."
-                    value={userAnswer}
-                    onChange={(e) => setUserAnswer(e.target.value)}
-                    className="w-full text-center text-4xl sm:text-5xl font-black font-mono py-4 px-6 rounded-2xl bg-slate-900 text-white border-4 border-amber-400 shadow-2xl focus:outline-none focus:ring-4 focus:ring-amber-400/30"
-                  />
+                {answerMode === "choices" ? (
+                  /* Multiple Choices Mode (4 Large Soft 3D Cards) */
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full">
+                    {questionChoices.map((choice, cIdx) => {
+                      const choiceGradients = [
+                        "from-emerald-500 to-teal-700 border-emerald-300 hover:from-emerald-400 hover:to-teal-600 shadow-emerald-950/40",
+                        "from-blue-500 to-indigo-700 border-blue-300 hover:from-blue-400 hover:to-indigo-600 shadow-indigo-950/40",
+                        "from-amber-500 to-orange-700 border-amber-300 hover:from-amber-400 hover:to-orange-600 shadow-amber-950/40",
+                        "from-purple-500 to-pink-700 border-purple-300 hover:from-purple-400 hover:to-pink-600 shadow-purple-950/40",
+                      ];
+                      return (
+                        <button
+                          key={cIdx}
+                          type="button"
+                          onClick={() => handleAnswerSubmit(undefined, choice)}
+                          className={`p-5 sm:p-7 rounded-3xl bg-gradient-to-br ${choiceGradients[cIdx % 4]} text-white font-mono font-black text-3xl sm:text-5xl border-4 shadow-xl active:scale-95 transition-all flex items-center justify-center cursor-pointer`}
+                        >
+                          {choice}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* Virtual Keypad Mode */
+                  <form onSubmit={handleAnswerSubmit} className="space-y-4">
+                    <input
+                      type="number"
+                      autoFocus
+                      placeholder="الناتج..."
+                      value={userAnswer}
+                      onChange={(e) => setUserAnswer(e.target.value)}
+                      className="w-full text-center text-4xl sm:text-5xl font-black font-mono py-4 px-6 rounded-2xl bg-slate-900 text-white border-4 border-amber-400 shadow-2xl focus:outline-none focus:ring-4 focus:ring-amber-400/30"
+                    />
 
-                  {/* Virtual Quick Keypad */}
-                  <div className="grid grid-cols-3 gap-2">
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
+                    {/* Virtual Quick Keypad */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
+                        <button
+                          key={digit}
+                          type="button"
+                          onClick={() => setUserAnswer((prev) => prev + digit)}
+                          className="py-3.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 active:scale-95 text-white font-mono font-black text-2xl rounded-xl transition-all"
+                        >
+                          {digit}
+                        </button>
+                      ))}
                       <button
-                        key={digit}
                         type="button"
-                        onClick={() => setUserAnswer((prev) => prev + digit)}
+                        onClick={() => setUserAnswer((prev) => prev.slice(0, -1))}
+                        className="py-3.5 bg-rose-600/30 hover:bg-rose-600/50 border border-rose-500/40 active:scale-95 text-rose-200 font-bold text-sm rounded-xl transition-all"
+                      >
+                        مسح ⌫
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUserAnswer((prev) => prev + "0")}
                         className="py-3.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 active:scale-95 text-white font-mono font-black text-2xl rounded-xl transition-all"
                       >
-                        {digit}
+                        0
                       </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => setUserAnswer((prev) => prev.slice(0, -1))}
-                      className="py-3.5 bg-rose-600/30 hover:bg-rose-600/50 border border-rose-500/40 active:scale-95 text-rose-200 font-bold text-sm rounded-xl transition-all"
-                    >
-                      مسح ⌫
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setUserAnswer((prev) => prev + "0")}
-                      className="py-3.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 active:scale-95 text-white font-mono font-black text-2xl rounded-xl transition-all"
-                    >
-                      0
-                    </button>
-                    <button
-                      type="submit"
-                      className="py-3.5 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black text-base rounded-xl transition-all shadow-lg"
-                    >
-                      تأكيد ✔
-                    </button>
-                  </div>
-                </form>
+                      <button
+                        type="submit"
+                        className="py-3.5 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black text-base rounded-xl transition-all shadow-lg"
+                      >
+                        تأكيد ✔
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
             )}
 

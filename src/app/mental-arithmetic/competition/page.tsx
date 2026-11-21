@@ -448,8 +448,13 @@ export default function MentalMathCompetitionPage() {
       role: (authProfile?.role as "student" | "trainer" | "admin") || "student",
     });
     const subEval = evaluateSubscription(extProf.subscription);
+    const isTrainerOrAdmin =
+      extProf.role === "trainer" ||
+      extProf.role === "admin" ||
+      authProfile?.role === "trainer" ||
+      authProfile?.role === "admin";
     const hasUnlimitedAccess =
-      subEval.isActive || extProf.role === "admin" || activeAssignment !== null;
+      subEval.isActive || isTrainerOrAdmin || activeAssignment !== null;
 
     if (!hasUnlimitedAccess) {
       if (isGuest) {
@@ -894,16 +899,24 @@ export default function MentalMathCompetitionPage() {
             const subEval = evaluateSubscription(extProf.subscription);
             const trial = getMonthlyTrialStatus(activeUserId);
 
-            if (subEval.isActive || extProf.role === "admin") {
+            if (
+              subEval.isActive ||
+              extProf.role === "trainer" ||
+              extProf.role === "admin" ||
+              authProfile?.role === "trainer"
+            ) {
+              const isTrainer = extProf.role === "trainer" || authProfile?.role === "trainer";
               return (
                 <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-3 text-xs sm:text-sm">
                   <div className="font-black text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                     <span>
-                      اشتراكك في محاكي المسابقة فعال ({extProf.subscription.planLabel}) — متاح لك حتى 1000 سؤال بلا حدود!
+                      {isTrainer
+                        ? "حساب مدرب معتمد 🎓 — محاكي المسابقة وجميع الميزات مفتوحة لك بلا حدود!"
+                        : `اشتراكك في محاكي المسابقة فعال (${extProf.subscription.planLabel}) — متاح لك حتى 1000 سؤال بلا حدود!`}
                     </span>
                   </div>
-                  {subEval.daysRemaining > 0 && (
+                  {!isTrainer && subEval.daysRemaining > 0 && (
                     <span className="px-3 py-1 rounded-full bg-emerald-600 text-white font-bold text-xs">
                       متبقي {subEval.daysRemaining} يوم
                     </span>

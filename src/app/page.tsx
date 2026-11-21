@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -10,6 +10,10 @@ import {
   PlayCircle,
   ChevronLeft,
   Sparkles,
+  User,
+  ShieldCheck,
+  X,
+  ExternalLink,
 } from "lucide-react";
 import HeroIllustration from "@/components/home/HeroIllustration";
 import ClayIcon, { ClayBadgeTone, ClayIconName } from "@/components/design-system/ClayIcon";
@@ -21,6 +25,13 @@ import {
 import { getWhatsAppLink } from "@/lib/constants";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
+import {
+  getExtendedProfile,
+  ExtendedUserProfile,
+  getStudentAcceptedTrainer,
+  getTrainerAcceptedStudents,
+  getUserMembershipCode,
+} from "@/lib/platform-store";
 
 interface SectionItem {
   href: string;
@@ -41,6 +52,18 @@ export default function HomePage() {
   const { language, playFx } = useApp();
   const { user } = useAuth();
   const isEn = language === "en";
+
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [userProfile, setUserProfile] = useState<ExtendedUserProfile | null>(null);
+
+  useEffect(() => {
+    if (user?.id) {
+      const prof = getExtendedProfile(user.id);
+      setUserProfile(prof);
+    } else {
+      setUserProfile(null);
+    }
+  }, [user?.id]);
 
   const platformSections: SectionItem[] = [
     {
@@ -412,6 +435,91 @@ export default function HomePage() {
                 </div>
               </div>
             </motion.aside>
+          )}
+
+          {/* زر وشريط البروفايل للطالب أو المدرب المسجل مع الإحصائيات الحقيقية */}
+          {user && userProfile && (
+            <motion.div
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35 }}
+              className="mb-8 p-4 sm:p-5 rounded-3xl clay-card bg-gradient-to-r from-white via-[#F5F2FF] to-[#F1F9FE] dark:from-[#1E1B3E] dark:via-[#191637] dark:to-[#172439] border-2 border-brand-500/35 dark:border-brand-500/40 shadow-xl"
+            >
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5 text-center sm:text-start w-full sm:w-auto">
+                  <div className="relative shrink-0">
+                    <div className="w-14 h-14 rounded-2xl overflow-hidden bg-gradient-to-br from-brand-600 to-indigo-600 border-2 border-amber-400 text-white flex items-center justify-center font-black text-lg shadow-md">
+                      {userProfile.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={userProfile.avatarUrl}
+                          alt={userProfile.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span>{userProfile.name?.slice(0, 2) || "🧠"}</span>
+                      )}
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center">
+                      <Sparkles className="w-3 h-3 text-white" />
+                    </div>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                      <h3 className="text-base sm:text-lg font-black text-[#261E58] dark:text-[#F3F0FD] truncate">
+                        مرحباً بك، {userProfile.name || "بطل العقل الخارق"} 👋
+                      </h3>
+                      <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-brand-100 text-brand-800 dark:bg-brand-900/60 dark:text-brand-300">
+                        {userProfile.role === "trainer"
+                          ? "مدرب معتمد 🎓"
+                          : userProfile.role === "admin"
+                          ? "إدارة المنصة 🛡️"
+                          : "طالب معتمد 🌟"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-center sm:justify-start gap-4 mt-1 text-xs text-[#5D5589] dark:text-[#C5BFEE]">
+                      <span className="font-mono font-bold">
+                        المعرّف: {userProfile.memberCode || getUserMembershipCode(user.id)}
+                      </span>
+                      {userProfile.role === "student" ? (
+                        <span>
+                          الدقة: <strong className="text-emerald-600 font-mono">{userProfile.accuracyRate || 0}%</strong> • الأسئلة: <strong className="text-brand-600 font-mono">{userProfile.totalQuestionsSolved || 0}</strong>
+                        </span>
+                      ) : (
+                        <span>
+                          الطلاب: <strong className="text-brand-600 font-mono">{getTrainerAcceptedStudents(user.id).length}</strong> طالب معتمد
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playFx("pop");
+                      setShowProfileModal(true);
+                    }}
+                    className="clay-btn-purple flex-1 sm:flex-initial px-4 py-2.5 !rounded-2xl text-xs font-black shadow-md hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <User className="w-4 h-4" />
+                    <span>ملفي وإحصائياتي الحقيقية</span>
+                  </button>
+
+                  <Link
+                    href={userProfile.role === "trainer" ? "/trainer" : "/dashboard"}
+                    onClick={() => playFx("pop")}
+                    className="clay-btn-amber flex-1 sm:flex-initial px-4 py-2.5 !rounded-2xl text-xs font-black shadow-md hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <span>لوحة التحكم</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
@@ -1162,6 +1270,151 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* مودال استعراض البروفايل والمعلومات والإحصائيات الحقيقية */}
+      {showProfileModal && userProfile && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setShowProfileModal(false)}
+        >
+          <div
+            className="w-full max-w-lg clay-card p-6 bg-white dark:bg-[#1E1B3E] rounded-[2.5rem] border-2 border-brand-500/40 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-14 h-14 rounded-2xl overflow-hidden bg-gradient-to-br from-brand-600 to-indigo-600 border-2 border-amber-400 text-white flex items-center justify-center font-black text-xl shadow-md shrink-0">
+                  {userProfile.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={userProfile.avatarUrl}
+                      alt={userProfile.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span>{userProfile.name?.slice(0, 2) || "🧠"}</span>
+                  )}
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                      {userProfile.name || "بطل العقل الخارق"}
+                    </h3>
+                    <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-brand-100 text-brand-800 dark:bg-brand-900/60 dark:text-brand-300">
+                      {userProfile.role === "trainer"
+                        ? "مدرب معتمد 🎓"
+                        : userProfile.role === "admin"
+                        ? "إدارة المنصة 🛡️"
+                        : "طالب معتمد 🌟"}
+                    </span>
+                  </div>
+                  <div className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400 mt-0.5">
+                    المعرّف الرسمي: {userProfile.memberCode || getUserMembershipCode(user?.id)}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Real Stats Grid */}
+            <div className="space-y-2">
+              <div className="text-xs font-black text-slate-700 dark:text-slate-300">
+                📊 الإحصائيات الحقيقية المسجلة في حسابك:
+              </div>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="p-3 rounded-2xl bg-brand-50/70 dark:bg-brand-950/40 border border-brand-200/60 dark:border-brand-800/40 text-center">
+                  <div className="text-xl font-black font-mono text-brand-700 dark:text-brand-300">
+                    {userProfile.totalQuestionsSolved || 0}
+                  </div>
+                  <div className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                    إجمالي الأسئلة المحلولة
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 text-center">
+                  <div className="text-xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+                    {userProfile.accuracyRate || 0}%
+                  </div>
+                  <div className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                    معدل الدقة الحقيقي
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/40 text-center">
+                  <div className="text-xl font-black font-mono text-amber-600 dark:text-amber-400">
+                    {userProfile.totalExercises || 0}
+                  </div>
+                  <div className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                    التمارين المنجزة
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-purple-50/70 dark:bg-purple-950/40 border border-purple-200/60 dark:border-purple-800/40 text-center">
+                  <div className="text-xl font-black font-mono text-purple-600 dark:text-purple-400">
+                    {userProfile.points || (userProfile.totalQuestionsSolved || 0) * 10}
+                  </div>
+                  <div className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                    النقاط والنجوم
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Role Specific Section */}
+            {userProfile.role === "student" ? (
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-1.5">
+                <div className="text-xs font-black text-slate-800 dark:text-white flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-brand-600" />
+                  <span>المدرب المشرف:</span>
+                </div>
+                {user?.id && getStudentAcceptedTrainer(user.id) ? (
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    ✅ مدربك المعتمد: <strong>{getStudentAcceptedTrainer(user.id)?.trainerName}</strong> (المعرّف: {getStudentAcceptedTrainer(user.id)?.trainerCode || "—"})
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    لم تقم بربط مدرب معتمد بعد. يمكنك اختيار وإضافة مدربك من داخل بوابة الطالب.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-1.5">
+                <div className="text-xs font-black text-slate-800 dark:text-white flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-amber-500" />
+                  <span>إحصائيات التدريب:</span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  👥 عدد الطلاب المعتمدين في قائمتك: <strong>{user?.id ? getTrainerAcceptedStudents(user.id).length : 0}</strong> طالب.
+                </p>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="pt-2 flex items-center gap-3">
+              <Link
+                href={userProfile.role === "trainer" ? "/trainer" : "/dashboard"}
+                onClick={() => {
+                  playFx("pop");
+                  setShowProfileModal(false);
+                }}
+                className="clay-btn-purple flex-1 py-3 font-black text-xs sm:text-sm text-center flex items-center justify-center gap-2"
+              >
+                <span>{userProfile.role === "trainer" ? "فتح لوحة تحكم المدرب الكاملة" : "فتح بوابة الطالب (الواجبات والتقدم)"}</span>
+                <ExternalLink className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

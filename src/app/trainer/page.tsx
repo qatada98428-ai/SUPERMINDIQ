@@ -34,6 +34,7 @@ import {
   ExtendedUserProfile,
   PlatformAssignment,
   TrainerAchievement,
+  TrainerStudentLink,
   getExtendedProfile,
   getAllExtendedProfiles,
   saveExtendedProfile,
@@ -44,9 +45,12 @@ import {
   syncExtendedProfileFromSupabase,
   syncAllAssignmentsSubmissionsFromCloud,
   buildShareableAssignmentPath,
-  linkStudentToTrainerByCodeOrPhone,
   getUserMembershipCode,
   SUBSCRIPTION_PLANS,
+  getPendingLinksForTrainer,
+  respondToTrainerStudentLink,
+  sendTrainerStudentLinkRequest,
+  getStoredTrainerStudentLinks,
 } from "@/lib/platform-store";
 import ProfileEditorModal from "@/components/profile/ProfileEditorModal";
 
@@ -73,6 +77,8 @@ export default function TrainerDashboardPage() {
     ok: boolean;
     msg: string;
   } | null>(null);
+  const [pendingStudentRequests, setPendingStudentRequests] = useState<TrainerStudentLink[]>([]);
+  const [outgoingPendingLinks, setOutgoingPendingLinks] = useState<TrainerStudentLink[]>([]);
 
   // New Homework Form State
   const [hwTitle, setHwTitle] = useState("");
@@ -126,6 +132,14 @@ export default function TrainerDashboardPage() {
         (a.creatorId === activeTrainerId || activeTrainerId === "trainer-qatada")
     );
     setHomeworks(allAssigns);
+
+    const pending = getPendingLinksForTrainer(activeTrainerId);
+    setPendingStudentRequests(pending);
+    const allLinks = getStoredTrainerStudentLinks();
+    const outgoing = allLinks.filter(
+      (l) => l.trainerId === activeTrainerId && l.status === "pending_student_approval"
+    );
+    setOutgoingPendingLinks(outgoing);
   }, [activeTrainerId, user?.email, authProfile]);
 
   useEffect(() => {
@@ -176,11 +190,37 @@ export default function TrainerDashboardPage() {
     setLinkingStudent(true);
     setLinkStudentFeedback(null);
     try {
-      const res = await linkStudentToTrainerByCodeOrPhone(
-        activeTrainerId,
-        displayName,
-        linkStudentQuery
+      const q = linkStudentQuery.trim().toLowerCase();
+      const allProfiles = getAllExtendedProfiles();
+      const matched = allProfiles.find(
+        (p) =>
+          (p.memberCode && p.memberCode.toLowerCase() === q) ||
+          getUserMembershipCode(p.id).toLowerCase() === q ||
+          (p.email && p.email.toLowerCase() === q) ||
+          (p.phone && p.phone.replace(/[\s\-\+]/g, "").includes(q.replace(/[\s\-\+]/g, ""))) ||
+          p.name.toLowerCase().includes(q)
       );
+
+      if (!matched) {
+        setLinkStudentFeedback({
+          ok: false,
+          msg: "لم يتم العثور على طالب مطابق للمعرّف أو الإيميل. تأكد من إدخال كود الطالب (مثل SM-XXXX) أو إيميله المسجل.",
+        });
+        return;
+      }
+
+      const res = await sendTrainerStudentLinkRequest({
+        trainerId: activeTrainerId,
+        trainerName: displayName,
+        trainerCode: trainerProfile?.trainerCode || getUserMembershipCode(activeTrainerId),
+        trainerPhone: trainerProfile?.phone,
+        studentId: matched.id,
+        studentName: matched.name,
+        studentCode: matched.memberCode || getUserMembershipCode(matched.id),
+        studentEmail: matched.email,
+        requestedBy: "trainer",
+      });
+
       setLinkStudentFeedback({ ok: res.success, msg: res.message });
       if (res.success) {
         setLinkStudentQuery("");
@@ -189,6 +229,16 @@ export default function TrainerDashboardPage() {
     } finally {
       setLinkingStudent(false);
     }
+  };
+
+  const handleRespondStudentLink = async (linkId: string, accept: boolean) => {
+    const res = await respondToTrainerStudentLink({
+      linkId,
+      accept,
+      responderRole: "trainer",
+    });
+    setLinkStudentFeedback({ ok: res.success, msg: res.message });
+    loadTrainerData();
   };
 
   const formatDateAr = (iso?: string) => {
@@ -696,7 +746,86 @@ export default function TrainerDashboardPage() {
             </div>
           </div>
 
-          {/* Quick Link/Add Student by Member Code, Phone, or Name */}
+          {/* 1. Pending Student Requests (Mutual Approval) */}
+          {pendingStudentRequests.length > 0 && (
+            <div className="p-5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border-2 border-amber-300 dark:border-amber-700/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-amber-600" />
+                  <span>طلبات الارتباط الواردة من الطلاب (بانتظار موافقتك الرسمية):</span>
+                </h4>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-950">
+                  {pendingStudentRequests.length} طلب جديد
+                </span>
+              </div>
+
+              <div className="space-y-2.5">
+                {pendingStudentRequests.map((req) => (
+                  <div
+                    key={req.id}
+                    className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-black text-slate-900 dark:text-white">
+                          الطالب: {req.studentName}
+                        </span>
+                        <span className="text-xs font-mono font-bold text-brand-600">
+                          ({req.studentCode || "—"})
+                        </span>
+                      </div>
+                      {req.studentEmail && (
+                        <div className="text-xs text-slate-400">
+                          {req.studentEmail}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleRespondStudentLink(req.id, true)}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-sm flex items-center gap-1.5"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>قبول واعتماد الطالب</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRespondStudentLink(req.id, false)}
+                        className="px-3 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-bold text-xs"
+                      >
+                        رفض
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 2. Outgoing Pending Links */}
+          {outgoingPendingLinks.length > 0 && (
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-2">
+              <div className="text-xs font-black text-slate-700 dark:text-slate-300">
+                ⏳ طلبات ربط مرسلة من قبلك للطلاب وبانتظار موافقتهم في بواباتهم:
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {outgoingPendingLinks.map((out) => (
+                  <span
+                    key={out.id}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
+                  >
+                    <span>{out.studentName}</span>
+                    <span className="font-mono text-[11px] text-brand-600">({out.studentCode})</span>
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400">بانتظار موافقته ⏳</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 3. Quick Link/Add Student by Member Code, Email, or Name */}
           <form
             onSubmit={handleLinkStudent}
             className="p-4 rounded-2xl bg-gradient-to-l from-brand-50 via-indigo-50/50 to-slate-50 dark:from-brand-950/40 dark:via-slate-800/80 dark:to-slate-800/50 border border-brand-200/80 dark:border-brand-800/40 space-y-3"
@@ -704,13 +833,13 @@ export default function TrainerDashboardPage() {
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <div className="flex items-center gap-2 text-xs font-black text-brand-700 dark:text-brand-300 shrink-0">
                 <UserPlus className="w-4 h-4" />
-                <span>إضافة أو ربط طالب بقائمتك:</span>
+                <span>إرسال طلب ربط لطالب جديد:</span>
               </div>
               <input
                 type="text"
                 value={linkStudentQuery}
                 onChange={(e) => setLinkStudentQuery(e.target.value)}
-                placeholder="أدخل معرّف الطالب (مثل SM-48A2) أو رقم هاتفه أو اسمه الثلاثي..."
+                placeholder="أدخل معرّف الطالب (مثل SM-48A2) أو إيميله أو رقم هاتفه..."
                 className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
               <button
@@ -719,7 +848,7 @@ export default function TrainerDashboardPage() {
                 className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white text-xs font-black shadow-sm flex items-center justify-center gap-1.5 shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>{linkingStudent ? "جارٍ الربط..." : "ربط الطالب"}</span>
+                <span>{linkingStudent ? "جارٍ الإرسال..." : "إرسال طلب الربط"}</span>
               </button>
             </div>
             {linkStudentFeedback && (

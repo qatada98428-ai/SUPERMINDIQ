@@ -290,6 +290,7 @@ const STORAGE_KEYS = {
   SESSIONS: "supermind_real_sessions_v1",
   ASSIGNMENTS: "supermind_assignments_v1",
   MONTHLY_TRIALS: "supermind_monthly_trials_v1",
+  TRAINER_LINKS: "supermind_trainer_student_links_v1",
 };
 
 // Evaluate effective subscription status and remaining days automatically
@@ -1652,6 +1653,279 @@ export async function linkStudentToTrainerByCodeOrPhone(
   return {
     success: true,
     studentName: matched.name,
-    message: `✅ تم ربط وإضافة الطالب (${matched.name} - المعرّف: ${matched.memberCode || getUserMembershipCode(matched.id)}) إلى قائمة طلابك بنجاح!`,
+    message: `✅ تم إرسال طلب الربط مع الطالب (${matched.name} - المعرّف: ${matched.memberCode || getUserMembershipCode(matched.id)}) بنجاح! بانتظار موافقة الطالب.`,
   };
 }
+
+// =========================================================================
+// TRAINER-STUDENT MUTUAL TWO-WAY APPROVAL SYSTEM & PERMISSIONS
+// =========================================================================
+
+export interface TrainerStudentLink {
+  id: string;
+  trainerId: string;
+  trainerName: string;
+  trainerCode?: string;
+  trainerAvatar?: string;
+  trainerPhone?: string;
+  studentId: string;
+  studentName: string;
+  studentCode?: string;
+  studentEmail?: string;
+  studentAvatar?: string;
+  status: "pending_student_approval" | "pending_trainer_approval" | "accepted" | "rejected";
+  requestedBy: "trainer" | "student";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FeatureAccessDecision {
+  allowed: boolean;
+  reason?:
+    | "trainer_unlimited"
+    | "admin_unlimited"
+    | "pro_student_unlimited"
+    | "free_trial_available"
+    | "free_trial_exhausted"
+    | "locked_feature";
+  message?: string;
+  isLocked?: boolean;
+}
+
+/**
+ * فحص صلاحيات الأقسام والفعاليات داخل المنصة بدقة:
+ * - المدرب والمدير: كل شيء متاح 100% بدون أي قيد أو طلب اشتراك.
+ * - الطالب المشترك: كل شيء متاح 100%.
+ * - الحساب المجاني / الزائر:
+ *     - محاكي المسابقة: متاح مرة واحدة كل شهر لمدة 10 دقائق أو 100 سؤال.
+ *     - تحدي البالونات: مقفل تماماً ومخصص للمشتركين والمدربين فقط.
+ */
+export function checkFeatureAccess(params: {
+  role?: string;
+  subscriptionStatus?: SubscriptionStatus;
+  feature: "competition" | "balloon" | "teams_battle" | "flash_anzan" | "abacus" | "homework";
+  userId?: string;
+}): FeatureAccessDecision {
+  const { role, subscriptionStatus, feature, userId } = params;
+
+  // 1. المدرب والمدير: وصول كامل بلا حدود ولا يطلب منه أي اشتراك آخر
+  if (role === "trainer" || role === "admin") {
+    return {
+      allowed: true,
+      reason: role === "trainer" ? "trainer_unlimited" : "admin_unlimited",
+    };
+  }
+
+  // 2. الطالب المشترك الفعّال: متاح له كل شيء
+  if (subscriptionStatus === "active") {
+    return { allowed: true, reason: "pro_student_unlimited" };
+  }
+
+  // 3. الحساب المجاني / الزائر
+  if (feature === "balloon") {
+    return {
+      allowed: false,
+      isLocked: true,
+      reason: "locked_feature",
+      message: "تحدي البالونات الذكية مخصص حصرياً للطلاب المشتركين والمدربين المعتمدين 🎈",
+    };
+  }
+
+  if (feature === "competition") {
+    if (!userId) {
+      return {
+        allowed: true,
+        reason: "free_trial_available",
+        message: "تجربة شهرية مجانية (10 دقائق أو 100 سؤال كحد أقصى).",
+      };
+    }
+    const trial = getMonthlyTrialStatus(userId);
+    if (!trial.hasTrialRemaining) {
+      return {
+        allowed: false,
+        isLocked: true,
+        reason: "free_trial_exhausted",
+        message:
+          "لقد استنفدت جلستك التجريبية المجانية لهذا الشهر (100 سؤال أو 10 دقائق). اشترك الآن لتكرار المسابقة والمنافسة بلا حدود!",
+      };
+    }
+    return {
+      allowed: true,
+      reason: "free_trial_available",
+      message: `متبقي من جلستك المجانية لهذا الشهر: ${trial.questionsRemaining} سؤالاً (حد أقصى ${trial.maxMinutesAllowed} دقائق).`,
+    };
+  }
+
+  return { allowed: true };
+}
+
+export function getStoredTrainerStudentLinks(): TrainerStudentLink[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.TRAINER_LINKS);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredTrainerStudentLinks(links: TrainerStudentLink[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEYS.TRAINER_LINKS, JSON.stringify(links));
+  } catch (e) {
+    console.error("Failed saving trainer student links:", e);
+  }
+}
+
+/**
+ * إرسال طلب ربط جديد بين المدرب والطالب:
+ * - إذا أرسل المدرب الطلب: تصبح الحالة "pending_student_approval" (بانتظار موافقة الطالب).
+ * - إذا أرسل الطالب الطلب: تصبح الحالة "pending_trainer_approval" (بانتظار موافقة المدرب).
+ */
+export async function sendTrainerStudentLinkRequest(params: {
+  trainerId: string;
+  trainerName: string;
+  trainerCode?: string;
+  trainerPhone?: string;
+  studentId: string;
+  studentName: string;
+  studentCode?: string;
+  studentEmail?: string;
+  requestedBy: "trainer" | "student";
+}): Promise<{ success: boolean; message: string; link?: TrainerStudentLink }> {
+  const links = getStoredTrainerStudentLinks();
+
+  // Check if link already exists between them
+  const existing = links.find(
+    (l) => l.trainerId === params.trainerId && l.studentId === params.studentId
+  );
+
+  if (existing) {
+    if (existing.status === "accepted") {
+      return {
+        success: false,
+        message: `الارتباط بين المدرب (${params.trainerName}) والطالب (${params.studentName}) معتمد بالفعل!`,
+      };
+    }
+    if (existing.status === "pending_student_approval" || existing.status === "pending_trainer_approval") {
+      return {
+        success: false,
+        message: "هناك طلب ارتباط معلق بالفعل بينكما بانتظار الموافقة الرسمية.",
+      };
+    }
+  }
+
+  const initialStatus =
+    params.requestedBy === "trainer"
+      ? "pending_student_approval"
+      : "pending_trainer_approval";
+
+  const newLink: TrainerStudentLink = {
+    id: `link_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    trainerId: params.trainerId,
+    trainerName: params.trainerName,
+    trainerCode: params.trainerCode,
+    trainerPhone: params.trainerPhone,
+    studentId: params.studentId,
+    studentName: params.studentName,
+    studentCode: params.studentCode,
+    studentEmail: params.studentEmail,
+    status: initialStatus,
+    requestedBy: params.requestedBy,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const updated = [newLink, ...links.filter((l) => !(l.trainerId === params.trainerId && l.studentId === params.studentId))];
+  saveStoredTrainerStudentLinks(updated);
+
+  const targetName = params.requestedBy === "trainer" ? params.studentName : params.trainerName;
+  return {
+    success: true,
+    message: `✅ تم إرسال طلب الارتباط إلى (${targetName}) بنجاح! سيكون الارتباط رسمياً فور الموافقة.`,
+    link: newLink,
+  };
+}
+
+/**
+ * الرد على طلب الارتباط (قبول أو رفض من الطالب أو المدرب)
+ */
+export async function respondToTrainerStudentLink(params: {
+  linkId: string;
+  accept: boolean;
+  responderRole: "student" | "trainer";
+}): Promise<{ success: boolean; message: string }> {
+  const links = getStoredTrainerStudentLinks();
+  const index = links.findIndex((l) => l.id === params.linkId);
+
+  if (index === -1) {
+    return { success: false, message: "طلب الارتباط غير موجود." };
+  }
+
+  const link = links[index];
+  const newStatus = params.accept ? "accepted" : "rejected";
+
+  link.status = newStatus;
+  link.updatedAt = new Date().toISOString();
+  links[index] = link;
+  saveStoredTrainerStudentLinks(links);
+
+  if (params.accept) {
+    // Update student's active trainer in their profile
+    const studentProf = await getExtendedProfile(link.studentId);
+    if (studentProf) {
+      studentProf.trainerId = link.trainerId;
+      studentProf.trainerName = link.trainerName;
+      studentProf.trainerCode = link.trainerCode;
+      await saveExtendedProfile(studentProf);
+    }
+
+    return {
+      success: true,
+      message: `🎉 تم قبول طلب الارتباط بنجاح! تم اعتماد المدرب (${link.trainerName}) مع الطالب (${link.studentName}).`,
+    };
+  } else {
+    return {
+      success: true,
+      message: `تم رفض طلب الارتباط.`,
+    };
+  }
+}
+
+/**
+ * الحصول على قائمة الطلبات المعلقة للطالب
+ */
+export function getPendingLinksForStudent(studentId: string): TrainerStudentLink[] {
+  const links = getStoredTrainerStudentLinks();
+  return links.filter(
+    (l) => l.studentId === studentId && l.status === "pending_student_approval"
+  );
+}
+
+/**
+ * الحصول على قائمة الطلبات المعلقة للمدرب
+ */
+export function getPendingLinksForTrainer(trainerId: string): TrainerStudentLink[] {
+  const links = getStoredTrainerStudentLinks();
+  return links.filter(
+    (l) => l.trainerId === trainerId && l.status === "pending_trainer_approval"
+  );
+}
+
+/**
+ * الحصول على المدرب المعتمد حالياً للطالب
+ */
+export function getStudentAcceptedTrainer(studentId: string): TrainerStudentLink | null {
+  const links = getStoredTrainerStudentLinks();
+  return links.find((l) => l.studentId === studentId && l.status === "accepted") || null;
+}
+
+/**
+ * الحصول على قائمة الطلاب المعتمدين للمدرب
+ */
+export function getTrainerAcceptedStudents(trainerId: string): TrainerStudentLink[] {
+  const links = getStoredTrainerStudentLinks();
+  return links.filter((l) => l.trainerId === trainerId && l.status === "accepted");
+}
+

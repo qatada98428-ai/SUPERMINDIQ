@@ -11,8 +11,12 @@ import {
   Star,
   Zap,
   Home,
+  ShieldAlert,
+  Crown,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
+import { checkFeatureAccess, getExtendedProfile } from "@/lib/platform-store";
 import {
   generateFlashAnzanSeries,
   speakSorobanNumber,
@@ -1115,6 +1119,15 @@ function SummaryScreen({
 // ============================================================
 export default function BalloonPopPage() {
   const { playFx } = useApp();
+  const { user, profile: authProfile } = useAuth();
+  const extProfile = user?.id ? getExtendedProfile(user.id) : null;
+  const userRole = (authProfile?.role || extProfile?.role || "student") as string;
+  const access = checkFeatureAccess({
+    role: userRole,
+    subscriptionStatus: extProfile?.subscription?.status,
+    feature: "balloon",
+    userId: user?.id,
+  });
 
   const [phase, setPhase] = useState<GamePhase>("settings");
   const [config, setConfig] = useState<GameConfig | null>(null);
@@ -1321,6 +1334,69 @@ export default function BalloonPopPage() {
     : -1;
 
   // ── RENDER ───────────────────────────────────────────────────
+  if (!access.allowed) {
+    return (
+      <div className="min-h-screen bg-[#F3F2FC] dark:bg-[#100F24] py-12 px-4 flex items-center justify-center">
+        <div className="w-full max-w-lg clay-card p-6 sm:p-8 bg-white dark:bg-[#1E1B3E] rounded-[2.5rem] border-2 border-brand-500/40 shadow-2xl text-center space-y-6">
+          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-rose-500 to-pink-600 text-white flex items-center justify-center mx-auto shadow-xl shadow-rose-500/25">
+            <span className="text-4xl">🎈</span>
+          </div>
+
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-xs font-black">
+              <ShieldAlert className="w-4 h-4" />
+              <span>ميزة حصرية للمشتركين والمدربين</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+              تحدي البالونات الذكية
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-md mx-auto">
+              تحدي البالونات والسرعة البصرية متاح حصرياً للطلاب المشتركين والمدربين المعتمدين في منصة العقل الخارق.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-right space-y-2 text-xs">
+            <div className="font-bold text-slate-700 dark:text-slate-200">
+              💡 ما هو متاح لك مجاناً دائماً وبلا حدود:
+            </div>
+            <ul className="space-y-1 text-slate-500 dark:text-slate-400">
+              <li>✅ العداد التفاعلي (السوروبان) للتدريب وتحريك الخرزات</li>
+              <li>✅ تدريبات الفلاش أنزان بجميع السرعات والأرقام</li>
+              <li>✅ الدروس التأسيسية وشرح القواعد ومكملات الأرقام</li>
+              <li>✅ تجربة محاكي المسابقة الشهرية (100 سؤال)</li>
+            </ul>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+            {!user ? (
+              <Link
+                href="/login"
+                className="clay-btn-purple w-full py-3 text-xs sm:text-sm font-black text-center"
+              >
+                تسجيل الدخول كمدرب أو طالب 🚀
+              </Link>
+            ) : (
+              <Link
+                href="/dashboard"
+                className="clay-btn-amber w-full py-3 text-xs sm:text-sm font-black text-center flex items-center justify-center gap-2"
+              >
+                <Crown className="w-4 h-4" />
+                <span>الاشتراك في باقات المنصة الكاملة</span>
+              </Link>
+            )}
+
+            <Link
+              href="/mental-arithmetic"
+              className="clay-btn-secondary w-full py-3 text-xs sm:text-sm font-black text-center"
+            >
+              العودة لأقسام الحساب الذهني
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (phase === "settings") return <SettingsScreen onStart={startGame} />;
 
   if (phase === "countdown" && config)
