@@ -7,12 +7,14 @@ import { INTELLIGENCE_BRANCHES } from "@/lib/kangaroo-data";
 import ClayIcon from "@/components/design-system/ClayIcon";
 import { ClayActionCircle } from "@/components/design-system/ClayMotion";
 import { useApp } from "@/context/AppContext";
+import ModuleLockedGate from "@/components/common/ModuleLockedGate";
 
 export default function IntelligencePage() {
   const { playFx } = useApp();
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10">
+    <ModuleLockedGate moduleId="intelligence" moduleNameAr="أسئلة وتحديات الذكاء" moduleIcon="🧩">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-10">
       {/* Soft 3D Lavender Hero Banner */}
       <div className="clay-banner-lavender relative overflow-hidden text-white p-7 sm:p-11">
         <div className="absolute -top-12 -right-12 w-72 h-72 bg-white/15 rounded-full blur-3xl pointer-events-none" />
@@ -147,5 +149,6 @@ export default function IntelligencePage() {
         </div>
       </div>
     </div>
+  </ModuleLockedGate>
   );
 }

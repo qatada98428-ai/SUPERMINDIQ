@@ -9,6 +9,7 @@ interface InteractiveSorobanBoardProps {
   onSetRodLowers: (rodIndex: number, lowers: number) => void;
   getPlaceName: (powerOfTen: number) => string;
   variant?: "compact" | "full";
+  onReset?: () => void;
 }
 
 interface ActiveDrag {
@@ -87,6 +88,7 @@ export default function InteractiveSorobanBoard({
   onSetRodLowers,
   getPlaceName,
   variant = "full",
+  onReset,
 }: InteractiveSorobanBoardProps) {
   const isCompact = variant === "compact";
   const [drag, setDrag] = useState<ActiveDrag | null>(null);
@@ -288,6 +290,25 @@ export default function InteractiveSorobanBoard({
           : "relative rounded-[34px] bg-gradient-to-br from-[#6D50F6] via-[#5335DE] to-[#391FB8] p-3 sm:p-5 shadow-[0_22px_45px_-12px_rgba(68,42,198,0.48),inset_0_3px_6px_rgba(255,255,255,0.42),inset_0_-6px_12px_rgba(24,10,92,0.6)] overflow-x-auto select-none"
       }
     >
+      {/* Physical-Style Quick Zeroing Bar on Abacus Top Frame */}
+      {onReset && (
+        <div dir="rtl" className="flex items-center justify-between px-2 pb-2.5 text-white">
+          <div className="flex items-center gap-1.5 text-xs font-black text-white/90">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span>السوروبان الياباني 1:4</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={onReset}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs shadow-md border border-white/40 active:scale-95 transition-all"
+            title="تصفير سريع لجميع خرزات المعداد (C)"
+          >
+            <span>تصفير المعداد 🔄</span>
+          </button>
+        </div>
+      )}
+
       {/* Inner Satin Recessed Deck */}
       <div
         className={`rounded-[24px] bg-gradient-to-b from-[#FCFBFF] via-[#F4F1FE] to-[#EBE6FC] dark:from-[#1B183C] dark:via-[#161333] dark:to-[#110E28] border border-white/60 dark:border-[#3D3776] shadow-[inset_0_6px_18px_rgba(55,35,145,0.14)] dark:shadow-[inset_0_6px_20px_rgba(4,2,15,0.75)] ${

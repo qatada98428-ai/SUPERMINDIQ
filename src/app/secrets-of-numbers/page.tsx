@@ -19,6 +19,7 @@ import {
 } from "@/lib/vedic-math-data";
 import VedicLessonModal from "@/components/vedic/VedicLessonModal";
 import { useApp } from "@/context/AppContext";
+import ModuleLockedGate from "@/components/common/ModuleLockedGate";
 
 export default function SecretsOfNumbersPage() {
   const { playFx, language } = useApp();
@@ -82,7 +83,8 @@ export default function SecretsOfNumbersPage() {
   const progressPercent = Math.round((totalCompleted / totalLessons) * 100);
 
   return (
-    <div className="min-h-screen bg-[#F7F5FE] dark:bg-[#100F24] pb-24 pt-6 px-4 sm:px-6 lg:px-8" dir="rtl">
+    <ModuleLockedGate moduleId="secrets-of-numbers" moduleNameAr="أسرار الرياضيات (الفيدا)" moduleIcon="✨">
+      <div className="min-h-screen bg-[#F7F5FE] dark:bg-[#100F24] pb-24 pt-6 px-4 sm:px-6 lg:px-8" dir="rtl">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Navigation Breadcrumb */}
         <div className="flex items-center gap-2">
@@ -307,5 +309,6 @@ export default function SecretsOfNumbersPage() {
         />
       )}
     </div>
+  </ModuleLockedGate>
   );
 }

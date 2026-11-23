@@ -14,6 +14,7 @@ export type FxType =
   | "pop"
   | "toggle"
   | "bead"
+  | "bubble"
   | "modal_open"
   | "modal_close"
   | "correct"
@@ -22,6 +23,7 @@ export type FxType =
   | "excellent"
   | "wrong"
   | "fanfare"
+  | "celebrate"
   | "levelup"
   | "flash_countdown"
   | "flash_ready"
@@ -198,6 +200,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         switch (type) {
           case "click":
           case "pop":
+          case "bubble":
             soundSynth.playSound("ui-click");
             break;
           case "toggle":
@@ -223,6 +226,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             break;
           case "excellent":
           case "fanfare":
+          case "celebrate":
             soundSynth.playOutcomeSound("excellent");
             break;
           case "levelup":

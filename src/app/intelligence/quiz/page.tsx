@@ -24,6 +24,7 @@ import { COACH_INFO } from "@/lib/constants";
 import { soundSynth } from "@/lib/audio-synthesizer";
 import { useApp } from "@/context/AppContext";
 import { triggerClayCelebration } from "@/lib/celebrations";
+import ModuleLockedGate from "@/components/common/ModuleLockedGate";
 
 function QuizContent() {
   const { soundEnabled: globalSound, playFx } = useApp();
@@ -571,17 +572,19 @@ function QuizContent() {
 
 export default function IntelligenceQuizPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-[50vh] flex items-center justify-center">
-          <div className="text-center space-y-3">
-            <div className="w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-sm font-bold text-slate-600">جارٍ تحميل بنك أسئلة الذكاء...</p>
+    <ModuleLockedGate moduleId="intelligence" moduleNameAr="أسئلة وتحديات الذكاء" moduleIcon="🧩">
+      <Suspense
+        fallback={
+          <div className="min-h-[50vh] flex items-center justify-center">
+            <div className="text-center space-y-3">
+              <div className="w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-sm font-bold text-slate-600">جارٍ تحميل بنك أسئلة الذكاء...</p>
+            </div>
           </div>
-        </div>
-      }
-    >
-      <QuizContent />
-    </Suspense>
+        }
+      >
+        <QuizContent />
+      </Suspense>
+    </ModuleLockedGate>
   );
 }

@@ -282,7 +282,34 @@ export default function AbacusPage() {
       </div>
 
       {/* Physical Touch-Draggable Soroban Board Frame */}
-      <div className="space-y-2">
+      <div className="space-y-3">
+        {/* Quick Action Ribbon Directly Adjacent to the Abacus */}
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-50/90 via-white to-purple-50/90 dark:from-[#241E3A] dark:via-[#1E1B38] dark:to-[#17142E] border-2 border-amber-400/50 dark:border-amber-500/40 shadow-md">
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center text-base font-black shadow-sm">
+              🧮
+            </span>
+            <div>
+              <div className="text-xs sm:text-sm font-black text-[#1E1B3A] dark:text-white">
+                منطقة المعداد الحر المباشر
+              </div>
+              <div className="text-[11px] text-[#6E6A94] dark:text-[#B3AED6]">
+                انقر واسحب الخرزات بحرية، أو اضغط زر التصفير المجاور للبدء من جديد
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={resetAll}
+            className="clay-btn-amber flex items-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-black shadow-lg hover:scale-105 active:scale-95 transition-all !rounded-2xl"
+            title="تصفير جميع خرزات المعداد وإعادة القيمة للصفر (اختصار لوحة المفاتيح: C أو Esc)"
+          >
+            <RotateCcw className="w-4 h-4 text-slate-950" />
+            <span>تصفير المعداد (مسح الكل) 🔄</span>
+          </button>
+        </div>
+
         <div className="flex flex-wrap items-center justify-between gap-2 px-2 text-[11px] sm:text-xs font-bold text-[#6E6A94] dark:text-[#B3AED6]">
           <span>💡 اسحب الخرزات ثلاثية الأبعاد بإصبعك أو بالماوس للأعلى والأسفل بسلاسة (أو انقر عليها)</span>
           <span>🟡 النقطة الذهبية المرجعية تقع على عمود المئات</span>
@@ -292,6 +319,7 @@ export default function AbacusPage() {
           onSetRodUpper={setRodUpper}
           onSetRodLowers={setRodLowers}
           getPlaceName={getPlaceName}
+          onReset={resetAll}
           variant="full"
         />
       </div>

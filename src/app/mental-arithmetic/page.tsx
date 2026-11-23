@@ -14,8 +14,11 @@ import {
   GraduationCap,
   Clock,
   ChevronLeft,
+  Shield,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
+import { checkModuleAccess, isLocalDevMode } from "@/lib/module-access";
 import ClayIcon, { ClayBadgeTone, ClayIconName } from "@/components/design-system/ClayIcon";
 import {
   ClayActionCircle,
@@ -57,12 +60,45 @@ interface MentalModule {
 
 export default function MentalArithmeticPage() {
   const { language, playFx } = useApp();
+  const { role, user } = useAuth();
   const isEn = language === "en";
 
   const [activeProgram, setActiveProgram] = useState<MainProgramSection>("hub");
+  const [hubCategory, setHubCategory] = useState<"all" | "math" | "strategy" | "tech">("all");
   const [filter, setFilter] = useState<CategoryFilter>("all");
   const [selectedModule, setSelectedModule] = useState<MentalModule | null>(null);
   const [activeVedicLesson, setActiveVedicLesson] = useState<VedicLesson | null>(null);
+  const [devAdminOverride, setDevAdminOverride] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setDevAdminOverride(window.localStorage.getItem("supermind_dev_admin_override") === "true");
+    }
+  }, []);
+
+  const toggleDevAdmin = () => {
+    if (typeof window === "undefined") return;
+    const nextVal = !devAdminOverride;
+    if (nextVal) {
+      window.localStorage.setItem("supermind_dev_admin_override", "true");
+    } else {
+      window.localStorage.removeItem("supermind_dev_admin_override");
+    }
+    setDevAdminOverride(nextVal);
+    window.location.reload();
+  };
+
+  const effectiveRole = devAdminOverride ? "admin" : role;
+
+  // Module access evaluations
+  const secAccess = checkModuleAccess("secrets-of-numbers", effectiveRole, user?.email);
+  const sudokuAccess = checkModuleAccess("sudoku", effectiveRole, user?.email);
+  const intelAccess = checkModuleAccess("intelligence", effectiveRole, user?.email);
+  const chessAccess = checkModuleAccess("chess", effectiveRole, user?.email);
+  const rubiksAccess = checkModuleAccess("rubiks-cube", effectiveRole, user?.email);
+  const brainAccess = checkModuleAccess("brain-games", effectiveRole, user?.email);
+  const memAccess = checkModuleAccess("memory-focus", effectiveRole, user?.email);
+  const codingAccess = checkModuleAccess("kids-coding", effectiveRole, user?.email);
 
   // Synchronize section from URL parameter if provided (e.g. from navbar or direct links)
   useEffect(() => {
@@ -371,7 +407,7 @@ export default function MentalArithmeticPage() {
                 {isEn ? "Super Mind Programs" : "برامج العقل الخارق"}
               </h1>
               <span className="text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 shrink-0">
-                3 كبسولات رئيسية 🚀
+                {isEn ? "9 Academies 🚀" : "9 أكاديميات متكاملة 🚀"}
               </span>
             </div>
             <p className="text-[11px] sm:text-xs text-white/90 font-medium truncate mt-0.5">
@@ -382,19 +418,41 @@ export default function MentalArithmeticPage() {
           </div>
         </div>
 
-        {activeProgram !== "hub" && (
-          <button
-            type="button"
-            onClick={() => {
-              playFx("pop");
-              setActiveProgram("hub");
-            }}
-            className="clay-pill px-3 sm:px-4 py-1.5 text-xs font-black text-slate-900 bg-white hover:bg-amber-100 flex items-center gap-1.5 shrink-0 shadow-md transition-all active:scale-95"
-          >
-            <ArrowRight className="w-3.5 h-3.5 text-brand-600" />
-            <span>{isEn ? "All Capsules" : "الكبسولات الرئيسية"}</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {isLocalDevMode() && (
+            <button
+              type="button"
+              onClick={toggleDevAdmin}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all shadow-md ${
+                devAdminOverride || role === "admin"
+                  ? "bg-amber-400 text-slate-950 hover:bg-amber-300"
+                  : "bg-white/20 text-white hover:bg-white/30 border border-white/30"
+              }`}
+              title="التبديل بين وضع الأدمن ووضع الطالب أثناء التطوير المحلي"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span>
+                {devAdminOverride || role === "admin"
+                  ? "وضع الأدمن نشط (متاح كل شيء) 🛠️"
+                  : "وضع الطالب (الأقسام مقفولة) 🔒"}
+              </span>
+            </button>
+          )}
+
+          {activeProgram !== "hub" && (
+            <button
+              type="button"
+              onClick={() => {
+                playFx("pop");
+                setActiveProgram("hub");
+              }}
+              className="clay-pill px-3 sm:px-4 py-1.5 text-xs font-black text-slate-900 bg-white hover:bg-amber-100 flex items-center gap-1.5 shrink-0 shadow-md transition-all active:scale-95"
+            >
+              <ArrowRight className="w-3.5 h-3.5 text-brand-600" />
+              <span>{isEn ? "All Capsules" : "الكبسولات الرئيسية"}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ========================================================================= */}
@@ -441,158 +499,564 @@ export default function MentalArithmeticPage() {
 
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-[11px] sm:text-xs font-black px-3.5 py-1.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 text-amber-300 shadow-md">
-                    3 كبسولات تفاعلية 🚀
+                    9 برامج وأكاديميات متكاملة 🚀
                   </span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* الكبسولات الثلاث الكبرى التفاعلية */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 pt-1">
-            {/* الكبسولة 1: قسم الحساب الذهني */}
-            <div className="clay-card !p-5 sm:!p-6 bg-gradient-to-br from-white via-indigo-50/50 to-brand-50/70 dark:from-[#1E1B3E] dark:via-[#25204C] dark:to-[#191537] border-2 border-brand-500/40 dark:border-brand-500/50 rounded-[2.2rem] shadow-xl flex flex-col justify-between space-y-4 hover:scale-[1.02] transition-all group">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-600 via-indigo-600 to-purple-600 text-white flex items-center justify-center text-3xl shadow-lg border border-white/40 group-hover:scale-110 transition-transform">
-                    🧮
-                  </span>
-                  <span className="text-xs font-black px-3 py-1 rounded-full bg-brand-100 dark:bg-brand-900/70 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
-                    6 أقسام تدريبية 🌟
-                  </span>
-                </div>
-
-                <div>
-                  <h3 className="text-lg sm:text-xl font-black text-[#261E58] dark:text-white leading-snug">
-                    أولاً: قسم الحساب الذهني
-                  </h3>
-                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed mt-1.5">
-                    المنظومة الاحترافية للسوروبان الياباني، فلاش أنزان السريع، محاكي المسابقات، حلبة تحدي الفرق، وتفجير البالونات.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-2xl bg-white/70 dark:bg-black/20 border border-brand-200/60 dark:border-brand-900/50 space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
-                  <div className="flex items-center gap-2">
-                    <span className="text-amber-500">✔</span>
-                    <span>العداد السوروبان 1:4 وفلاش أنزان</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-amber-500">✔</span>
-                    <span>محاكي المسابقات الدولية وسباقات الفرق</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-amber-500">✔</span>
-                    <span>ألعاب البالونات وخوارزميات الضرب والقسمة</span>
-                  </div>
-                </div>
-              </div>
-
+          {/* تبويبات الفئات الثلاث الكبرى لتصفح البرامج */}
+          <div className="flex flex-wrap items-center justify-center gap-2 p-1.5 rounded-2xl bg-slate-100/90 dark:bg-slate-900/70 border border-brand-200/50 dark:border-brand-900/40 max-w-2xl mx-auto shadow-sm">
+            {[
+              { id: "all", label: "الكل (9 برامج عبقرية 🚀)" },
+              { id: "math", label: "🧮 الحساب والرياضيات" },
+              { id: "strategy", label: "♟️ الذكاء والاستراتيجية" },
+              { id: "tech", label: "💻 القدرات والتكنولوجيا" },
+            ].map((tab) => (
               <button
+                key={tab.id}
                 type="button"
                 onClick={() => {
-                  playFx("pop");
-                  setActiveProgram("mental-math");
+                  playFx("click");
+                  setHubCategory(tab.id as "all" | "math" | "strategy" | "tech");
                 }}
-                className="clay-btn-purple w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-lg !rounded-2xl group-hover:shadow-brand-500/30"
+                className={`py-2 px-3.5 rounded-xl text-xs sm:text-sm font-black transition-all ${
+                  hubCategory === tab.id
+                    ? "bg-gradient-to-r from-brand-600 via-indigo-600 to-purple-600 text-white shadow-md scale-102"
+                    : "text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-white"
+                }`}
               >
-                <span>دخول قسم الحساب الذهني</span>
-                <span className="text-base">⬅️</span>
+                {tab.label}
               </button>
-            </div>
+            ))}
+          </div>
 
-            {/* الكبسولة 2: قسم أسئلة وتحديات الذكاء */}
-            <div className="clay-card !p-5 sm:!p-6 bg-gradient-to-br from-white via-violet-50/50 to-purple-50/70 dark:from-[#1E1B3E] dark:via-[#291F4D] dark:to-[#1A1438] border-2 border-violet-500/40 dark:border-violet-500/50 rounded-[2.2rem] shadow-xl flex flex-col justify-between space-y-4 hover:scale-[1.02] transition-all group">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 text-white flex items-center justify-center text-3xl shadow-lg border border-white/40 group-hover:scale-110 transition-transform">
-                    🧩
-                  </span>
-                  <span className="text-xs font-black px-3 py-1 rounded-full bg-violet-100 dark:bg-violet-900/70 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
-                    ألغاز وأولمبياد 🔥
-                  </span>
+          {/* الكبسولات التسع الكبرى التفاعلية */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 pt-1">
+            {/* 1. قسم الحساب الذهني */}
+            {(hubCategory === "all" || hubCategory === "math") && (
+              <div className="clay-card !p-5 sm:!p-6 bg-gradient-to-br from-white via-indigo-50/50 to-brand-50/70 dark:from-[#1E1B3E] dark:via-[#25204C] dark:to-[#191537] border-2 border-brand-500/40 dark:border-brand-500/50 rounded-[2.2rem] shadow-xl flex flex-col justify-between space-y-4 hover:scale-[1.02] transition-all group">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-600 via-indigo-600 to-purple-600 text-white flex items-center justify-center text-3xl shadow-lg border border-white/40 group-hover:scale-110 transition-transform">
+                      🧮
+                    </span>
+                    <span className="text-xs font-black px-3 py-1 rounded-full bg-brand-100 dark:bg-brand-900/70 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
+                      6 أقسام تدريبية 🌟
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-[#261E58] dark:text-white leading-snug">
+                      الحساب الذهني (السوروبان)
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed mt-1.5">
+                      المنظومة الاحترافية للسوروبان الياباني، فلاش أنزان السريع، محاكي المسابقات، حلبة سباق الفرق، وتفجير البالونات.
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-white/70 dark:bg-black/20 border border-brand-200/60 dark:border-brand-900/50 space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>العداد السوروبان 1:4 وفلاش أنزان</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>محاكي المسابقات الدولية وسباقات الفرق</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>ألعاب البالونات وخوارزميات الضرب والقسمة</span>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <h3 className="text-lg sm:text-xl font-black text-[#261E58] dark:text-white leading-snug">
-                    ثانياً: قسم أسئلة وتحديات الذكاء
-                  </h3>
-                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed mt-1.5">
-                    تمارين واختبارات حية لتنمية مهارات التفكير المنطقي، حل المشكلات المعقدة، والبديهة الرياضية وأولمبياد العباقرة.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-2xl bg-white/70 dark:bg-black/20 border border-violet-200/60 dark:border-violet-900/50 space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
-                  <div className="flex items-center gap-2">
-                    <span className="text-amber-500">✔</span>
-                    <span>بنك أسئلة متدرج ومقسم حسب الصفوف</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-amber-500">✔</span>
-                    <span>خطوات الحل والتحليل المنطقي فورياً</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-amber-500">✔</span>
-                    <span>اختبارات الكانغورو والمسابقات التجريبية</span>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playFx("pop");
+                    setActiveProgram("mental-math");
+                  }}
+                  className="clay-btn-purple w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-lg !rounded-2xl group-hover:shadow-brand-500/30"
+                >
+                  <span>دخول قسم الحساب الذهني</span>
+                  <span className="text-base">⬅️</span>
+                </button>
               </div>
+            )}
 
-              <Link
-                href="/intelligence"
-                onClick={() => playFx("pop")}
-                className="clay-btn-purple !from-violet-600 !to-purple-700 w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-lg !rounded-2xl group-hover:shadow-violet-500/30"
-              >
-                <span>دخول تحديات الذكاء</span>
-                <span className="text-base">⬅️</span>
-              </Link>
-            </div>
-
-            {/* الكبسولة 3: قسم أسرار الرياضيات */}
-            <div className="clay-card !p-5 sm:!p-6 bg-gradient-to-br from-white via-amber-50/50 to-yellow-50/70 dark:from-[#1E1B3E] dark:via-[#2E243F] dark:to-[#1B142D] border-2 border-amber-400/50 dark:border-amber-600/50 rounded-[2.2rem] shadow-xl flex flex-col justify-between space-y-4 hover:scale-[1.02] transition-all group">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 text-slate-950 flex items-center justify-center text-3xl shadow-lg border border-white/60 group-hover:scale-110 transition-transform">
-                    ✨
-                  </span>
-                  <span className="text-xs font-black px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/70 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
-                    4 مستويات و20 قاعدة 🚀
-                  </span>
-                </div>
-
-                <div>
-                  <h3 className="text-lg sm:text-xl font-black text-[#261E58] dark:text-white leading-snug">
-                    ثالثاً: قسم أسرار الرياضيات (الفيدا)
-                  </h3>
-                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed mt-1.5">
-                    حيل واختصارات الحساب الذهني الخارق للمتوسطة والإعدادية: الضرب المتقاطع، التربيع، الجذور، والكسور السريعة.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-2xl bg-white/70 dark:bg-black/20 border border-amber-200/60 dark:border-amber-900/50 space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
-                  <div className="flex items-center gap-2">
-                    <span className="text-amber-500">✔</span>
-                    <span>المستوى 1 و 2: أساسيات ومهارات الضرب الفوري</span>
+            {/* 2. أسرار الرياضيات */}
+            {(hubCategory === "all" || hubCategory === "math") && (
+              <div className="clay-card !p-5 sm:!p-6 bg-gradient-to-br from-white via-amber-50/50 to-yellow-50/70 dark:from-[#1E1B3E] dark:via-[#2E243F] dark:to-[#1B142D] border-2 border-amber-400/50 dark:border-amber-600/50 rounded-[2.2rem] shadow-xl flex flex-col justify-between space-y-4 hover:scale-[1.02] transition-all group">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 text-slate-950 flex items-center justify-center text-3xl shadow-lg border border-white/60 group-hover:scale-110 transition-transform">
+                      ✨
+                    </span>
+                    <span className="text-xs font-black px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/70 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                      {secAccess.badgeAr}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-amber-500">✔</span>
-                    <span>المستوى 3: التربيع والجذور التكعيبية والتربيعية</span>
+
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-[#261E58] dark:text-white leading-snug">
+                      أسرار الرياضيات (الفيدا)
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed mt-1.5">
+                      حيل واختصارات الحساب الذهني الخارق للمتوسطة والإعدادية: الضرب المتقاطع، التربيع، الجذور، والكسور السريعة.
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-amber-500">✔</span>
-                    <span>المستوى 4: الكسور والنسب المئوية ذهنياً</span>
+
+                  <div className="p-3 rounded-2xl bg-white/70 dark:bg-black/20 border border-amber-200/60 dark:border-amber-900/50 space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>المستوى 1 و 2: أساسيات ومهارات الضرب الفوري</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>المستوى 3: التربيع والجذور التكعيبية والتربيعية</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>المستوى 4: الكسور والنسب المئوية ذهنياً</span>
+                    </div>
                   </div>
                 </div>
+
+                {secAccess.isAccessible ? (
+                  <Link
+                    href="/secrets-of-numbers"
+                    onClick={() => playFx("pop")}
+                    className="clay-btn-amber w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-lg !rounded-2xl group-hover:shadow-amber-500/30 text-slate-950"
+                  >
+                    <span>دخول أسرار الرياضيات</span>
+                    <span className="text-base">⬅️</span>
+                  </Link>
+                ) : (
+                  <Link
+                    href="/secrets-of-numbers"
+                    onClick={() => playFx("pop")}
+                    className="clay-pill bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-sm !rounded-2xl"
+                  >
+                    <span>متاح للمدربين فقط — جاري التطوير 🔒</span>
+                  </Link>
+                )}
               </div>
+            )}
 
-              <Link
-                href="/secrets-of-numbers"
-                onClick={() => playFx("pop")}
-                className="clay-btn-amber w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-lg !rounded-2xl group-hover:shadow-amber-500/30 text-slate-950"
-              >
-                <span>دخول أسرار الرياضيات</span>
-                <span className="text-base">⬅️</span>
-              </Link>
-            </div>
+            {/* 3. أكاديمية السودوكو */}
+            {(hubCategory === "all" || hubCategory === "math") && (
+              <div className="clay-card !p-5 sm:!p-6 bg-gradient-to-br from-white via-teal-50/50 to-emerald-50/70 dark:from-[#1E1B3E] dark:via-[#1B2937] dark:to-[#14232C] border-2 border-emerald-500/40 dark:border-emerald-500/50 rounded-[2.2rem] shadow-xl flex flex-col justify-between space-y-4 hover:scale-[1.02] transition-all group">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 via-emerald-600 to-green-600 text-white flex items-center justify-center text-3xl shadow-lg border border-white/40 group-hover:scale-110 transition-transform">
+                      🔢
+                    </span>
+                    <span className="text-xs font-black px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+                      {sudokuAccess.badgeAr}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-[#261E58] dark:text-white leading-snug">
+                      أكاديمية السودوكو الذكية
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed mt-1.5">
+                      برنامج تعليمي متكامل لتعليم السودوكو من الصفر إلى الاحتراف مع قلم المسودة ومساعد ذكي يوضح قواعد الاستنتاج.
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-white/70 dark:bg-black/20 border border-emerald-200/60 dark:border-emerald-900/50 space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>شبكات ميسرة للأطفال 4×4 و 6×6 و 9×9</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>قلم المسودة الذكي لتدوين الاحتمالات</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>مساعد ذكي يفسر خطوات الحل بالمنطق</span>
+                    </div>
+                  </div>
+                </div>
+
+                {sudokuAccess.isAccessible ? (
+                  <Link
+                    href="/sudoku"
+                    onClick={() => playFx("pop")}
+                    className="clay-btn-purple !from-teal-600 !to-emerald-700 w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-lg !rounded-2xl group-hover:shadow-emerald-500/30"
+                  >
+                    <span>دخول أكاديمية السودوكو (وضع الأدمن)</span>
+                    <span className="text-base">⬅️</span>
+                  </Link>
+                ) : (
+                  <Link
+                    href="/sudoku"
+                    onClick={() => playFx("pop")}
+                    className="clay-pill bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-sm !rounded-2xl"
+                  >
+                    <span>قريباً في التحديث القادم ⏳</span>
+                  </Link>
+                )}
+              </div>
+            )}
+
+            {/* 4. أسئلة وتحديات الذكاء */}
+            {(hubCategory === "all" || hubCategory === "strategy") && (
+              <div className="clay-card !p-5 sm:!p-6 bg-gradient-to-br from-white via-violet-50/50 to-purple-50/70 dark:from-[#1E1B3E] dark:via-[#291F4D] dark:to-[#1A1438] border-2 border-violet-500/40 dark:border-violet-500/50 rounded-[2.2rem] shadow-xl flex flex-col justify-between space-y-4 hover:scale-[1.02] transition-all group">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 text-white flex items-center justify-center text-3xl shadow-lg border border-white/40 group-hover:scale-110 transition-transform">
+                      🧩
+                    </span>
+                    <span className="text-xs font-black px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/70 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                      {intelAccess.badgeAr}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-[#261E58] dark:text-white leading-snug">
+                      أسئلة وتحديات الذكاء
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed mt-1.5">
+                      تمارين واختبارات حية لتنمية مهارات التفكير المنطقي، حل المشكلات المعقدة، والبديهة الرياضية وأولمبياد كانغورو.
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-white/70 dark:bg-black/20 border border-violet-200/60 dark:border-violet-900/50 space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>بنك أسئلة متدرج ومقسم حسب الصفوف</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>خطوات الحل والتحليل المنطقي فورياً</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>اختبارات الكانغورو والمسابقات التجريبية</span>
+                    </div>
+                  </div>
+                </div>
+
+                {intelAccess.isAccessible ? (
+                  <Link
+                    href="/intelligence"
+                    onClick={() => playFx("pop")}
+                    className="clay-btn-purple !from-violet-600 !to-purple-700 w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-lg !rounded-2xl group-hover:shadow-violet-500/30"
+                  >
+                    <span>دخول تحديات الذكاء</span>
+                    <span className="text-base">⬅️</span>
+                  </Link>
+                ) : (
+                  <Link
+                    href="/intelligence"
+                    onClick={() => playFx("pop")}
+                    className="clay-pill bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-sm !rounded-2xl"
+                  >
+                    <span>متاح للمدربين فقط — جاري التطوير 🔒</span>
+                  </Link>
+                )}
+              </div>
+            )}
+
+            {/* 5. أكاديمية الشطرنج */}
+            {(hubCategory === "all" || hubCategory === "strategy") && (
+              <div className="clay-card !p-5 sm:!p-6 bg-gradient-to-br from-white via-slate-50/50 to-indigo-50/70 dark:from-[#1E1B3E] dark:via-[#1F1E38] dark:to-[#17152B] border-2 border-indigo-500/40 dark:border-indigo-500/50 rounded-[2.2rem] shadow-xl flex flex-col justify-between space-y-4 hover:scale-[1.02] transition-all group">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-900 to-slate-900 text-white flex items-center justify-center text-3xl shadow-lg border border-white/40 group-hover:scale-110 transition-transform">
+                      ♟️
+                    </span>
+                    <span className="text-xs font-black px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+                      {chessAccess.badgeAr}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-[#261E58] dark:text-white leading-snug">
+                      أكاديمية الشطرنج التفاعلية
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed mt-1.5">
+                      تعليم الشطرنج تدريجياً مع رقعة كلايمورفيزم ثلاثية الأبعاد، اللعب ضد محرك الذكاء الاصطناعي، وألغاز التكتيك وكش مات.
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-white/70 dark:bg-black/20 border border-indigo-200/60 dark:border-indigo-900/50 space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>لعب تفاعلي ضد الذكاء الاصطناعي (3 صعوبات)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>منهج تكتيكي متدرج من حركات القطع للدفاع</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>بنك ألغاز وتكتيكات كش مات الموجهة</span>
+                    </div>
+                  </div>
+                </div>
+
+                {chessAccess.isAccessible ? (
+                  <Link
+                    href="/chess"
+                    onClick={() => playFx("pop")}
+                    className="clay-btn-purple !from-indigo-600 !to-indigo-800 w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-lg !rounded-2xl group-hover:shadow-indigo-500/30"
+                  >
+                    <span>دخول أكاديمية الشطرنج (وضع الأدمن)</span>
+                    <span className="text-base">⬅️</span>
+                  </Link>
+                ) : (
+                  <Link
+                    href="/chess"
+                    onClick={() => playFx("pop")}
+                    className="clay-pill bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-sm !rounded-2xl"
+                  >
+                    <span>قريباً في التحديث القادم ⏳</span>
+                  </Link>
+                )}
+              </div>
+            )}
+
+            {/* 6. مكعب روبيك */}
+            {(hubCategory === "all" || hubCategory === "strategy") && (
+              <div className="clay-card !p-5 sm:!p-6 bg-gradient-to-br from-white via-cyan-50/50 to-blue-50/70 dark:from-[#1E1B3E] dark:via-[#19243E] dark:to-[#131B30] border-2 border-blue-500/40 dark:border-blue-500/50 rounded-[2.2rem] shadow-xl flex flex-col justify-between space-y-4 hover:scale-[1.02] transition-all group">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-600 text-white flex items-center justify-center text-3xl shadow-lg border border-white/40 group-hover:scale-110 transition-transform">
+                      🧊
+                    </span>
+                    <span className="text-xs font-black px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+                      {rubiksAccess.badgeAr}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-[#261E58] dark:text-white leading-snug">
+                      مكعب روبيك العالمي
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed mt-1.5">
+                      برنامج تعليمي متكامل يشمل دورة LBL لحل الطبقات السبع، مكتبة خوارزميات CFOP، ومؤقت WCA لبطولات السرعة.
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-white/70 dark:bg-black/20 border border-blue-200/60 dark:border-blue-900/50 space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>مكعب 3D تفاعلي يدعم الدوران الحر باللمس</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>أكاديمية المراحل السبع بالرسوم المتحركة</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>مؤقت WCA مع فحص 15 ثانية واحتساب Ao5</span>
+                    </div>
+                  </div>
+                </div>
+
+                {rubiksAccess.isAccessible ? (
+                  <Link
+                    href="/rubiks-cube"
+                    onClick={() => playFx("pop")}
+                    className="clay-btn-purple !from-blue-600 !to-indigo-700 w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-lg !rounded-2xl group-hover:shadow-blue-500/30"
+                  >
+                    <span>دخول مكعب روبيك (وضع الأدمن)</span>
+                    <span className="text-base">⬅️</span>
+                  </Link>
+                ) : (
+                  <Link
+                    href="/rubiks-cube"
+                    onClick={() => playFx("pop")}
+                    className="clay-pill bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-sm !rounded-2xl"
+                  >
+                    <span>قريباً في التحديث القادم ⏳</span>
+                  </Link>
+                )}
+              </div>
+            )}
+
+            {/* 7. ألعاب العقل والمنطق */}
+            {(hubCategory === "all" || hubCategory === "tech") && (
+              <div className="clay-card !p-5 sm:!p-6 bg-gradient-to-br from-white via-rose-50/50 to-pink-50/70 dark:from-[#1E1B3E] dark:via-[#2E1D33] dark:to-[#1F1325] border-2 border-rose-500/40 dark:border-rose-500/50 rounded-[2.2rem] shadow-xl flex flex-col justify-between space-y-4 hover:scale-[1.02] transition-all group">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-500 via-pink-600 to-purple-600 text-white flex items-center justify-center text-3xl shadow-lg border border-white/40 group-hover:scale-110 transition-transform">
+                      🧠
+                    </span>
+                    <span className="text-xs font-black px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+                      {brainAccess.badgeAr}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-[#261E58] dark:text-white leading-snug">
+                      ألعاب العقل والمنطق
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed mt-1.5">
+                      مجموعة ألعاب وألغاز منطقية ورياضية وبصرية لتنمية مهارات التفكير والاستنتاج وحل المشكلات بمستويات متدرجة.
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-white/70 dark:bg-black/20 border border-rose-200/60 dark:border-rose-900/50 space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>أبراج هانوي مع احتساب الحد الأدنى للحركات</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>مصفوفات رافن المتدرجة للأنماط الهندسية</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>ميزان المنطق والكتل والاستنتاج الاستنباطي</span>
+                    </div>
+                  </div>
+                </div>
+
+                {brainAccess.isAccessible ? (
+                  <Link
+                    href="/brain-games"
+                    onClick={() => playFx("pop")}
+                    className="clay-btn-purple !from-rose-600 !to-pink-700 w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-lg !rounded-2xl group-hover:shadow-rose-500/30"
+                  >
+                    <span>دخول ألعاب العقل (وضع الأدمن)</span>
+                    <span className="text-base">⬅️</span>
+                  </Link>
+                ) : (
+                  <Link
+                    href="/brain-games"
+                    onClick={() => playFx("pop")}
+                    className="clay-pill bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-sm !rounded-2xl"
+                  >
+                    <span>قريباً في التحديث القادم ⏳</span>
+                  </Link>
+                )}
+              </div>
+            )}
+
+            {/* 8. الذاكرة والتركيز */}
+            {(hubCategory === "all" || hubCategory === "tech") && (
+              <div className="clay-card !p-5 sm:!p-6 bg-gradient-to-br from-white via-purple-50/50 to-indigo-50/70 dark:from-[#1E1B3E] dark:via-[#261D46] dark:to-[#1B1432] border-2 border-purple-500/40 dark:border-purple-500/50 rounded-[2.2rem] shadow-xl flex flex-col justify-between space-y-4 hover:scale-[1.02] transition-all group">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-600 via-indigo-600 to-violet-700 text-white flex items-center justify-center text-3xl shadow-lg border border-white/40 group-hover:scale-110 transition-transform">
+                      🎯
+                    </span>
+                    <span className="text-xs font-black px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+                      {memAccess.badgeAr}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-[#261E58] dark:text-white leading-snug">
+                      الذاكرة والتركيز الفائق
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed mt-1.5">
+                      تدريبات علمية لتنمية الذاكرة البصرية المكانية والسمعية، اختبار الشمبانزي للتسلسل اللحظي، واختبار ستروب وسرعة الاستجابة.
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-white/70 dark:bg-black/20 border border-purple-200/60 dark:border-purple-900/50 space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>الذاكرة المكانية واختبار الشمبانزي للتسلسل</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>الذاكرة السمعية وصدى الأرقام بالصوت الحي</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>مخطط رادار القدرات المعرفية وسرعة الرد بالمللي ثانية</span>
+                    </div>
+                  </div>
+                </div>
+
+                {memAccess.isAccessible ? (
+                  <Link
+                    href="/memory-focus"
+                    onClick={() => playFx("pop")}
+                    className="clay-btn-purple w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-lg !rounded-2xl group-hover:shadow-purple-500/30"
+                  >
+                    <span>دخول الذاكرة والتركيز (وضع الأدمن)</span>
+                    <span className="text-base">⬅️</span>
+                  </Link>
+                ) : (
+                  <Link
+                    href="/memory-focus"
+                    onClick={() => playFx("pop")}
+                    className="clay-pill bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-sm !rounded-2xl"
+                  >
+                    <span>قريباً في التحديث القادم ⏳</span>
+                  </Link>
+                )}
+              </div>
+            )}
+
+            {/* 9. البرمجة والذكاء الاصطناعي */}
+            {(hubCategory === "all" || hubCategory === "tech") && (
+              <div className="clay-card !p-5 sm:!p-6 bg-gradient-to-br from-white via-fuchsia-50/50 to-purple-50/70 dark:from-[#1E1B3E] dark:via-[#2B1B3C] dark:to-[#1E132D] border-2 border-fuchsia-500/40 dark:border-fuchsia-500/50 rounded-[2.2rem] shadow-xl flex flex-col justify-between space-y-4 hover:scale-[1.02] transition-all group">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-fuchsia-600 via-purple-600 to-indigo-700 text-white flex items-center justify-center text-3xl shadow-lg border border-white/40 group-hover:scale-110 transition-transform">
+                      💻
+                    </span>
+                    <span className="text-xs font-black px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+                      {codingAccess.badgeAr}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-[#261E58] dark:text-white leading-snug">
+                      البرمجة والذكاء الاصطناعي
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed mt-1.5">
+                      برنامج تعليمي للأطفال يبدأ بالتفكير الخوارزمي وبرمجة الروبوت، ويتدرج إلى تدريب نماذج الذكاء الاصطناعي وهندسة الأوامر.
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-white/70 dark:bg-black/20 border border-fuchsia-200/60 dark:border-fuchsia-900/50 space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>متاهة الروبوت مع كتل الأوامر والتكرار</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>مختبر تدريب نماذج الآلة (Classifier Lab)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>مختبر هندسة الأوامر الذكية (Prompt Lab)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {codingAccess.isAccessible ? (
+                  <Link
+                    href="/kids-coding"
+                    onClick={() => playFx("pop")}
+                    className="clay-btn-purple !from-fuchsia-600 !to-purple-700 w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-lg !rounded-2xl group-hover:shadow-fuchsia-500/30"
+                  >
+                    <span>دخول البرمجة والذكاء الاصطناعي (وضع الأدمن)</span>
+                    <span className="text-base">⬅️</span>
+                  </Link>
+                ) : (
+                  <Link
+                    href="/kids-coding"
+                    onClick={() => playFx("pop")}
+                    className="clay-pill bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-sm !rounded-2xl"
+                  >
+                    <span>قريباً في التحديث القادم ⏳</span>
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

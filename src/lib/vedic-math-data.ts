@@ -152,20 +152,64 @@ export const LEVEL_1_LESSONS: VedicLesson[] = [
           { stepNumber: 2, explanationAr: "نضع 0 في النهاية:", explanationEn: "Append 0:", mathExpression: "123 → 1230" },
         ],
       },
+      {
+        problem: "375 × 5",
+        answer: 1875,
+        difficulty: "hard",
+        steps: [
+          { stepNumber: 1, explanationAr: "375 فردي، نطرح 1 للحصول على الزوجي السابق:", explanationEn: "375 is odd, subtract 1:", mathExpression: "375 - 1 = 374" },
+          { stepNumber: 2, explanationAr: "نصف 374 هو 187:", explanationEn: "Half of 374 is 187:", mathExpression: "374 ÷ 2 = 187" },
+          { stepNumber: 3, explanationAr: "نلصق الرقم 5 في النهاية:", explanationEn: "Append 5 to the end:", mathExpression: "187 → 1875" },
+        ],
+      },
     ],
     generateQuestion: (diff) => {
-      let n = diff === "easy" ? randInt(12, 48) : diff === "medium" ? randInt(50, 150) : randInt(152, 600);
-      if (diff === "easy" && n % 2 !== 0) n += 1;
+      // Intentionally sample BOTH even and odd cases 50/50 across all difficulties
+      const isOdd = Math.random() < 0.5;
+      let n: number;
+      if (diff === "easy") {
+        n = randInt(10, 48);
+        if (isOdd && n % 2 === 0) n += 1;
+        if (!isOdd && n % 2 !== 0) n += 1;
+      } else if (diff === "medium") {
+        n = randInt(49, 199);
+        if (isOdd && n % 2 === 0) n += 1;
+        if (!isOdd && n % 2 !== 0) n += 1;
+      } else {
+        n = randInt(201, 899);
+        if (isOdd && n % 2 === 0) n += 1;
+        if (!isOdd && n % 2 !== 0) n += 1;
+      }
+
       const ans = n * 5;
-      const half = n % 2 === 0 ? `${n / 2} ثم نضع 0` : `${Math.floor(n / 2)} ثم نضع 5`;
+      const isEven = n % 2 === 0;
+      const halfInt = Math.floor(n / 2);
+
+      const explanationSteps = isEven
+        ? [
+            `العدد ${n} عدد زوجي: نأخذ نصفه (${n} ÷ 2 = ${halfInt}).`,
+            `بما أنه زوجي، نضيف صفراً في خانة الآحاد: فيكون الناتج النهائي = ${ans}.`,
+          ]
+        : [
+            `العدد ${n} عدد فردي: نطرح 1 لنأخذ العدد الزوجي السابق له (${n} - 1 = ${n - 1}).`,
+            `نأخذ نصفه (${n - 1} ÷ 2 = ${halfInt}).`,
+            `بما أن العدد الأصلي فردي، نضع الرقم 5 في خانة الآحاد: فيكون الناتج النهائي = ${ans}.`,
+          ];
+
+      const hintAr = isEven
+        ? `العدد ${n} زوجي: نصفه هو ${halfInt}، ثم ضع صفراً في النهاية.`
+        : `العدد ${n} فردي: اطرح 1 فيصبح ${n - 1}، نصفه ${halfInt}، ثم ضع 5 في النهاية.`;
+
       return {
         id: `q-5-${Date.now()}-${Math.random()}`,
         problem: `${n} × 5`,
         correctAnswer: ans,
-        options: generateNumericDistractors(ans, 3, 20),
-        explanationSteps: [`العدد ${n} نصفه ${n / 2}`, `نضرب في 10 فيكون الناتج: ${ans}`],
-        hintAr: `خُذ نصف ${n} (${half})`,
-        hintEn: `Halve ${n} and multiply by 10`,
+        options: generateNumericDistractors(ans, 3, Math.max(15, Math.floor(ans * 0.1))),
+        explanationSteps,
+        hintAr,
+        hintEn: isEven
+          ? `Even number: halve ${n} (${halfInt}) and append 0.`
+          : `Odd number: subtract 1 (${n - 1}), halve (${halfInt}), and append 5.`,
       };
     },
   },
@@ -213,18 +257,56 @@ export const LEVEL_1_LESSONS: VedicLesson[] = [
       },
     ],
     generateQuestion: (diff) => {
+      // In easy: 2-digit without carry (sum <= 9)
+      // In medium: 2-digit with carry (sum >= 10)
+      // In hard: 3-digit multiplication by 11
+      if (diff === "hard") {
+        const d1 = randInt(1, 6);
+        const d2 = randInt(1, 5);
+        const d3 = randInt(1, 6);
+        const n = d1 * 100 + d2 * 10 + d3;
+        const ans = n * 11;
+        return {
+          id: `q-11h-${Date.now()}-${Math.random()}`,
+          problem: `${n} × 11`,
+          correctAnswer: ans,
+          options: generateNumericDistractors(ans, 3, 50),
+          explanationSteps: [
+            `العدد ${n} مكون من 3 أرقام: نثبت الآحاد (${d3}) في اليمين والمئات (${d1}) في اليسار.`,
+            `نجمع كل جارين: (${d2} + ${d3} = ${d2 + d3}) و (${d1} + ${d2} = ${d1 + d2}).`,
+            `الناتج النهائي = ${ans}.`,
+          ],
+          hintAr: `ثبّت الرقمين الخارجيين واجمع كل رقمين متجاورين`,
+          hintEn: `Keep outside digits and sum adjacent pairs`,
+        };
+      }
+
       const a = randInt(1, 8);
-      let b = diff === "easy" ? randInt(1, 9 - a) : randInt(9 - a + 1, 9);
-      if (b > 9) b = 7;
+      let b = diff === "easy" ? randInt(1, Math.max(1, 9 - a)) : randInt(Math.max(1, 10 - a), 9);
+      if (b > 9) b = 8;
       const n = a * 10 + b;
       const ans = n * 11;
+      const sum = a + b;
+      const explanationSteps =
+        sum < 10
+          ? [
+              `نباعد بين الرقمين: (${a} _ ${b}).`,
+              `نجمع الرقمين: ${a} + ${b} = ${sum} ونضعه في الوسط.`,
+              `الناتج النهائي = ${ans}.`,
+            ]
+          : [
+              `نباعد بين الرقمين: (${a} _ ${b}).`,
+              `نجمع الرقمين: ${a} + ${b} = ${sum} (أكبر من 9، نترك ${sum % 10} بالوسط ونحمل 1 لليسار).`,
+              `نضيف 1 إلى ${a} ليصبح ${a + 1}: الناتج النهائي = ${ans}.`,
+            ];
+
       return {
         id: `q-11-${Date.now()}-${Math.random()}`,
         problem: `${n} × 11`,
         correctAnswer: ans,
-        options: generateNumericDistractors(ans, 3, 20),
-        explanationSteps: [`نباعد بين ${a} و ${b}`, `حاصل جمعهما: ${a} + ${b} = ${a + b}`, `الناتج النهائي بعد وضع الجمع بالوسط والحمل: ${ans}`],
-        hintAr: `باعد بين ${a} و ${b} واجمع ${a}+${b}`,
+        options: generateNumericDistractors(ans, 3, 25),
+        explanationSteps,
+        hintAr: sum < 10 ? `باعد بين ${a} و ${b} واجمع ${a}+${b}=${sum}` : `مجموعهما ${sum}: اترك ${sum % 10} واحمِل 1 لـ ${a}`,
         hintEn: `Separate ${a} and ${b}, then insert their sum in between`,
       };
     },

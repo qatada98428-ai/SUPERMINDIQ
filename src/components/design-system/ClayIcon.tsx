@@ -32,7 +32,13 @@ export type ClayIconName =
   | "lock"
   | "user3d"
   | "search"
-  | "chart";
+  | "chart"
+  | "rubiks"
+  | "chess"
+  | "puzzle"
+  | "code"
+  | "sudoku"
+  | "ai";
 
 export type ClayBadgeTone =
   | "lavender"
@@ -677,6 +683,183 @@ export default function ClayIcon({
           <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
             <circle cx="28" cy="28" r="15" stroke="#FFF" strokeWidth="5.5" fill="#A78BFA" fillOpacity="0.3" />
             <path d="M39 39l12 12" stroke="#FFF" strokeWidth="6" strokeLinecap="round" />
+          </svg>
+        );
+
+      case "rubiks":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-rbT`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FEF08A" />
+                <stop offset="100%" stopColor="#F59E0B" />
+              </linearGradient>
+              <linearGradient id={`${uid}-rbL`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#60A5FA" />
+                <stop offset="100%" stopColor="#2563EB" />
+              </linearGradient>
+              <linearGradient id={`${uid}-rbR`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#F87171" />
+                <stop offset="100%" stopColor="#DC2626" />
+              </linearGradient>
+              <linearGradient id={`${uid}-rbG`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#4ADE80" />
+                <stop offset="100%" stopColor="#16A34A" />
+              </linearGradient>
+              <linearGradient id={`${uid}-rbO`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FB923C" />
+                <stop offset="100%" stopColor="#EA580C" />
+              </linearGradient>
+            </defs>
+            {/* Top Face (Yellow / Green / Orange grid) */}
+            <path d="M32 8L50 18.5 32 29 14 18.5 32 8z" fill="#1E1B3A" />
+            <path d="M32 9.5L43 16 37 19.5 26 13 32 9.5z" fill={`url(#${uid}-rbT)`} />
+            <path d="M25 13.5L36 20 32 22.5 21 16 25 13.5z" fill={`url(#${uid}-rbG)`} />
+            <path d="M38 19.5L49 16 45 22.5 34 26 38 19.5z" fill={`url(#${uid}-rbO)`} />
+
+            {/* Left Face (Blue tones) */}
+            <path d="M14 19.5L31 29.5V52L14 42V19.5z" fill="#1E1B3A" />
+            <path d="M15.5 21L21.5 24.5V31L15.5 27.5V21z" fill={`url(#${uid}-rbL)`} />
+            <path d="M23 25.5L29.5 29V35.5L23 32V25.5z" fill={`url(#${uid}-rbT)`} />
+            <path d="M15.5 29L21.5 32.5V39L15.5 35.5V29z" fill={`url(#${uid}-rbG)`} />
+            <path d="M23 33.5L29.5 37V43.5L23 40V33.5z" fill={`url(#${uid}-rbL)`} />
+            <path d="M15.5 37L21.5 40.5V47L15.5 43.5V37z" fill={`url(#${uid}-rbO)`} />
+            <path d="M23 41.5L29.5 45V51.5L23 48V41.5z" fill={`url(#${uid}-rbT)`} />
+
+            {/* Right Face (Red / White tones) */}
+            <path d="M33 29.5L50 19.5V42L33 52V29.5z" fill="#1E1B3A" />
+            <path d="M34.5 29L41 25.5V32L34.5 35.5V29z" fill={`url(#${uid}-rbR)`} />
+            <path d="M42.5 24.5L48.5 21V27.5L42.5 31V24.5z" fill="#FFF" />
+            <path d="M34.5 37L41 33.5V40L34.5 43.5V37z" fill={`url(#${uid}-rbR)`} />
+            <path d="M42.5 32.5L48.5 29V35.5L42.5 39V32.5z" fill={`url(#${uid}-rbT)`} />
+            <path d="M34.5 45L41 41.5V48L34.5 51.5V45z" fill="#FFF" />
+            <path d="M42.5 40.5L48.5 37V43.5L42.5 47V40.5z" fill={`url(#${uid}-rbR)`} />
+          </svg>
+        );
+
+      case "chess":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-chP`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#C4B5FD" />
+                <stop offset="40%" stopColor="#8B5CF6" />
+                <stop offset="100%" stopColor="#5B21B6" />
+              </linearGradient>
+              <linearGradient id={`${uid}-chG`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FEF08A" />
+                <stop offset="100%" stopColor="#F59E0B" />
+              </linearGradient>
+            </defs>
+            {/* Chess Knight Profile in 3D Clay */}
+            <path
+              d="M19 52h26a3 3 0 0 0 3-3c0-2-1.5-3.5-3.5-4l-3.5-1c3-4 6-10 6-16 0-3-1-5.5-2.5-7.5l1.5-5.5-5.5 2C39 16 36 15 32 15c-4 0-8 2-11 5l-6 4 2 6 5-1c-2 3-3 7-3 11v8a3 3 0 0 0 3 3z"
+              fill={`url(#${uid}-chP)`}
+              stroke="#DDD6FE"
+              strokeWidth="1.5"
+            />
+            {/* Mane & Ear Details */}
+            <path d="M38 18c3 2 5 6 5 10" stroke="#DDD6FE" strokeWidth="2.5" strokeLinecap="round" />
+            <path d="M35 23c2 2 3.5 5 3.5 8" stroke="#DDD6FE" strokeWidth="2" strokeLinecap="round" />
+            {/* Golden Eye */}
+            <circle cx="26" cy="24" r="2.5" fill={`url(#${uid}-chG)`} />
+            {/* Crown on Knight for Super Mind Academy */}
+            <path d="M32 9l2.5 3 2.5-3.5 2.5 3.5 2.5-3v4H32V9z" fill={`url(#${uid}-chG)`} />
+            {/* Pedestal Base */}
+            <rect x="15" y="48" width="34" height="6" rx="3" fill="#4C1D95" stroke="#A78BFA" strokeWidth="1" />
+          </svg>
+        );
+
+      case "puzzle":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-pz1`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#38BDF8" />
+                <stop offset="100%" stopColor="#0284C7" />
+              </linearGradient>
+              <linearGradient id={`${uid}-pz2`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#F472B6" />
+                <stop offset="100%" stopColor="#DB2777" />
+              </linearGradient>
+            </defs>
+            {/* Interlocking Puzzle Pieces */}
+            <path
+              d="M14 16a2 2 0 0 1 2-2h10c0 3 2.5 5 5.5 5s5.5-2 5.5-5H47a2 2 0 0 1 2 2v10c-3 0-5 2.5-5 5.5s2 5.5 5 5.5v10a2 2 0 0 1-2 2H37c0-3-2.5-5-5.5-5S26 45 26 48H16a2 2 0 0 1-2-2V36c3 0 5-2.5 5-5.5S17 25 14 25V16z"
+              fill={`url(#${uid}-pz1)`}
+              stroke="#BAE6FD"
+              strokeWidth="1.5"
+            />
+            <circle cx="32.5" cy="31.5" r="3.5" fill="#FFF" fillOpacity="0.4" />
+          </svg>
+        );
+
+      case "code":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-cdScr`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#1E1B4B" />
+                <stop offset="100%" stopColor="#0F172A" />
+              </linearGradient>
+              <linearGradient id={`${uid}-cdBr`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#34D399" />
+                <stop offset="100%" stopColor="#059669" />
+              </linearGradient>
+            </defs>
+            {/* Laptop Body in Clay */}
+            <rect x="12" y="14" width="40" height="28" rx="5" fill="#312E81" stroke="#6366F1" strokeWidth="1.5" />
+            <rect x="15" y="17" width="34" height="22" rx="3" fill={`url(#${uid}-cdScr)`} />
+            {/* Code Brackets < / > */}
+            <path d="M24 23l-4 5 4 5" stroke="#38BDF8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M40 23l4 5-4 5" stroke="#F472B6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M33 21l-3 14" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" />
+            {/* Laptop Base */}
+            <path d="M8 44h48c1.5 0 2.5 1 2 2.5l-2 3c-.5 1-1.5 1.5-2.5 1.5H16.5c-1 0-2-.5-2.5-1.5l-2-3C11.5 45 12.5 44 14 44z" fill="#4338CA" />
+            <rect x="27" y="44" width="10" height="2.5" rx="1.2" fill="#818CF8" />
+          </svg>
+        );
+
+      case "sudoku":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-sdkBg`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FFFFFF" />
+                <stop offset="100%" stopColor="#EEF2FF" />
+              </linearGradient>
+            </defs>
+            {/* Sudoku Grid Card */}
+            <rect x="11" y="11" width="42" height="42" rx="9" fill={`url(#${uid}-sdkBg)`} stroke="#818CF8" strokeWidth="2.5" />
+            {/* Internal 3x3 Division lines */}
+            <path d="M25 12v40M39 12v40M12 25h40M12 39h40" stroke="#C7D2FE" strokeWidth="1.5" strokeLinecap="round" />
+            {/* Sample Colorful Digits */}
+            <text x="18" y="22" textAnchor="middle" fill="#4F46E5" fontSize="9" fontWeight="900" fontFamily="sans-serif">5</text>
+            <text x="32" y="22" textAnchor="middle" fill="#E11D48" fontSize="9" fontWeight="900" fontFamily="sans-serif">3</text>
+            <text x="46" y="36" textAnchor="middle" fill="#059669" fontSize="9" fontWeight="900" fontFamily="sans-serif">7</text>
+            <text x="18" y="50" textAnchor="middle" fill="#D97706" fontSize="9" fontWeight="900" fontFamily="sans-serif">9</text>
+            <text x="32" y="50" textAnchor="middle" fill="#4F46E5" fontSize="9" fontWeight="900" fontFamily="sans-serif">1</text>
+          </svg>
+        );
+
+      case "ai":
+        return (
+          <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id={`${uid}-aiCh`} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#818CF8" />
+                <stop offset="100%" stopColor="#4F46E5" />
+              </linearGradient>
+              <radialGradient id={`${uid}-aiRad`} cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#67E8F9" />
+                <stop offset="100%" stopColor="#06B6D4" />
+              </radialGradient>
+            </defs>
+            <rect x="16" y="16" width="32" height="32" rx="8" fill={`url(#${uid}-aiCh)`} stroke="#A5B4FC" strokeWidth="1.5" />
+            <circle cx="32" cy="32" r="8" fill={`url(#${uid}-aiRad)`} />
+            {/* Pins */}
+            <path d="M22 11v5M32 11v5M42 11v5M22 48v5M32 48v5M42 48v5M11 22h5M11 32h5M11 42h5M48 22h5M48 32h5M48 42h5" stroke="#FDE047" strokeWidth="2.5" strokeLinecap="round" />
+            <circle cx="32" cy="32" r="3" fill="#FFF" />
           </svg>
         );
 
