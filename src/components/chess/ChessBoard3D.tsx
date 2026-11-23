@@ -20,58 +20,60 @@ interface ChessBoard3DProps {
   className?: string;
 }
 
-// Professional tournament-grade Staunton 3D chess pieces matching Reference Studio
+// Professional 3D Claymorphism chess pieces matching Super Mind aesthetic
 function renderPieceSvg(piece: ChessPiece) {
   const isWhite = piece.color === "w";
   const uid = `${piece.color}-${piece.type}`;
 
-  const strokeColor = isWhite ? "#5A381A" : "#EAB308";
-  const strokeWidth = isWhite ? 1.2 : 1.3;
+  // Soft tactile clay stroke, glow and highlight colors
+  const strokeColor = isWhite ? "#7E22CE" : "#C4B5FD";
+  const strokeWidth = 0.95;
+  const strokeOpacity = isWhite ? 0.6 : 0.7;
   const bodyGrad = `url(#${uid}-body)`;
   const sphereGrad = `url(#${uid}-sphere)`;
   const baseGrad = `url(#${uid}-base)`;
   const goldGrad = `url(#${uid}-gold)`;
-  const innerColor = isWhite ? "#8A5C2E" : "#F59E0B";
-  const highlightColor = isWhite ? "#FFFFFF" : "#FEF08A";
+  const innerColor = isWhite ? "#9333EA" : "#A78BFA";
+  const highlightColor = isWhite ? "#FFFFFF" : "#E9D5FF";
 
   const defs = (
     <defs>
-      {/* 3D Body Gradient (Directional Light from Top-Left) */}
+      {/* 3D Soft Clay Body Gradient */}
       <linearGradient id={`${uid}-body`} x1="0.15" y1="0" x2="0.85" y2="1">
         {isWhite ? (
           <>
             <stop offset="0%" stopColor="#FFFFFF" />
-            <stop offset="25%" stopColor="#FAF4E8" />
-            <stop offset="65%" stopColor="#ECD3B0" />
-            <stop offset="90%" stopColor="#C49B68" />
-            <stop offset="100%" stopColor="#8F6234" />
+            <stop offset="25%" stopColor="#FAF5FF" />
+            <stop offset="65%" stopColor="#E9D5FF" />
+            <stop offset="90%" stopColor="#C084FC" />
+            <stop offset="100%" stopColor="#9333EA" />
           </>
         ) : (
           <>
-            <stop offset="0%" stopColor="#554438" />
-            <stop offset="25%" stopColor="#352922" />
-            <stop offset="65%" stopColor="#1C140F" />
-            <stop offset="90%" stopColor="#100A07" />
-            <stop offset="100%" stopColor="#060403" />
+            <stop offset="0%" stopColor="#8B5CF6" />
+            <stop offset="25%" stopColor="#6D28D9" />
+            <stop offset="65%" stopColor="#4C1D95" />
+            <stop offset="90%" stopColor="#2E1065" />
+            <stop offset="100%" stopColor="#170A38" />
           </>
         )}
       </linearGradient>
 
-      {/* 3D Spherical Radial Highlight (Light from cx=35%, cy=30%) */}
+      {/* 3D Clay Spherical Radial Highlight (Light from top-left) */}
       <radialGradient id={`${uid}-sphere`} cx="36%" cy="30%" r="65%">
         {isWhite ? (
           <>
             <stop offset="0%" stopColor="#FFFFFF" />
-            <stop offset="35%" stopColor="#FAF3E6" />
-            <stop offset="70%" stopColor="#DEC095" />
-            <stop offset="100%" stopColor="#966735" />
+            <stop offset="35%" stopColor="#FAF5FF" />
+            <stop offset="70%" stopColor="#DDD6FE" />
+            <stop offset="100%" stopColor="#A855F7" />
           </>
         ) : (
           <>
-            <stop offset="0%" stopColor="#6E594C" />
-            <stop offset="35%" stopColor="#382A22" />
-            <stop offset="75%" stopColor="#19110D" />
-            <stop offset="100%" stopColor="#080504" />
+            <stop offset="0%" stopColor="#C4B5FD" />
+            <stop offset="35%" stopColor="#7C3AED" />
+            <stop offset="75%" stopColor="#4C1D95" />
+            <stop offset="100%" stopColor="#1E1B4B" />
           </>
         )}
       </radialGradient>
@@ -80,25 +82,25 @@ function renderPieceSvg(piece: ChessPiece) {
       <linearGradient id={`${uid}-base`} x1="0.1" y1="0" x2="0.9" y2="1">
         {isWhite ? (
           <>
-            <stop offset="0%" stopColor="#FFFDF7" />
-            <stop offset="35%" stopColor="#EAD2B0" />
-            <stop offset="80%" stopColor="#B38956" />
-            <stop offset="100%" stopColor="#6E4B23" />
+            <stop offset="0%" stopColor="#FFFFFF" />
+            <stop offset="35%" stopColor="#EDE9FE" />
+            <stop offset="80%" stopColor="#C084FC" />
+            <stop offset="100%" stopColor="#7E22CE" />
           </>
         ) : (
           <>
-            <stop offset="0%" stopColor="#5A473C" />
-            <stop offset="35%" stopColor="#30231C" />
-            <stop offset="80%" stopColor="#140D0A" />
-            <stop offset="100%" stopColor="#050302" />
+            <stop offset="0%" stopColor="#7C3AED" />
+            <stop offset="35%" stopColor="#5B21B6" />
+            <stop offset="80%" stopColor="#2E1065" />
+            <stop offset="100%" stopColor="#13072E" />
           </>
         )}
       </linearGradient>
 
-      {/* Gleaming Royal Gold for Accents & Crowns */}
+      {/* Royal Crown Jewels Gold Gradient */}
       <linearGradient id={`${uid}-gold`} x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#FFFBEB" />
-        <stop offset="35%" stopColor="#FDE047" />
+        <stop offset="0%" stopColor="#FEF08A" />
+        <stop offset="35%" stopColor="#FACC15" />
         <stop offset="70%" stopColor="#EAB308" />
         <stop offset="100%" stopColor="#A16207" />
       </linearGradient>
@@ -107,7 +109,7 @@ function renderPieceSvg(piece: ChessPiece) {
 
   // Common Contact Shadow under every piece for physical 3D grounding
   const contactShadow = (
-    <ellipse cx="22.5" cy="41.2" rx="14.5" ry="2.2" fill="rgba(0,0,0,0.4)" />
+    <ellipse cx="22.5" cy="41.5" rx="14.5" ry="2.2" fill="rgba(0,0,0,0.35)" />
   );
 
   // Common 2-Tier Weighted Staunton Pedestal Base
@@ -117,29 +119,32 @@ function renderPieceSvg(piece: ChessPiece) {
     const x2 = 22.5 + half;
     return (
       <g>
-        {/* Tier 1: Weighted Plinth */}
+        {/* Tier 1: Weighted Plinth with smooth rounded ends */}
         <path
-          d={`M ${x1} 39.5 L ${x2} 39.5 C ${x2 + 1.5} 39.5 ${x2 + 2} 37.8 ${x2} 37.8 L ${x1} 37.8 C ${x1 - 2} 37.8 ${x1 - 1.5} 39.5 ${x1} 39.5 Z`}
+          d={`M ${x1 + 1.5} 40.5 L ${x2 - 1.5} 40.5 C ${x2 + 1} 40.5 ${x2 + 1.5} 38.5 ${x2 - 0.5} 38.5 L ${x1 + 0.5} 38.5 C ${x1 - 1.5} 38.5 ${x1 - 1} 40.5 ${x1 + 1.5} 40.5 Z`}
           fill={baseGrad}
           stroke={strokeColor}
           strokeWidth={strokeWidth}
+          strokeOpacity={strokeOpacity}
         />
         {/* Tier 2: Beveled Upper Torus Ring */}
         <path
-          d={`M ${x1 + 2.5} 37.8 L ${x2 - 2.5} 37.8 L ${x2 - 4} 34.8 L ${x1 + 4} 34.8 Z`}
+          d={`M ${x1 + 2.5} 38.5 L ${x2 - 2.5} 38.5 C ${x2 - 1.5} 38.5 ${x2 - 3} 35.5 ${x2 - 4.5} 35.5 L ${x1 + 4.5} 35.5 C ${x1 + 3} 35.5 ${x1 + 1.5} 38.5 ${x1 + 2.5} 38.5 Z`}
           fill={bodyGrad}
           stroke={strokeColor}
           strokeWidth={strokeWidth}
+          strokeOpacity={strokeOpacity}
         />
         {/* Torus Highlight Specular Line */}
         <line
           x1={x1 + 4.5}
-          y1="35.6"
+          y1="36.2"
           x2={x2 - 4.5}
-          y2="35.6"
+          y2="36.2"
           stroke={highlightColor}
-          strokeWidth="1"
-          opacity={isWhite ? 0.9 : 0.45}
+          strokeWidth="1.2"
+          strokeLinecap="round"
+          opacity={isWhite ? 0.9 : 0.6}
         />
       </g>
     );
@@ -155,59 +160,72 @@ function renderPieceSvg(piece: ChessPiece) {
 
           {/* King Waist & Fluted Gown */}
           <path
-            d="M 13.5 34.8 C 17.5 28 16.5 21.5 16.5 17.5 L 28.5 17.5 C 28.5 21.5 27.5 28 31.5 34.8 Z"
+            d="M 13.5 35.5 C 17.5 28.5 16.5 22 16.5 18 L 28.5 18 C 28.5 22 27.5 28.5 31.5 35.5 Z"
             fill={bodyGrad}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
+            strokeOpacity={strokeOpacity}
           />
           {/* Specular Side Highlight */}
           <path
-            d="M 17 33 C 18 28 17.5 22 17.5 18.5"
+            d="M 17 34 C 18 28.5 17.5 22.5 17.5 19"
             stroke={highlightColor}
             strokeWidth="1.8"
             strokeLinecap="round"
-            opacity={isWhite ? 0.85 : 0.35}
+            opacity={isWhite ? 0.85 : 0.45}
             fill="none"
           />
 
           {/* Royal Mantle Collar */}
-          <path d="M 12.5 17.5 L 32.5 17.5 L 33 15 L 12 15 Z" fill={bodyGrad} stroke={strokeColor} strokeWidth={strokeWidth} />
-          <line x1="13" y1="15.8" x2="32" y2="15.8" stroke={goldGrad} strokeWidth="1.2" />
+          <ellipse
+            cx="22.5"
+            cy="18"
+            rx="8"
+            ry="2.2"
+            fill={baseGrad}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            strokeOpacity={strokeOpacity}
+          />
+          <line x1="16" y1="17.7" x2="29" y2="17.7" stroke={goldGrad} strokeWidth="1.2" strokeLinecap="round" />
 
           {/* Crown Dome & Ribbed Arches */}
           <path
-            d="M 12.5 15 C 12.5 9.2 16.5 8 22.5 8 C 28.5 8 32.5 9.2 32.5 15 Z"
+            d="M 12.5 15.5 C 12.5 9.5 16.5 8 22.5 8 C 28.5 8 32.5 9.5 32.5 15.5 Z"
             fill={bodyGrad}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
+            strokeOpacity={strokeOpacity}
           />
           {/* Crown Filigree Ribs */}
-          <path d="M 22.5 8 L 22.5 15" stroke={goldGrad} strokeWidth="1.8" />
+          <path d="M 22.5 8 L 22.5 15.5" stroke={goldGrad} strokeWidth="1.8" strokeLinecap="round" />
           <path
             d="M 16.5 10.5 C 18 12.5 20.2 13.8 22.5 13.8 C 24.8 13.8 27 12.5 28.5 10.5"
             stroke={goldGrad}
             strokeWidth="1.6"
+            strokeLinecap="round"
             fill="none"
           />
 
           {/* Center Royal Gemstone */}
-          <circle cx="22.5" cy="11.5" r="2" fill={isWhite ? "#DC2626" : "#10B981"} stroke={strokeColor} strokeWidth="0.8" />
-          <circle cx="22.1" cy="11" r="0.6" fill="#FFFFFF" opacity="0.9" />
+          <circle cx="22.5" cy="11.5" r="2" fill={isWhite ? "#EF4444" : "#10B981"} stroke={goldGrad} strokeWidth="0.8" />
+          <circle cx="22.1" cy="11" r="0.6" fill="#FFFFFF" opacity="0.95" />
 
           {/* Coronet Mount on Dome */}
           <path
-            d="M 16.5 8.2 C 18.5 6.8 20.8 6 22.5 6 C 24.2 6 26.5 6.8 28.5 8.2 Z"
+            d="M 17 8.2 C 18.8 6.8 20.8 6 22.5 6 C 24.2 6 26.2 6.8 28 8.2 Z"
             fill={goldGrad}
             stroke={strokeColor}
-            strokeWidth="0.9"
+            strokeWidth="0.8"
+            strokeOpacity={strokeOpacity}
           />
 
           {/* Grand Royal Crown Jewel (درّة التاج الملكية - لا صليب) */}
-          <circle cx="22.5" cy="4.2" r="3.2" fill={goldGrad} stroke={strokeColor} strokeWidth="1" />
+          <circle cx="22.5" cy="4.2" r="3.2" fill={goldGrad} stroke={strokeColor} strokeWidth="0.9" strokeOpacity={strokeOpacity} />
           {/* Specular Jewel Gleam */}
           <ellipse cx="21.3" cy="3.2" rx="1.4" ry="0.9" fill="#FFFFFF" opacity="0.95" />
           {/* Royal Finial Tip */}
-          <circle cx="22.5" cy="1" r="1.1" fill={goldGrad} stroke={strokeColor} strokeWidth="0.6" />
+          <circle cx="22.5" cy="1" r="1.1" fill={goldGrad} stroke={strokeColor} strokeWidth="0.6" strokeOpacity={strokeOpacity} />
         </svg>
       );
 
@@ -220,85 +238,116 @@ function renderPieceSvg(piece: ChessPiece) {
 
           {/* Queen Waist & Curved Gown */}
           <path
-            d="M 14 34.8 C 18 28 17 22 17 18.5 L 28 18.5 C 28 22 27 28 31 34.8 Z"
+            d="M 14 35.5 C 17.5 29 17 22.5 17 19 L 28 19 C 28 22.5 27.5 29 31 35.5 Z"
             fill={bodyGrad}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
+            strokeOpacity={strokeOpacity}
           />
           <path
-            d="M 17.5 33 C 18.5 28 18 22 18 19.5"
+            d="M 17.5 34 C 18.5 28.5 18 22.5 18 20"
             stroke={highlightColor}
             strokeWidth="1.8"
             strokeLinecap="round"
-            opacity={isWhite ? 0.85 : 0.35}
+            opacity={isWhite ? 0.85 : 0.45}
             fill="none"
           />
 
           {/* Royal Waistband */}
-          <path d="M 14 18.5 L 31 18.5 L 31.5 16 L 13.5 16 Z" fill={bodyGrad} stroke={strokeColor} strokeWidth={strokeWidth} />
-          <line x1="14.5" y1="16.8" x2="30.5" y2="16.8" stroke={goldGrad} strokeWidth="1.2" />
+          <ellipse
+            cx="22.5"
+            cy="19"
+            rx="8"
+            ry="2.2"
+            fill={baseGrad}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            strokeOpacity={strokeOpacity}
+          />
+          <line x1="16" y1="18.7" x2="29" y2="18.7" stroke={goldGrad} strokeWidth="1.2" strokeLinecap="round" />
 
           {/* Flared 5-point Coronet */}
           <path
-            d="M 10.5 16 L 11.5 7.5 L 16.5 13 L 22.5 5.5 L 28.5 13 L 33.5 7.5 L 34.5 16 Z"
+            d="M 10.5 17 L 11.5 7.5 L 16.5 13 L 22.5 5.5 L 28.5 13 L 33.5 7.5 L 34.5 17 Z"
             fill={bodyGrad}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
+            strokeOpacity={strokeOpacity}
           />
           {/* Royal Necklace on Coronet Base */}
-          <path d="M 14 16 C 17.5 18 27.5 18 31 16" stroke={goldGrad} strokeWidth="1.8" fill="none" />
+          <path d="M 13.5 17 C 17.5 19 27.5 19 31.5 17" stroke={goldGrad} strokeWidth="1.8" strokeLinecap="round" fill="none" />
 
           {/* 5 Golden Pearls on Crown Peaks */}
-          <circle cx="11.5" cy="7.2" r="2" fill={goldGrad} stroke={strokeColor} strokeWidth="0.8" />
-          <circle cx="16.5" cy="12.5" r="1.8" fill={goldGrad} stroke={strokeColor} strokeWidth="0.8" />
-          <circle cx="22.5" cy="5.2" r="2.4" fill={goldGrad} stroke={strokeColor} strokeWidth="0.8" />
-          <circle cx="28.5" cy="12.5" r="1.8" fill={goldGrad} stroke={strokeColor} strokeWidth="0.8" />
-          <circle cx="33.5" cy="7.2" r="2" fill={goldGrad} stroke={strokeColor} strokeWidth="0.8" />
+          <circle cx="11.5" cy="7.2" r="2" fill={goldGrad} stroke={strokeColor} strokeWidth="0.8" strokeOpacity={strokeOpacity} />
+          <circle cx="16.5" cy="12.5" r="1.8" fill={goldGrad} stroke={strokeColor} strokeWidth="0.8" strokeOpacity={strokeOpacity} />
+          <circle cx="22.5" cy="5.2" r="2.4" fill={goldGrad} stroke={strokeColor} strokeWidth="0.8" strokeOpacity={strokeOpacity} />
+          <circle cx="28.5" cy="12.5" r="1.8" fill={goldGrad} stroke={strokeColor} strokeWidth="0.8" strokeOpacity={strokeOpacity} />
+          <circle cx="33.5" cy="7.2" r="2" fill={goldGrad} stroke={strokeColor} strokeWidth="0.8" strokeOpacity={strokeOpacity} />
 
           {/* Pearl Highlights */}
-          <circle cx="21.8" cy="4.5" r="0.8" fill="#FFFFFF" opacity="0.9" />
-          <circle cx="10.8" cy="6.5" r="0.6" fill="#FFFFFF" opacity="0.9" />
-          <circle cx="32.8" cy="6.5" r="0.6" fill="#FFFFFF" opacity="0.9" />
+          <circle cx="21.8" cy="4.5" r="0.8" fill="#FFFFFF" opacity="0.95" />
+          <circle cx="10.8" cy="6.5" r="0.6" fill="#FFFFFF" opacity="0.95" />
+          <circle cx="32.8" cy="6.5" r="0.6" fill="#FFFFFF" opacity="0.95" />
         </svg>
       );
 
-    case "r": // Rook / Tower - Heavy Fortress Castle with 4 Battlements, Embrasure & Loopholes
+    case "r": // Rook / Tower - Tactile 3D Clay Fortress with Battlements & Arch Window
       return (
         <svg viewBox="0 0 45 45" className="w-full h-full drop-shadow-[0_5px_8px_rgba(0,0,0,0.35)] select-none">
           {defs}
           {contactShadow}
-          {renderBase(37)}
+          {renderBase(36)}
 
           {/* Tower Trunk */}
-          <path d="M 13 34.8 L 32 34.8 L 30.5 20.5 L 14.5 20.5 Z" fill={bodyGrad} stroke={strokeColor} strokeWidth={strokeWidth} />
+          <path
+            d="M 14 35.5 C 15.5 28.5 15.5 23.5 15.5 20.5 L 29.5 20.5 C 29.5 23.5 29.5 28.5 31 35.5 Z"
+            fill={bodyGrad}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            strokeOpacity={strokeOpacity}
+          />
           {/* Tower Left Specular Line */}
-          <line x1="16" y1="21.5" x2="15" y2="34" stroke={highlightColor} strokeWidth="1.6" opacity={isWhite ? 0.8 : 0.35} />
+          <line x1="17" y1="21.5" x2="16" y2="34.5" stroke={highlightColor} strokeWidth="1.6" strokeLinecap="round" opacity={isWhite ? 0.85 : 0.45} />
 
           {/* Castle Arrow Loop Window */}
           <rect
             x="21"
-            y="24"
+            y="24.5"
             width="3"
             height="6.5"
             rx="1.5"
-            fill={isWhite ? "#5B3814" : "#F59E0B"}
+            fill={isWhite ? "#9333EA" : "#1E143E"}
             stroke={strokeColor}
             strokeWidth="0.8"
+            strokeOpacity="0.8"
           />
 
-          {/* Stone Cornice Ring */}
-          <path d="M 11.5 20.5 L 33.5 20.5 L 34 17.5 L 11 17.5 Z" fill={baseGrad} stroke={strokeColor} strokeWidth={strokeWidth} />
-          <line x1="12" y1="18.5" x2="33" y2="18.5" stroke={goldGrad} strokeWidth="1" />
+          {/* Stone Cornice Torus Ring */}
+          <ellipse
+            cx="22.5"
+            cy="20.5"
+            rx="9"
+            ry="2.2"
+            fill={baseGrad}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            strokeOpacity={strokeOpacity}
+          />
+          <line x1="15" y1="20" x2="30" y2="20" stroke={highlightColor} strokeWidth="1.1" strokeLinecap="round" opacity={isWhite ? 0.9 : 0.55} />
 
           {/* 4 Castle Battlements (Merlons) with 3 Embrasures */}
           <path
-            d="M 10.5 17.5 L 34.5 17.5 L 34.5 8.5 L 29.5 8.5 L 29.5 12.5 L 25 12.5 L 25 8.5 L 20 8.5 L 20 12.5 L 15.5 12.5 L 15.5 8.5 L 10.5 8.5 Z"
+            d="M 10.5 19 L 34.5 19 C 34.8 19 35 18 34.5 17.5 L 34.5 9 C 34.5 7.8 32 7.8 31.5 9 L 31.5 12.5 C 31 13 28.5 13 28 12.5 L 28 9 C 27.5 7.8 25 7.8 24.5 9 L 24.5 12.5 C 24 13 21 13 20.5 12.5 L 20.5 9 C 20 7.8 17.5 7.8 17 9 L 17 12.5 C 16.5 13 14 13 13.5 12.5 L 13.5 9 C 13 7.8 10.5 7.8 10.5 9 L 10.5 17.5 C 10 18 10.2 19 10.5 19 Z"
             fill={bodyGrad}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
+            strokeOpacity={strokeOpacity}
           />
-          {/* Embrasure Depth Shadow Line */}
-          <line x1="11" y1="12.5" x2="34" y2="12.5" stroke={strokeColor} strokeWidth="1.2" opacity="0.6" />
+          {/* Merlon Specular Highlights */}
+          <circle cx="12" cy="9.2" r="0.75" fill="#FFFFFF" opacity={isWhite ? 0.95 : 0.65} />
+          <circle cx="18.8" cy="9.2" r="0.75" fill="#FFFFFF" opacity={isWhite ? 0.95 : 0.65} />
+          <circle cx="26.2" cy="9.2" r="0.75" fill="#FFFFFF" opacity={isWhite ? 0.95 : 0.65} />
+          <circle cx="33" cy="9.2" r="0.75" fill="#FFFFFF" opacity={isWhite ? 0.95 : 0.65} />
         </svg>
       );
 
@@ -307,20 +356,30 @@ function renderPieceSvg(piece: ChessPiece) {
         <svg viewBox="0 0 45 45" className="w-full h-full drop-shadow-[0_5px_8px_rgba(0,0,0,0.35)] select-none">
           {defs}
           {contactShadow}
-          {renderBase(36)}
+          {renderBase(35)}
 
           {/* Bishop Fluted Waist */}
           <path
-            d="M 14.5 34.8 C 17.5 29 17 23.5 17 21 L 28 21 C 28 23.5 27.5 29 30.5 34.8 Z"
+            d="M 14.5 35.5 C 17 29.5 17 24 17 21 L 28 21 C 28 24 28 29.5 30.5 35.5 Z"
             fill={bodyGrad}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
+            strokeOpacity={strokeOpacity}
           />
           {/* Waistband Arc */}
-          <path d="M 15 26.5 C 18 28.5 27 28.5 30 26.5" stroke={innerColor} strokeWidth="1.6" fill="none" />
+          <path d="M 15 27 C 18 29 27 29 30 27" stroke={innerColor} strokeWidth="1.6" strokeLinecap="round" opacity={strokeOpacity} fill="none" />
 
           {/* Mitre Collar */}
-          <path d="M 13.5 21 L 31.5 21 L 32 18.5 L 13 18.5 Z" fill={baseGrad} stroke={strokeColor} strokeWidth={strokeWidth} />
+          <ellipse
+            cx="22.5"
+            cy="20.5"
+            rx="7.5"
+            ry="2.2"
+            fill={baseGrad}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            strokeOpacity={strokeOpacity}
+          />
 
           {/* Teardrop Mitre Dome */}
           <path
@@ -328,14 +387,16 @@ function renderPieceSvg(piece: ChessPiece) {
             fill={bodyGrad}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
+            strokeOpacity={strokeOpacity}
           />
 
           {/* Distinctive Bishop Diagonal Slit */}
           <path
             d="M 22.5 9.5 L 29 16.5 M 19 13.5 L 24 19"
-            stroke={isWhite ? "#5B3814" : "#F59E0B"}
+            stroke={isWhite ? "#9333EA" : "#1E143E"}
             strokeWidth="2.2"
             strokeLinecap="round"
+            opacity="0.8"
           />
 
           {/* Mitre Specular Highlight */}
@@ -344,154 +405,88 @@ function renderPieceSvg(piece: ChessPiece) {
             stroke={highlightColor}
             strokeWidth="1.6"
             strokeLinecap="round"
-            opacity={isWhite ? 0.8 : 0.4}
+            opacity={isWhite ? 0.85 : 0.45}
             fill="none"
           />
 
           {/* Golden Finial Sphere on Peak */}
-          <circle cx="22.5" cy="5.2" r="2.3" fill={goldGrad} stroke={strokeColor} strokeWidth="0.9" />
-          <circle cx="21.7" cy="4.4" r="0.8" fill="#FFFFFF" opacity="0.9" />
+          <circle cx="22.5" cy="5.2" r="2.3" fill={goldGrad} stroke={strokeColor} strokeWidth="0.8" strokeOpacity={strokeOpacity} />
+          <circle cx="21.7" cy="4.4" r="0.8" fill="#FFFFFF" opacity="0.95" />
         </svg>
       );
 
-    case "n": // Knight - Noble Arabian Tournament Stallion with Arched Crest, Flowing Mane & Expressive Eye
+    case "n": // Knight - Sculptural 3D Clay Tournament Stallion with Arched Crest & Flowing Mane
       return (
         <svg viewBox="0 0 45 45" className="w-full h-full drop-shadow-[0_5px_8px_rgba(0,0,0,0.35)] select-none">
           {defs}
           {contactShadow}
-          {renderBase(37)}
+          {renderBase(36)}
 
-          {/* Authentic Noble Horse Anatomy: Arched Neck, Powerful Chest, Elegant Muzzle & Pointed Ears */}
+          {/* Authentic Noble Horse Anatomy */}
           <path
-            d="M 32 34.8 C 34 29 35 24 34 18.5 C 33 13 28 8 23 7 L 23 3.5 C 22 3.2 21 4.5 20.8 6.5 L 18 2.5 C 16.8 2.8 17 4.8 17.5 7 C 15 10 13 14.5 10.5 19 C 9 21.5 9.2 23.5 11 24 C 12.5 24.5 14 23.5 15 21.5 C 18 20 20.5 22 19 26 C 17.5 29.5 15 32 13.5 34.8 Z"
+            d="M 31.5 35.5 C 33.5 30 34.5 24.5 33.5 19 C 32.5 13.5 28 8.5 23 7.5 L 23 4 C 22 3.5 21 4.5 20.5 6.5 L 17.8 3 C 16.5 3.2 16.8 5.2 17.2 7.2 C 14.8 10.2 12.8 14.5 10.5 19 C 9 21.5 9.2 23.5 11 24 C 12.5 24.5 14 23.5 15 21.5 C 17.8 20 20.2 22 18.8 26 C 17.5 29.5 15.2 32.5 13.5 35.5 Z"
             fill={bodyGrad}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
+            strokeOpacity={strokeOpacity}
           />
 
-          {/* Horse Muzzle, Mouth Slit & Nostril */}
-          <path
-            d="M 10.5 24 L 13.5 23"
-            stroke={strokeColor}
-            strokeWidth="1.3"
-            strokeLinecap="round"
-          />
-          <ellipse
-            cx="11.2"
-            cy="21.5"
-            rx="1.2"
-            ry="0.8"
-            fill={isWhite ? "#5B3814" : "#F59E0B"}
-            stroke={strokeColor}
-            strokeWidth="0.6"
-            transform="rotate(-20 11.2 21.5)"
-          />
+          {/* Mane Sculpted Locks on Crest */}
+          <path d="M 23 8.5 C 26 10 29 12.5 29.5 15" stroke={innerColor} strokeWidth="2.2" strokeLinecap="round" opacity={strokeOpacity} fill="none" />
+          <path d="M 25.5 13.5 C 28.5 16 31 19 31 22" stroke={innerColor} strokeWidth="2.2" strokeLinecap="round" opacity={strokeOpacity} fill="none" />
+          <path d="M 27.5 19.5 C 30.5 22.5 32 26 31.5 29" stroke={innerColor} strokeWidth="2.2" strokeLinecap="round" opacity={strokeOpacity} fill="none" />
 
-          {/* Powerful Throat & Chest Shading Accent */}
-          <path
-            d="M 15 22 C 18 20 19.5 23 18.5 26.5 C 17 30 15 32.5 14 34.8"
-            stroke={innerColor}
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            fill="none"
-          />
+          {/* Soft Muzzle Line & Nostril */}
+          <path d="M 10.5 24 L 13.5 23" stroke={strokeColor} strokeWidth="1.2" strokeLinecap="round" strokeOpacity={strokeOpacity} />
+          <circle cx="11.2" cy="21.5" r="0.9" fill={innerColor} opacity="0.8" />
 
-          {/* Defined Equine Jaw & Cheekbone (Masseter) */}
-          <path
-            d="M 21.5 14 C 23.5 17.5 21.5 22 16 22.5"
-            stroke={innerColor}
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            fill="none"
-          />
+          {/* Arched Neck 3D Highlight Ridge */}
+          <path d="M 18.5 9 C 22.5 12 25.5 17 26 24" stroke={highlightColor} strokeWidth="1.6" strokeLinecap="round" opacity={isWhite ? 0.85 : 0.45} fill="none" />
 
-          {/* 4 Deeply Carved Flowing Mane Locks on Crest */}
-          <path
-            d="M 23.5 8.5 C 26.5 10 29.5 12.5 30 15"
-            stroke={innerColor}
-            strokeWidth="2"
-            strokeLinecap="round"
-            fill="none"
-          />
-          <path
-            d="M 26 13.5 C 29 16 31.5 19 31.5 22"
-            stroke={innerColor}
-            strokeWidth="2"
-            strokeLinecap="round"
-            fill="none"
-          />
-          <path
-            d="M 28 19.5 C 31 22.5 32.5 26 32 29"
-            stroke={innerColor}
-            strokeWidth="2"
-            strokeLinecap="round"
-            fill="none"
-          />
-          <path
-            d="M 28.5 26 C 30.5 29 31 32 30.5 34"
-            stroke={innerColor}
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            fill="none"
-          />
-
-          {/* Left Specular Light Ridge along Arched Neck */}
-          <path
-            d="M 19 9 C 23 12 26 17 26.5 24"
-            stroke={highlightColor}
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            opacity={isWhite ? 0.8 : 0.35}
-            fill="none"
-          />
-
-          {/* Alert Equine Almond Eye */}
-          <ellipse
-            cx="17"
-            cy="12"
-            rx="2"
-            ry="1.4"
-            fill={isWhite ? "#261508" : "#F59E0B"}
-            stroke={strokeColor}
-            strokeWidth="0.8"
-          />
-          <circle cx="16.5" cy="11.5" r="0.7" fill="#FFFFFF" />
+          {/* Expressive Clay Eye */}
+          <ellipse cx="17.2" cy="12.2" rx="1.8" ry="1.3" fill={isWhite ? "#7E22CE" : "#FEF08A"} stroke={strokeColor} strokeWidth="0.6" strokeOpacity={strokeOpacity} />
+          <circle cx="16.8" cy="11.8" r="0.6" fill="#FFFFFF" />
         </svg>
       );
 
-    case "p": // Pawn - Distinct Spherical Head, Flared Collar Dish, Slender Waist & Weighted Base
+    case "p": // Pawn - Volumetric 3D Clay Sphere, Flared Torus Ring, Bell Stem & Weighted Base (matching user's reference)
     default:
       return (
         <svg viewBox="0 0 45 45" className="w-full h-full drop-shadow-[0_4px_7px_rgba(0,0,0,0.32)] select-none">
           {defs}
           {contactShadow}
-          {renderBase(35)}
+          {renderBase(34)}
 
-          {/* Slender Concave Stem */}
+          {/* Slender Bell Stem */}
           <path
-            d="M 15 34.8 C 17.5 28 17 22.5 17 19.5 L 28 19.5 C 28 22.5 27.5 28 30 34.8 Z"
+            d="M 15 35.5 C 17.5 28.5 17 22.5 17 19.5 L 28 19.5 C 28 22.5 27.5 28.5 30 35.5 Z"
             fill={bodyGrad}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
+            strokeOpacity={strokeOpacity}
           />
           {/* Stem Specular Shading Line */}
           <path
-            d="M 18 34 C 19 28 18.5 22 18.5 20"
+            d="M 18 34.5 C 19 28.5 18.5 22 18.5 20"
             stroke={highlightColor}
-            strokeWidth="1.6"
+            strokeWidth="1.5"
             strokeLinecap="round"
-            opacity={isWhite ? 0.8 : 0.35}
+            opacity={isWhite ? 0.85 : 0.5}
             fill="none"
           />
 
-          {/* Flared Collar Ring / Dish */}
-          <path
-            d="M 14.5 19.5 C 14.5 17.8 30.5 17.8 30.5 19.5 C 30.5 21 14.5 21 14.5 19.5 Z"
+          {/* Flared Collar Torus Ring / Dish */}
+          <ellipse
+            cx="22.5"
+            cy="19.5"
+            rx="7.5"
+            ry="2"
             fill={baseGrad}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
+            strokeOpacity={strokeOpacity}
           />
-          <line x1="15.5" y1="19.2" x2="29.5" y2="19.2" stroke={goldGrad} strokeWidth="1" />
+          <line x1="16" y1="19.2" x2="29" y2="19.2" stroke={highlightColor} strokeWidth="1" strokeLinecap="round" opacity={isWhite ? 0.9 : 0.55} />
 
           {/* 3D Volumetric Spherical Head */}
           <circle
@@ -501,19 +496,20 @@ function renderPieceSvg(piece: ChessPiece) {
             fill={sphereGrad}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
+            strokeOpacity={strokeOpacity}
           />
 
-          {/* Brilliant 3D Specular Sheen & Highlight Dot */}
+          {/* Brilliant 3D Specular Sheen & Highlight Dot (matching user's reference) */}
           <ellipse
             cx="20.2"
             cy="9.2"
             rx="2.2"
             ry="1.4"
             fill="#FFFFFF"
-            opacity={isWhite ? 0.9 : 0.55}
+            opacity={isWhite ? 0.95 : 0.7}
             transform="rotate(-30 20.2 9.2)"
           />
-          <circle cx="22" cy="7.8" r="0.6" fill="#FFFFFF" opacity={isWhite ? 0.9 : 0.6} />
+          <circle cx="22" cy="7.8" r="0.6" fill="#FFFFFF" opacity={isWhite ? 0.95 : 0.75} />
         </svg>
       );
   }

@@ -756,32 +756,62 @@ export default function ClayIcon({
         return (
           <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
             <defs>
-              <linearGradient id={`${uid}-chP`} x1="0" y1="0" x2="1" y2="1">
+              <linearGradient id={`${uid}-chBody`} x1="0.15" y1="0" x2="0.85" y2="1">
                 <stop offset="0%" stopColor="#C4B5FD" />
-                <stop offset="40%" stopColor="#8B5CF6" />
-                <stop offset="100%" stopColor="#5B21B6" />
+                <stop offset="25%" stopColor="#8B5CF6" />
+                <stop offset="65%" stopColor="#6D28D9" />
+                <stop offset="90%" stopColor="#4C1D95" />
+                <stop offset="100%" stopColor="#2E1065" />
               </linearGradient>
-              <linearGradient id={`${uid}-chG`} x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#FEF08A" />
-                <stop offset="100%" stopColor="#F59E0B" />
+              <radialGradient id={`${uid}-chSph`} cx="36%" cy="30%" r="65%">
+                <stop offset="0%" stopColor="#EDE9FE" />
+                <stop offset="30%" stopColor="#A78BFA" />
+                <stop offset="65%" stopColor="#6D28D9" />
+                <stop offset="100%" stopColor="#2E1065" />
+              </radialGradient>
+              <linearGradient id={`${uid}-chBase`} x1="0.1" y1="0" x2="0.9" y2="1">
+                <stop offset="0%" stopColor="#8B5CF6" />
+                <stop offset="40%" stopColor="#6D28D9" />
+                <stop offset="100%" stopColor="#3B0764" />
               </linearGradient>
             </defs>
-            {/* Chess Knight Profile in 3D Clay */}
+            {/* Contact Shadow */}
+            <ellipse cx="32" cy="57" rx="17" ry="3.2" fill="rgba(0,0,0,0.35)" />
+            {/* Tier 1 Base Plinth */}
             <path
-              d="M19 52h26a3 3 0 0 0 3-3c0-2-1.5-3.5-3.5-4l-3.5-1c3-4 6-10 6-16 0-3-1-5.5-2.5-7.5l1.5-5.5-5.5 2C39 16 36 15 32 15c-4 0-8 2-11 5l-6 4 2 6 5-1c-2 3-3 7-3 11v8a3 3 0 0 0 3 3z"
-              fill={`url(#${uid}-chP)`}
-              stroke="#DDD6FE"
-              strokeWidth="1.5"
+              d="M14 55.5 C12 55.5 11 53.5 13 52.5 L15 51.5 C16 51 17 50.8 18.5 50.8 L45.5 50.8 C47 50.8 48 51 49 51.5 L51 52.5 C53 53.5 52 55.5 50 55.5 Z"
+              fill={`url(#${uid}-chBase)`}
+              stroke="#C4B5FD"
+              strokeWidth="1.2"
+              strokeOpacity="0.7"
             />
-            {/* Mane & Ear Details */}
-            <path d="M38 18c3 2 5 6 5 10" stroke="#DDD6FE" strokeWidth="2.5" strokeLinecap="round" />
-            <path d="M35 23c2 2 3.5 5 3.5 8" stroke="#DDD6FE" strokeWidth="2" strokeLinecap="round" />
-            {/* Golden Eye */}
-            <circle cx="26" cy="24" r="2.5" fill={`url(#${uid}-chG)`} />
-            {/* Crown on Knight for Super Mind Academy */}
-            <path d="M32 9l2.5 3 2.5-3.5 2.5 3.5 2.5-3v4H32V9z" fill={`url(#${uid}-chG)`} />
-            {/* Pedestal Base */}
-            <rect x="15" y="48" width="34" height="6" rx="3" fill="#4C1D95" stroke="#A78BFA" strokeWidth="1" />
+            {/* Tier 2 Torus Base */}
+            <path
+              d="M18.5 50.8 L45.5 50.8 L42 46.5 L22 46.5 Z"
+              fill={`url(#${uid}-chBody)`}
+              stroke="#C4B5FD"
+              strokeWidth="1.2"
+              strokeOpacity="0.6"
+            />
+            <line x1="23" y1="47.5" x2="41" y2="47.5" stroke="#FFFFFF" strokeWidth="1.4" strokeLinecap="round" opacity="0.6" />
+            {/* Bell Stem */}
+            <path
+              d="M22 46.5 C25.5 37 25 29 25 25 L39 25 C39 29 38.5 37 42 46.5 Z"
+              fill={`url(#${uid}-chBody)`}
+              stroke="#C4B5FD"
+              strokeWidth="1.2"
+              strokeOpacity="0.7"
+            />
+            {/* Stem Left Highlight */}
+            <path d="M26 45 C27.5 37 27 29 27 26" stroke="#FFFFFF" strokeWidth="1.8" strokeLinecap="round" opacity="0.6" fill="none" />
+            {/* Torus Collar Ring */}
+            <ellipse cx="32" cy="25" rx="10.5" ry="3" fill={`url(#${uid}-chBase)`} stroke="#C4B5FD" strokeWidth="1.2" strokeOpacity="0.7" />
+            <line x1="24" y1="24.5" x2="40" y2="24.5" stroke="#FFFFFF" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
+            {/* 3D Spherical Head */}
+            <circle cx="32" cy="14.5" r="8.2" fill={`url(#${uid}-chSph)`} stroke="#C4B5FD" strokeWidth="1.2" strokeOpacity="0.7" />
+            {/* Specular Sheen (matching user's uploaded 3D clay reference) */}
+            <ellipse cx="28.8" cy="11.2" rx="3.2" ry="2" fill="#FFFFFF" opacity="0.75" transform="rotate(-30 28.8 11.2)" />
+            <circle cx="31.2" cy="9.2" r="0.9" fill="#FFFFFF" opacity="0.85" />
           </svg>
         );
 

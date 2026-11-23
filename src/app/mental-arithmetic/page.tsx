@@ -775,8 +775,8 @@ export default function MentalArithmeticPage() {
               <div className="clay-card !p-5 sm:!p-6 bg-gradient-to-br from-white via-slate-50/50 to-indigo-50/70 dark:from-[#1E1B3E] dark:via-[#1F1E38] dark:to-[#17152B] border-2 border-indigo-500/40 dark:border-indigo-500/50 rounded-[2.2rem] shadow-xl flex flex-col justify-between space-y-4 hover:scale-[1.02] transition-all group">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-900 to-slate-900 text-white flex items-center justify-center text-3xl shadow-lg border border-white/40 group-hover:scale-110 transition-transform">
-                      ♟️
+                    <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#2E1A68] via-[#1E1145] to-[#140A30] flex items-center justify-center shadow-lg border border-purple-400/40 group-hover:scale-110 transition-transform p-1.5">
+                      <ClayIcon name="chess" size="lg" tone="none" />
                     </span>
                     <span className="text-xs font-black px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
                       {chessAccess.badgeAr}
