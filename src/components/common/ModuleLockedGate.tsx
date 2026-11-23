@@ -189,7 +189,7 @@ export default function ModuleLockedGate({
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
             <span>
-              قسم الحساب الذهني والسوروبان متاح بالكامل للجميع بلا قيود
+              أقسام الحساب الذهني، الذاكرة، وأكاديمية السودوكو مفتوحة للتدريب
             </span>
           </div>
         </div>
@@ -201,7 +201,7 @@ export default function ModuleLockedGate({
             className="clay-btn-purple w-full py-3.5 px-5 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xl !rounded-2xl"
           >
             <ArrowRight className="w-4 h-4" />
-            <span>الانتقال إلى أقسام الحساب الذهني (المتاحة للجميع) 🧮</span>
+            <span>الانتقال إلى الأقسام المفتوحة للتدريب 🧮</span>
           </Link>
 
           {!user && (
