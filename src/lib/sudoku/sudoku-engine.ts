@@ -226,7 +226,139 @@ export const PRESET_PUZZLES: Record<string, SudokuPuzzle> = {
   },
 };
 
-// Smart Hint calculation
+// Conflict Detection for real-time visual learning feedback
+export interface SudokuConflict {
+  row: number;
+  col: number;
+  type: "row" | "col" | "box";
+  conflictingCells: { row: number; col: number }[];
+  messageAr: string;
+}
+
+export function findPlacementConflicts(
+  grid: number[][],
+  row: number,
+  col: number,
+  val: number,
+  size: SudokuSize
+): SudokuConflict | null {
+  if (val === 0) return null;
+
+  const conflictingCells: { row: number; col: number }[] = [];
+  let conflictType: "row" | "col" | "box" = "row";
+
+  // Check row
+  for (let c = 0; c < size; c++) {
+    if (c !== col && grid[row][c] === val) {
+      conflictingCells.push({ row, col: c });
+      conflictType = "row";
+    }
+  }
+
+  // Check col
+  for (let r = 0; r < size; r++) {
+    if (r !== row && grid[r][col] === val) {
+      conflictingCells.push({ row: r, col });
+      conflictType = "col";
+    }
+  }
+
+  // Check box
+  const { boxRows, boxCols } = getBoxDimensions(size);
+  const startRow = Math.floor(row / boxRows) * boxRows;
+  const startCol = Math.floor(col / boxCols) * boxCols;
+  for (let r = 0; r < boxRows; r++) {
+    for (let c = 0; c < boxCols; c++) {
+      const cr = startRow + r;
+      const cc = startCol + c;
+      if ((cr !== row || cc !== col) && grid[cr][cc] === val) {
+        if (!conflictingCells.some((cell) => cell.row === cr && cell.col === cc)) {
+          conflictingCells.push({ row: cr, col: cc });
+          conflictType = "box";
+        }
+      }
+    }
+  }
+
+  if (conflictingCells.length > 0) {
+    const messageAr =
+      conflictType === "row"
+        ? `تعارض! الرقم (${val}) مكرر بالفعل في نفس الصف (الصف ${row + 1})`
+        : conflictType === "col"
+        ? `تعارض! الرقم (${val}) مكرر بالفعل في نفس العمود (العمود ${col + 1})`
+        : `تعارض! الرقم (${val}) موجود بالفعل في نفس المربع (${boxRows}×${boxCols})`;
+
+    return {
+      row,
+      col,
+      type: conflictType,
+      conflictingCells,
+      messageAr,
+    };
+  }
+
+  return null;
+}
+
+// Remaining digit counter under each keypad button
+export function getRemainingDigitCounts(
+  grid: number[][],
+  size: SudokuSize
+): Record<number, number> {
+  const counts: Record<number, number> = {};
+  for (let num = 1; num <= size; num++) {
+    counts[num] = size;
+  }
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      const val = grid[r]?.[c] || 0;
+      if (val >= 1 && val <= size) {
+        counts[val] = Math.max(0, counts[val] - 1);
+      }
+    }
+  }
+  return counts;
+}
+
+// Auto-clean candidate notes in row, column, and box
+export function removeCandidateFromPeers(
+  notes: Record<string, number[]>,
+  row: number,
+  col: number,
+  val: number,
+  size: SudokuSize
+): Record<string, number[]> {
+  const nextNotes = { ...notes };
+  const { boxRows, boxCols } = getBoxDimensions(size);
+  const startRow = Math.floor(row / boxRows) * boxRows;
+  const startCol = Math.floor(col / boxCols) * boxCols;
+
+  delete nextNotes[`${row}-${col}`];
+
+  for (let i = 0; i < size; i++) {
+    const rowKey = `${row}-${i}`;
+    if (nextNotes[rowKey]) {
+      nextNotes[rowKey] = nextNotes[rowKey].filter((n) => n !== val);
+    }
+    const colKey = `${i}-${col}`;
+    if (nextNotes[colKey]) {
+      nextNotes[colKey] = nextNotes[colKey].filter((n) => n !== val);
+    }
+  }
+
+  for (let r = 0; r < boxRows; r++) {
+    for (let c = 0; c < boxCols; c++) {
+      const boxKey = `${startRow + r}-${startCol + c}`;
+      if (nextNotes[boxKey]) {
+        nextNotes[boxKey] = nextNotes[boxKey].filter((n) => n !== val);
+      }
+    }
+  }
+
+  return nextNotes;
+}
+
+// Smart Hint calculation with full visual teaching context
 export interface SudokuHint {
   row: number;
   col: number;
@@ -235,10 +367,15 @@ export interface SudokuHint {
   techniqueEn: string;
   explanationAr: string;
   explanationEn: string;
+  highlightRows?: number[];
+  highlightCols?: number[];
+  highlightBox?: { startRow: number; startCol: number; endRow: number; endCol: number };
 }
 
 export function findSmartHint(grid: number[][], solution: number[][], size: SudokuSize): SudokuHint | null {
-  // 1. Search for Naked Single (cell with only 1 possible candidate)
+  const { boxRows, boxCols } = getBoxDimensions(size);
+
+  // 1. Search for Naked Single (cell with only 1 candidate left)
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) {
       if (grid[r][c] === 0) {
@@ -251,21 +388,83 @@ export function findSmartHint(grid: number[][], solution: number[][], size: Sudo
 
         if (candidates.length === 1) {
           const val = candidates[0];
+          const bStartR = Math.floor(r / boxRows) * boxRows;
+          const bStartC = Math.floor(c / boxCols) * boxCols;
           return {
             row: r,
             col: c,
             val,
             techniqueAr: "الخلية الوحيدة المكشوفة (Naked Single)",
             techniqueEn: "Naked Single",
-            explanationAr: `في الصف (${r + 1}) والعمود (${c + 1})، الرقم الوحيد الممكن منطقياً دون أي تكرار هو (${val}).`,
-            explanationEn: `Cell (${r + 1}, ${c + 1}) can only legally hold the number (${val}).`,
+            explanationAr: `انظر للخلية (${r + 1}, ${c + 1}): جميع الأرقام الأخرى محجوزة في نفس الصف والعمود والمربع، ولم يتبقَ سوى الرقم (${val}) كخيار وحيد ممكن!`,
+            explanationEn: `Cell (${r + 1}, ${c + 1}) has only one legal candidate: (${val}).`,
+            highlightRows: [r],
+            highlightCols: [c],
+            highlightBox: {
+              startRow: bStartR,
+              startCol: bStartC,
+              endRow: bStartR + boxRows - 1,
+              endCol: bStartC + boxCols - 1,
+            },
           };
         }
       }
     }
   }
 
-  // 2. Fallback to any empty cell based on solution
+  // 2. Cross-Hatching Search
+  for (let num = 1; num <= size; num++) {
+    for (let bRow = 0; bRow < size; bRow += boxRows) {
+      for (let bCol = 0; bCol < size; bCol += boxCols) {
+        let alreadyInBox = false;
+        for (let r = 0; r < boxRows; r++) {
+          for (let c = 0; c < boxCols; c++) {
+            if (grid[bRow + r][bCol + c] === num) {
+              alreadyInBox = true;
+              break;
+            }
+          }
+          if (alreadyInBox) break;
+        }
+
+        if (!alreadyInBox) {
+          const validSpots: { r: number; c: number }[] = [];
+          for (let r = 0; r < boxRows; r++) {
+            for (let c = 0; c < boxCols; c++) {
+              const gr = bRow + r;
+              const gc = bCol + c;
+              if (grid[gr][gc] === 0 && isValidPlacement(grid, gr, gc, num, size)) {
+                validSpots.push({ r: gr, c: gc });
+              }
+            }
+          }
+
+          if (validSpots.length === 1) {
+            const spot = validSpots[0];
+            return {
+              row: spot.r,
+              col: spot.c,
+              val: num,
+              techniqueAr: "استراتيجية الحصر والمسح المتقاطع (Cross-Hatching)",
+              techniqueEn: "Cross-Hatching",
+              explanationAr: `في هذا المربع (${boxRows}×${boxCols}): الخطوط المحاذية تغلق جميع الخانات الأخرى للرقم (${num})، والخانة الوحيدة الشاغرة له هي (${spot.r + 1}, ${spot.c + 1})!`,
+              explanationEn: `Cross-hatching restricts (${num}) to only one spot in this box.`,
+              highlightRows: [spot.r],
+              highlightCols: [spot.c],
+              highlightBox: {
+                startRow: bRow,
+                startCol: bCol,
+                endRow: bRow + boxRows - 1,
+                endCol: bCol + boxCols - 1,
+              },
+            };
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Fallback to any empty cell matching solution
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) {
       if (grid[r][c] === 0) {
@@ -273,10 +472,12 @@ export function findSmartHint(grid: number[][], solution: number[][], size: Sudo
           row: r,
           col: c,
           val: solution[r][c],
-          techniqueAr: "استنتاج الحصر المتقاطع (Cross-Hatching)",
-          techniqueEn: "Cross-Hatching",
-          explanationAr: `بتقاطع الصف والعمود والمربع، القيمة الصحيحة للخلية (${r + 1}, ${c + 1}) هي (${solution[r][c]}).`,
-          explanationEn: `By cross-referencing lines and blocks, cell (${r + 1}, ${c + 1}) is (${solution[r][c]}).`,
+          techniqueAr: "استنتاج الحصر المنطقي المباشر",
+          techniqueEn: "Logical Deduction",
+          explanationAr: `بتقاطع الصف (${r + 1}) والعمود (${c + 1})، القيمة المؤكدة للخلية هي (${solution[r][c]}).`,
+          explanationEn: `By cross-referencing lines and blocks, cell is (${solution[r][c]}).`,
+          highlightRows: [r],
+          highlightCols: [c],
         };
       }
     }
@@ -284,6 +485,132 @@ export function findSmartHint(grid: number[][], solution: number[][], size: Sudo
 
   return null;
 }
+
+// Interactive Guided Academy Lessons
+export interface InteractiveSudokuLesson {
+  id: number;
+  titleAr: string;
+  badgeAr: string;
+  ruleTitleAr: string;
+  summaryAr: string;
+  goalAr: string;
+  size: SudokuSize;
+  initialGrid: number[][];
+  targetCell: { row: number; col: number };
+  correctVal: number;
+  highlightRows?: number[];
+  highlightCols?: number[];
+  highlightBox?: { startRow: number; startCol: number; endRow: number; endCol: number };
+  hintExplanationAr: string;
+  celebrationAr: string;
+}
+
+export const INTERACTIVE_SUDOKU_LESSONS: InteractiveSudokuLesson[] = [
+  {
+    id: 1,
+    titleAr: "الدرس 1: قاعدة الصف الذهبية (Row Rule)",
+    badgeAr: "الأساسيات 🌟",
+    ruleTitleAr: "كل صف يجب أن يضم كل الأرقام دون أي تكرار",
+    summaryAr: "في شبكة 4×4 براعم، كل صف يمتد أفقياً يجب أن يحتوي على الأرقام (1، 2، 3، 4).",
+    goalAr: "انظر إلى الصف الأول: الأرقام [1, 2, 4] موجودة بالفعل. انقر على الخلية الشاغرة واختر الرقم المفقود!",
+    size: 4,
+    initialGrid: [
+      [1, 2, 0, 4],
+      [3, 4, 1, 2],
+      [2, 1, 4, 3],
+      [4, 3, 2, 1],
+    ],
+    targetCell: { row: 0, col: 2 },
+    correctVal: 3,
+    highlightRows: [0],
+    hintExplanationAr: "الصف الأول يحتوي على 1 و 2 و 4. الرقم الوحيد الناقص ليكتمل الصف هو (3)!",
+    celebrationAr: "رائع جداً! أتقنت قاعدة الصف: لا يتكرر أي رقم وكل الأرقام تحضر كاملة!",
+  },
+  {
+    id: 2,
+    titleAr: "الدرس 2: قاعدة العمود الرأسية (Column Rule)",
+    badgeAr: "الأعمدة ↕️",
+    ruleTitleAr: "كل عمود رأسي يمتد من الأعلى للأسفل يضم جميع الأرقام",
+    summaryAr: "العمود مثل الصف تماماً، لا يقبل تكرار أي رقم ويجب أن يحتوي على جميع أرقام الشبكة.",
+    goalAr: "انظر إلى العمود الثاني: الأرقام الموجودة هي [2, 3, 1]. ما هو الرقم الناقص لإكمال العمود؟",
+    size: 4,
+    initialGrid: [
+      [3, 2, 1, 4],
+      [1, 3, 4, 2],
+      [4, 0, 2, 1],
+      [2, 1, 3, 4],
+    ],
+    targetCell: { row: 2, col: 1 },
+    correctVal: 4,
+    highlightCols: [1],
+    hintExplanationAr: "العمود الثاني فيه 2 و 3 و 1. الرقم الوحيد المتبقي ليكتمل العمود هو (4)!",
+    celebrationAr: "بطل حقيقي! الآن أصبحت تعرف كيف تكتشف الرقم الناقص في أي عمود رأسي!",
+  },
+  {
+    id: 3,
+    titleAr: "الدرس 3: قاعدة المربع الفرعي (2×2 Box)",
+    badgeAr: "المربعات 📦",
+    ruleTitleAr: "المربعات المحددة بحدود سميكة لا تقبل تكرار أي رقم",
+    summaryAr: "الشبكة مقسمة إلى صناديق 2×2، وكل صندوق يعتبر رقعة مغلقة تضم الأرقام كاملة.",
+    goalAr: "انظر إلى المربع العلوي الأيمن: الأرقام [1, 4, 2] موجودة بداخله. اختر الرقم الوحيد الناقص في هذا الصندوق!",
+    size: 4,
+    initialGrid: [
+      [2, 4, 1, 0],
+      [1, 3, 4, 2],
+      [4, 2, 3, 1],
+      [3, 1, 2, 4],
+    ],
+    targetCell: { row: 0, col: 3 },
+    correctVal: 3,
+    highlightBox: { startRow: 0, startCol: 2, endRow: 1, endCol: 3 },
+    hintExplanationAr: "الصندوق 2×2 يحتوي على 1 و 4 و 2. الرقم الوحيد الناقص لإكمال الصندوق هو (3)!",
+    celebrationAr: "ممتاز يا عبقري! قاعدة المربعات الفرعية هي سر قوة محترفي السودوكو!",
+  },
+  {
+    id: 4,
+    titleAr: "الدرس 4: الحصر والمسح المتقاطع (Cross-Hatching)",
+    badgeAr: "تكتيك المحترفين ⚡",
+    ruleTitleAr: "مسح الصفوف والأعمدة لحصر مكان الرقم الوحيد في الصندوق",
+    summaryAr: "عندما يكون هناك رقمان في صفين متجاورين، فإنهما يغلقان مساراتهما ويتركان خلية واحدة فقط للرقم في الصندوق المقابل.",
+    goalAr: "نبحث عن مكان الرقم (1) في المربع السفلي الأيمن. الصفوف المجاورة تغلق مسارات 1، فما هي الخلية الصحيحة؟",
+    size: 4,
+    initialGrid: [
+      [1, 3, 4, 2],
+      [4, 2, 3, 1],
+      [3, 1, 2, 4],
+      [2, 4, 0, 3],
+    ],
+    targetCell: { row: 3, col: 2 },
+    correctVal: 1,
+    highlightRows: [3],
+    highlightCols: [2],
+    highlightBox: { startRow: 2, startCol: 2, endRow: 3, endCol: 3 },
+    hintExplanationAr: "في الصف الأخير وفي المربع السفلي الأيمن، الرقم الوحيد المتبقي لإتمام اللوحة هو (1)!",
+    celebrationAr: "مذهل! أتقنت استراتيجية الحصر والمسح بالليزر كأبطال المسابقات الدولية!",
+  },
+  {
+    id: 5,
+    titleAr: "الدرس 5: الخلية الوحيدة المكشوفة (Naked Single)",
+    badgeAr: "الاستنتاج الخارق 🧠",
+    ruleTitleAr: "استبعاد أرقام الصف والعمود والمربع ليتبقى رقم حتمي واحد",
+    summaryAr: "عندما تتقاطع قيود الصف والعمود والمربع على خلية واحدة وتستبعد كل الأرقام ما عدا رقماً واحداً، فهذا هو الحل المؤكد.",
+    goalAr: "الخلية المستهدفة يتقاطع معها الرقم 1 و 3 و 4 من الصف والمربع. ما هو الرقم الوحيد الممكن؟",
+    size: 4,
+    initialGrid: [
+      [4, 1, 3, 2],
+      [2, 3, 1, 4],
+      [3, 4, 2, 1],
+      [1, 0, 4, 3],
+    ],
+    targetCell: { row: 3, col: 1 },
+    correctVal: 2,
+    highlightRows: [3],
+    highlightCols: [1],
+    highlightBox: { startRow: 2, startCol: 0, endRow: 3, endCol: 1 },
+    hintExplanationAr: "الصف الرابع فيه 1 و 4 و 3. الرقم الوحيد الذي يمكن وضعه هو (2)!",
+    celebrationAr: "عبقرية مطلقة! أصبحت تملك كل مهارات حل السودوكو من الصفر إلى قمة الاحتراف!",
+  },
+];
 
 // 4-Stage Academy Lessons
 export interface SudokuLesson {
