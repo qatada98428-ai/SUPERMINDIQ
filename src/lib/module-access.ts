@@ -55,17 +55,17 @@ export function checkModuleAccess(
 
   const isTrainer = isAdmin || userRole === "trainer";
 
-  // 1. Mental Arithmetic: Open to everyone
-  if (moduleId === "mental-arithmetic") {
+  // 1. Open Modules: Mental Arithmetic & Memory & Focus (Free for everyone)
+  if (moduleId === "mental-arithmetic" || moduleId === "memory-focus") {
     return {
       status: "open",
       isAccessible: true,
-      badgeAr: "متاح للجميع 🌟",
-      badgeEn: "Open to All 🌟",
+      badgeAr: "متاح مجاناً للجميع 🌟",
+      badgeEn: "Free for All 🌟",
       badgeTone: "green",
-      statusTextAr: "متاح لجميع الطلاب والمدربين",
-      statusTextEn: "Open to all students and trainers",
-      requiresRoleTextAr: "متاح للجميع",
+      statusTextAr: "متاح مجاناً لجميع الطلاب والمدربين",
+      statusTextEn: "Free for all students and trainers",
+      requiresRoleTextAr: "متاح للجميع مجاناً",
     };
   }
 

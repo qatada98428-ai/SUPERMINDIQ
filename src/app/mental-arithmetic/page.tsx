@@ -586,7 +586,56 @@ export default function MentalArithmeticPage() {
               </div>
             )}
 
-            {/* 2. أسرار الرياضيات */}
+            {/* 2. الذاكرة والتركيز الفائق (مفتوح ومتاح مجاناً للجميع) */}
+            {(hubCategory === "all" || hubCategory === "tech" || hubCategory === "strategy") && (
+              <div className="clay-card !p-5 sm:!p-6 bg-gradient-to-br from-white via-purple-50/50 to-indigo-50/70 dark:from-[#1E1B3E] dark:via-[#261D46] dark:to-[#1B1432] border-2 border-purple-500/40 dark:border-purple-500/50 rounded-[2.2rem] shadow-xl flex flex-col justify-between space-y-4 hover:scale-[1.02] transition-all group">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-600 via-indigo-600 to-violet-700 text-white flex items-center justify-center text-3xl shadow-lg border border-white/40 group-hover:scale-110 transition-transform">
+                      🎯
+                    </span>
+                    <span className="text-xs font-black px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                      {memAccess.badgeAr}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-[#261E58] dark:text-white leading-snug">
+                      الذاكرة والتركيز الفائق
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed mt-1.5">
+                      تدريبات علمية لتنمية الذاكرة البصرية المكانية والسمعية، اختبار الشمبانزي للتسلسل اللحظي، واختبار ستروب وسرعة الاستجابة.
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-white/70 dark:bg-black/20 border border-purple-200/60 dark:border-purple-900/50 space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>الذاكرة المكانية واختبار الشمبانزي للتسلسل</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>الذاكرة السمعية وصدى الأرقام بالصوت الحي</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500">✔</span>
+                      <span>مخطط رادار القدرات المعرفية وسرعة الرد بالمللي ثانية</span>
+                    </div>
+                  </div>
+                </div>
+
+                <Link
+                  href="/memory-focus"
+                  onClick={() => playFx("pop")}
+                  className="clay-btn-purple w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-lg !rounded-2xl group-hover:shadow-purple-500/30"
+                >
+                  <span>دخول الذاكرة والتركيز الفائق</span>
+                  <span className="text-base">⬅️</span>
+                </Link>
+              </div>
+            )}
+
+            {/* 3. أسرار الرياضيات */}
             {(hubCategory === "all" || hubCategory === "math") && (
               <div className="clay-card !p-5 sm:!p-6 bg-gradient-to-br from-white via-amber-50/50 to-yellow-50/70 dark:from-[#1E1B3E] dark:via-[#2E243F] dark:to-[#1B142D] border-2 border-amber-400/50 dark:border-amber-600/50 rounded-[2.2rem] shadow-xl flex flex-col justify-between space-y-4 hover:scale-[1.02] transition-all group">
                 <div className="space-y-3">
@@ -931,65 +980,6 @@ export default function MentalArithmeticPage() {
                 ) : (
                   <Link
                     href="/brain-games"
-                    onClick={() => playFx("pop")}
-                    className="clay-pill bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-sm !rounded-2xl"
-                  >
-                    <span>قريباً في التحديث القادم ⏳</span>
-                  </Link>
-                )}
-              </div>
-            )}
-
-            {/* 8. الذاكرة والتركيز */}
-            {(hubCategory === "all" || hubCategory === "tech") && (
-              <div className="clay-card !p-5 sm:!p-6 bg-gradient-to-br from-white via-purple-50/50 to-indigo-50/70 dark:from-[#1E1B3E] dark:via-[#261D46] dark:to-[#1B1432] border-2 border-purple-500/40 dark:border-purple-500/50 rounded-[2.2rem] shadow-xl flex flex-col justify-between space-y-4 hover:scale-[1.02] transition-all group">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-600 via-indigo-600 to-violet-700 text-white flex items-center justify-center text-3xl shadow-lg border border-white/40 group-hover:scale-110 transition-transform">
-                      🎯
-                    </span>
-                    <span className="text-xs font-black px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-                      {memAccess.badgeAr}
-                    </span>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg sm:text-xl font-black text-[#261E58] dark:text-white leading-snug">
-                      الذاكرة والتركيز الفائق
-                    </h3>
-                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed mt-1.5">
-                      تدريبات علمية لتنمية الذاكرة البصرية المكانية والسمعية، اختبار الشمبانزي للتسلسل اللحظي، واختبار ستروب وسرعة الاستجابة.
-                    </p>
-                  </div>
-
-                  <div className="p-3 rounded-2xl bg-white/70 dark:bg-black/20 border border-purple-200/60 dark:border-purple-900/50 space-y-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
-                    <div className="flex items-center gap-2">
-                      <span className="text-amber-500">✔</span>
-                      <span>الذاكرة المكانية واختبار الشمبانزي للتسلسل</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-amber-500">✔</span>
-                      <span>الذاكرة السمعية وصدى الأرقام بالصوت الحي</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-amber-500">✔</span>
-                      <span>مخطط رادار القدرات المعرفية وسرعة الرد بالمللي ثانية</span>
-                    </div>
-                  </div>
-                </div>
-
-                {memAccess.isAccessible ? (
-                  <Link
-                    href="/memory-focus"
-                    onClick={() => playFx("pop")}
-                    className="clay-btn-purple w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-lg !rounded-2xl group-hover:shadow-purple-500/30"
-                  >
-                    <span>دخول الذاكرة والتركيز (وضع الأدمن)</span>
-                    <span className="text-base">⬅️</span>
-                  </Link>
-                ) : (
-                  <Link
-                    href="/memory-focus"
                     onClick={() => playFx("pop")}
                     className="clay-pill bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 w-full py-3.5 px-4 font-black text-sm flex items-center justify-center gap-2 shadow-sm !rounded-2xl"
                   >
