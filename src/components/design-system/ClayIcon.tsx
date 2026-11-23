@@ -690,50 +690,65 @@ export default function ClayIcon({
         return (
           <svg viewBox="0 0 64 64" className={sz.svg} fill="none" aria-hidden="true">
             <defs>
-              <linearGradient id={`${uid}-rbT`} x1="0" y1="0" x2="1" y2="1">
+              <linearGradient id={`${uid}-rbY`} x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0%" stopColor="#FEF08A" />
-                <stop offset="100%" stopColor="#F59E0B" />
+                <stop offset="100%" stopColor="#EAB308" />
               </linearGradient>
-              <linearGradient id={`${uid}-rbL`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#60A5FA" />
-                <stop offset="100%" stopColor="#2563EB" />
+              <linearGradient id={`${uid}-rbG`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#4ADE80" />
+                <stop offset="100%" stopColor="#15803D" />
               </linearGradient>
               <linearGradient id={`${uid}-rbR`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#F87171" />
-                <stop offset="100%" stopColor="#DC2626" />
+                <stop offset="100%" stopColor="#B91C1C" />
               </linearGradient>
-              <linearGradient id={`${uid}-rbG`} x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#4ADE80" />
-                <stop offset="100%" stopColor="#16A34A" />
+              <linearGradient id={`${uid}-rbB`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#60A5FA" />
+                <stop offset="100%" stopColor="#1D4ED8" />
               </linearGradient>
               <linearGradient id={`${uid}-rbO`} x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0%" stopColor="#FB923C" />
-                <stop offset="100%" stopColor="#EA580C" />
+                <stop offset="100%" stopColor="#C2410C" />
               </linearGradient>
             </defs>
-            {/* Top Face (Yellow / Green / Orange grid) */}
-            <path d="M32 8L50 18.5 32 29 14 18.5 32 8z" fill="#1E1B3A" />
-            <path d="M32 9.5L43 16 37 19.5 26 13 32 9.5z" fill={`url(#${uid}-rbT)`} />
-            <path d="M25 13.5L36 20 32 22.5 21 16 25 13.5z" fill={`url(#${uid}-rbG)`} />
-            <path d="M38 19.5L49 16 45 22.5 34 26 38 19.5z" fill={`url(#${uid}-rbO)`} />
+            {/* 3D Isometric Base Cube Body in Carbon Black */}
+            <path d="M32 7.5L53.5 19.8V44.2L32 56.5L10.5 44.2V19.8L32 7.5Z" fill="#18142A" stroke="#251E45" strokeWidth="1.5" />
 
-            {/* Left Face (Blue tones) */}
-            <path d="M14 19.5L31 29.5V52L14 42V19.5z" fill="#1E1B3A" />
-            <path d="M15.5 21L21.5 24.5V31L15.5 27.5V21z" fill={`url(#${uid}-rbL)`} />
-            <path d="M23 25.5L29.5 29V35.5L23 32V25.5z" fill={`url(#${uid}-rbT)`} />
-            <path d="M15.5 29L21.5 32.5V39L15.5 35.5V29z" fill={`url(#${uid}-rbG)`} />
-            <path d="M23 33.5L29.5 37V43.5L23 40V33.5z" fill={`url(#${uid}-rbL)`} />
-            <path d="M15.5 37L21.5 40.5V47L15.5 43.5V37z" fill={`url(#${uid}-rbO)`} />
-            <path d="M23 41.5L29.5 45V51.5L23 48V41.5z" fill={`url(#${uid}-rbT)`} />
+            {/* TOP FACE (9 Yellow/Gold Tiles) */}
+            <path d="M32 8.5L25.8 12L32 15.5L38.2 12Z" fill={`url(#${uid}-rbY)`} />
+            <path d="M39 12.5L32.8 16L39 19.5L45.2 16Z" fill={`url(#${uid}-rbY)`} />
+            <path d="M46 16.5L39.8 20L46 23.5L52.2 20Z" fill={`url(#${uid}-rbY)`} />
+            <path d="M25 12.5L18.8 16L25 19.5L31.2 16Z" fill={`url(#${uid}-rbY)`} />
+            <path d="M32 16.5L25.8 20L32 23.5L38.2 20Z" fill={`url(#${uid}-rbY)`} />
+            <path d="M39 20.5L32.8 24L39 27.5L45.2 24Z" fill={`url(#${uid}-rbY)`} />
+            <path d="M18 16.5L11.8 20L18 23.5L24.2 20Z" fill={`url(#${uid}-rbY)`} />
+            <path d="M25 20.5L18.8 24L25 27.5L31.2 24Z" fill={`url(#${uid}-rbY)`} />
+            <path d="M32 24.5L25.8 28L32 31.5L38.2 28Z" fill={`url(#${uid}-rbY)`} />
 
-            {/* Right Face (Red / White tones) */}
-            <path d="M33 29.5L50 19.5V42L33 52V29.5z" fill="#1E1B3A" />
-            <path d="M34.5 29L41 25.5V32L34.5 35.5V29z" fill={`url(#${uid}-rbR)`} />
-            <path d="M42.5 24.5L48.5 21V27.5L42.5 31V24.5z" fill="#FFF" />
-            <path d="M34.5 37L41 33.5V40L34.5 43.5V37z" fill={`url(#${uid}-rbR)`} />
-            <path d="M42.5 32.5L48.5 29V35.5L42.5 39V32.5z" fill={`url(#${uid}-rbT)`} />
-            <path d="M34.5 45L41 41.5V48L34.5 51.5V45z" fill="#FFF" />
-            <path d="M42.5 40.5L48.5 37V43.5L42.5 47V40.5z" fill={`url(#${uid}-rbR)`} />
+            {/* FRONT-LEFT FACE (9 Green Tiles) */}
+            <path d="M31.6 32.2L25.4 28.7L25.4 35.8L31.6 39.3Z" fill={`url(#${uid}-rbG)`} />
+            <path d="M31.6 40.2L25.4 36.7L25.4 43.8L31.6 47.3Z" fill={`url(#${uid}-rbG)`} />
+            <path d="M31.6 48.2L25.4 44.7L25.4 51.8L31.6 55.3Z" fill={`url(#${uid}-rbG)`} />
+            <path d="M24.6 28.2L18.4 24.7L18.4 31.8L24.6 35.3Z" fill={`url(#${uid}-rbG)`} />
+            <path d="M24.6 36.2L18.4 32.7L18.4 39.8L24.6 43.3Z" fill={`url(#${uid}-rbG)`} />
+            <path d="M24.6 44.2L18.4 40.7L18.4 47.8L24.6 51.3Z" fill={`url(#${uid}-rbG)`} />
+            <path d="M17.6 24.2L11.4 20.7L11.4 27.8L17.6 31.3Z" fill={`url(#${uid}-rbG)`} />
+            <path d="M17.6 32.2L11.4 28.7L11.4 35.8L17.6 39.3Z" fill={`url(#${uid}-rbG)`} />
+            <path d="M17.6 40.2L11.4 36.7L11.4 43.8L17.6 47.3Z" fill={`url(#${uid}-rbG)`} />
+
+            {/* FRONT-RIGHT FACE (9 Red Tiles) */}
+            <path d="M32.4 32.2L38.6 28.7L38.6 35.8L32.4 39.3Z" fill={`url(#${uid}-rbR)`} />
+            <path d="M32.4 40.2L38.6 36.7L38.6 43.8L32.4 47.3Z" fill={`url(#${uid}-rbR)`} />
+            <path d="M32.4 48.2L38.6 44.7L38.6 51.8L32.4 55.3Z" fill={`url(#${uid}-rbR)`} />
+            <path d="M39.4 28.2L45.6 24.7L45.6 31.8L39.4 35.3Z" fill={`url(#${uid}-rbR)`} />
+            <path d="M39.4 36.2L45.6 32.7L45.6 39.8L39.4 43.3Z" fill={`url(#${uid}-rbR)`} />
+            <path d="M39.4 44.2L45.6 40.7L45.6 47.8L39.4 51.3Z" fill={`url(#${uid}-rbR)`} />
+            <path d="M46.4 24.2L52.6 20.7L52.6 27.8L46.4 31.3Z" fill={`url(#${uid}-rbR)`} />
+            <path d="M46.4 32.2L52.6 28.7L52.6 35.8L46.4 39.3Z" fill={`url(#${uid}-rbR)`} />
+            <path d="M46.4 40.2L52.6 36.7L52.6 43.8L46.4 47.3Z" fill={`url(#${uid}-rbR)`} />
+
+            {/* Subtle 3D Glass / Clay Specular Highlight */}
+            <path d="M32 9L51 20L32 30.5L13 20L32 9Z" fill="#FFF" fillOpacity="0.12" />
           </svg>
         );
 

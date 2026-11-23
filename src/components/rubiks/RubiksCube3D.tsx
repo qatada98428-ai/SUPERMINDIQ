@@ -186,7 +186,7 @@ export default function RubiksCube3D({
             </span>
           ) : (
             <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300/60">
-              قيد التدريب والتحدي 🧊
+              قيد التدريب والتحدي 🧩
             </span>
           )}
         </div>

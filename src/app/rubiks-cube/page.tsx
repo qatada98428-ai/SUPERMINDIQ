@@ -28,6 +28,7 @@ import {
 } from "@/lib/rubiks/rubiks-engine";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import ModuleLockedGate from "@/components/common/ModuleLockedGate";
+import ClayIcon from "@/components/design-system/ClayIcon";
 
 type RubiksTab = "academy" | "timer" | "algorithms" | "sandbox";
 
@@ -238,13 +239,13 @@ export default function RubiksCubePage() {
       : CFOP_LIBRARY.filter((a) => a.category === algoCategory);
 
   return (
-    <ModuleLockedGate moduleId="rubiks-cube" moduleNameAr="مكعب روبيك" moduleIcon="🧊">
+    <ModuleLockedGate moduleId="rubiks-cube" moduleNameAr="مكعب روبيك" moduleIcon="🧩">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8" dir="rtl">
       {/* Top Banner matching Super Mind 3D Clay Aesthetic */}
       <div className="clay-banner-lavender relative overflow-hidden p-5 sm:p-7 text-white rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4 text-center md:text-start">
-          <div className="w-14 h-14 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center text-3xl shrink-0 shadow-sm">
-            🧊
+          <div className="w-14 h-14 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center shrink-0 shadow-sm p-1.5">
+            <ClayIcon name="rubiks" size="lg" tone="none" />
           </div>
           <div>
             <div className="flex items-center gap-2 justify-center md:justify-start">
