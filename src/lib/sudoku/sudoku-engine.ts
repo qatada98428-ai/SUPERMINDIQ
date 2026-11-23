@@ -2,10 +2,13 @@
  * SUPER MIND IQ - Sudoku Engine
  * Supports 4x4 (Kids Mini), 6x6 (Midi), and 9x9 (Classic)
  * Features:
- * - Puzzle generation & validation
- * - Pencil notes candidates
- * - Smart reasoning hints (Naked Single, Hidden Single)
- * - 4-stage educational curriculum
+ * - Dynamic random puzzle generator for unlimited unique boards
+ * - Classic and Diagonal (Sudoku X) rules
+ * - Real-time conflict detection (Row, Column, Box, Diagonal)
+ * - Remaining digits counter
+ * - Auto-cleaning candidate pencil notes
+ * - Visual explanatory Smart Tutor (Naked Single, Cross-Hatching)
+ * - 5-Stage interactive guided lessons
  */
 
 export type SudokuSize = 4 | 6 | 9;
@@ -23,7 +26,8 @@ export interface SudokuPuzzle {
   size: SudokuSize;
   initialGrid: number[][];
   solution: number[][];
-  difficulty: "easy" | "medium" | "hard";
+  difficulty: "easy" | "medium";
+  isDiagonal?: boolean;
 }
 
 // Box dimensions based on size
@@ -33,13 +37,24 @@ export function getBoxDimensions(size: SudokuSize): { boxRows: number; boxCols: 
   return { boxRows: 3, boxCols: 3 };
 }
 
-// Check if placement is valid
+// Helper: Shuffle array in place
+export function shuffleArray<T>(arr: T[]): T[] {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+// Check if placement is valid (including optional diagonal X rule)
 export function isValidPlacement(
   grid: number[][],
   row: number,
   col: number,
   val: number,
-  size: SudokuSize
+  size: SudokuSize,
+  isDiagonal: boolean = false
 ): boolean {
   if (val === 0) return true;
 
@@ -68,11 +83,30 @@ export function isValidPlacement(
     }
   }
 
+  // Check Diagonals in Sudoku X mode
+  if (isDiagonal) {
+    if (row === col) {
+      for (let i = 0; i < size; i++) {
+        if (i !== row && grid[i][i] === val) return false;
+      }
+    }
+    if (row + col === size - 1) {
+      for (let i = 0; i < size; i++) {
+        const ci = size - 1 - i;
+        if (i !== row && grid[i][ci] === val) return false;
+      }
+    }
+  }
+
   return true;
 }
 
 // Backtracking solver
-export function solveSudoku(grid: number[][], size: SudokuSize): number[][] | null {
+export function solveSudoku(
+  grid: number[][],
+  size: SudokuSize,
+  isDiagonal: boolean = false
+): number[][] | null {
   const copy = grid.map((r) => [...r]);
 
   function solve(): boolean {
@@ -81,7 +115,7 @@ export function solveSudoku(grid: number[][], size: SudokuSize): number[][] | nu
         if (copy[r][c] === 0) {
           const numbers = Array.from({ length: size }, (_, i) => i + 1);
           for (const num of numbers) {
-            if (isValidPlacement(copy, r, c, num, size)) {
+            if (isValidPlacement(copy, r, c, num, size, isDiagonal)) {
               copy[r][c] = num;
               if (solve()) return true;
               copy[r][c] = 0;
@@ -98,7 +132,104 @@ export function solveSudoku(grid: number[][], size: SudokuSize): number[][] | nu
   return null;
 }
 
-// Preset verified puzzles for seamless 4x4, 6x6, and 9x9 play
+// Generate a random valid full solution grid
+export function generateRandomSolvedGrid(
+  size: SudokuSize,
+  isDiagonal: boolean = false
+): number[][] {
+  const grid: number[][] = Array.from({ length: size }, () => Array(size).fill(0));
+
+  // If size === 9 and not diagonal, pre-fill independent diagonal boxes for speed
+  if (size === 9 && !isDiagonal) {
+    for (let b = 0; b < 9; b += 3) {
+      const nums = shuffleArray([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+      let idx = 0;
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          grid[b + r][b + c] = nums[idx++];
+        }
+      }
+    }
+  } else if (size === 4 && !isDiagonal) {
+    const nums1 = shuffleArray([1, 2, 3, 4]);
+    const nums2 = shuffleArray([1, 2, 3, 4]);
+    grid[0][0] = nums1[0]; grid[0][1] = nums1[1];
+    grid[1][0] = nums1[2]; grid[1][1] = nums1[3];
+    grid[2][2] = nums2[0]; grid[2][3] = nums2[1];
+    grid[3][2] = nums2[2]; grid[3][3] = nums2[3];
+  }
+
+  function fill(): boolean {
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (grid[r][c] === 0) {
+          const numbers = shuffleArray(Array.from({ length: size }, (_, i) => i + 1));
+          for (const num of numbers) {
+            if (isValidPlacement(grid, r, c, num, size, isDiagonal)) {
+              grid[r][c] = num;
+              if (fill()) return true;
+              grid[r][c] = 0;
+            }
+          }
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  fill();
+  return grid;
+}
+
+// Generate dynamic random puzzle by removing clues based on difficulty
+export function generateDynamicPuzzle(
+  size: SudokuSize,
+  difficulty: "easy" | "medium",
+  isDiagonal: boolean = false
+): SudokuPuzzle {
+  const solution = generateRandomSolvedGrid(size, isDiagonal);
+  const initialGrid = solution.map((r) => [...r]);
+
+  // Determine number of clues to keep
+  let cluesToKeep: number;
+  if (size === 4) {
+    cluesToKeep = difficulty === "easy" ? 9 : 6;
+  } else if (size === 6) {
+    cluesToKeep = difficulty === "easy" ? 18 : 14;
+  } else {
+    // 9x9
+    cluesToKeep = difficulty === "easy" ? 38 : 30;
+  }
+
+  const totalCells = size * size;
+  const toRemove = totalCells - cluesToKeep;
+
+  const positions: { r: number; c: number }[] = [];
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      positions.push({ r, c });
+    }
+  }
+  const shuffledPositions = shuffleArray(positions);
+
+  let removed = 0;
+  for (const pos of shuffledPositions) {
+    if (removed >= toRemove) break;
+    initialGrid[pos.r][pos.c] = 0;
+    removed++;
+  }
+
+  return {
+    size,
+    difficulty,
+    initialGrid,
+    solution,
+    isDiagonal,
+  };
+}
+
+// Preset verified puzzles (as fallback or instant start)
 export const PRESET_PUZZLES: Record<string, SudokuPuzzle> = {
   "4x4-easy": {
     size: 4,
@@ -226,11 +357,11 @@ export const PRESET_PUZZLES: Record<string, SudokuPuzzle> = {
   },
 };
 
-// Conflict Detection for real-time visual learning feedback
+// Conflict detection for real-time visual alerts (row, col, box, diagonal)
 export interface SudokuConflict {
   row: number;
   col: number;
-  type: "row" | "col" | "box";
+  type: "row" | "col" | "box" | "diagonal";
   conflictingCells: { row: number; col: number }[];
   messageAr: string;
 }
@@ -240,12 +371,13 @@ export function findPlacementConflicts(
   row: number,
   col: number,
   val: number,
-  size: SudokuSize
+  size: SudokuSize,
+  isDiagonal: boolean = false
 ): SudokuConflict | null {
   if (val === 0) return null;
 
   const conflictingCells: { row: number; col: number }[] = [];
-  let conflictType: "row" | "col" | "box" = "row";
+  let conflictType: "row" | "col" | "box" | "diagonal" = "row";
 
   // Check row
   for (let c = 0; c < size; c++) {
@@ -280,9 +412,36 @@ export function findPlacementConflicts(
     }
   }
 
+  // Check diagonals in Sudoku X mode
+  if (isDiagonal) {
+    if (row === col) {
+      for (let i = 0; i < size; i++) {
+        if (i !== row && grid[i][i] === val) {
+          if (!conflictingCells.some((cell) => cell.row === i && cell.col === i)) {
+            conflictingCells.push({ row: i, col: i });
+            conflictType = "diagonal";
+          }
+        }
+      }
+    }
+    if (row + col === size - 1) {
+      for (let i = 0; i < size; i++) {
+        const ci = size - 1 - i;
+        if (i !== row && grid[i][ci] === val) {
+          if (!conflictingCells.some((cell) => cell.row === i && cell.col === ci)) {
+            conflictingCells.push({ row: i, col: ci });
+            conflictType = "diagonal";
+          }
+        }
+      }
+    }
+  }
+
   if (conflictingCells.length > 0) {
     const messageAr =
-      conflictType === "row"
+      conflictType === "diagonal"
+        ? `تعارض في سودوكو X! الرقم (${val}) مكرر في نفس القطر`
+        : conflictType === "row"
         ? `تعارض! الرقم (${val}) مكرر بالفعل في نفس الصف (الصف ${row + 1})`
         : conflictType === "col"
         ? `تعارض! الرقم (${val}) مكرر بالفعل في نفس العمود (العمود ${col + 1})`
@@ -320,13 +479,14 @@ export function getRemainingDigitCounts(
   return counts;
 }
 
-// Auto-clean candidate notes in row, column, and box
+// Auto-clean candidate notes in row, column, box, and diagonal
 export function removeCandidateFromPeers(
   notes: Record<string, number[]>,
   row: number,
   col: number,
   val: number,
-  size: SudokuSize
+  size: SudokuSize,
+  isDiagonal: boolean = false
 ): Record<string, number[]> {
   const nextNotes = { ...notes };
   const { boxRows, boxCols } = getBoxDimensions(size);
@@ -355,10 +515,29 @@ export function removeCandidateFromPeers(
     }
   }
 
+  if (isDiagonal) {
+    if (row === col) {
+      for (let i = 0; i < size; i++) {
+        const diagKey = `${i}-${i}`;
+        if (nextNotes[diagKey]) {
+          nextNotes[diagKey] = nextNotes[diagKey].filter((n) => n !== val);
+        }
+      }
+    }
+    if (row + col === size - 1) {
+      for (let i = 0; i < size; i++) {
+        const diagKey = `${i}-${size - 1 - i}`;
+        if (nextNotes[diagKey]) {
+          nextNotes[diagKey] = nextNotes[diagKey].filter((n) => n !== val);
+        }
+      }
+    }
+  }
+
   return nextNotes;
 }
 
-// Smart Hint calculation with full visual teaching context
+// Smart Hint calculation with visual teaching context
 export interface SudokuHint {
   row: number;
   col: number;
@@ -372,7 +551,12 @@ export interface SudokuHint {
   highlightBox?: { startRow: number; startCol: number; endRow: number; endCol: number };
 }
 
-export function findSmartHint(grid: number[][], solution: number[][], size: SudokuSize): SudokuHint | null {
+export function findSmartHint(
+  grid: number[][],
+  solution: number[][],
+  size: SudokuSize,
+  isDiagonal: boolean = false
+): SudokuHint | null {
   const { boxRows, boxCols } = getBoxDimensions(size);
 
   // 1. Search for Naked Single (cell with only 1 candidate left)
@@ -381,7 +565,7 @@ export function findSmartHint(grid: number[][], solution: number[][], size: Sudo
       if (grid[r][c] === 0) {
         const candidates: number[] = [];
         for (let num = 1; num <= size; num++) {
-          if (isValidPlacement(grid, r, c, num, size)) {
+          if (isValidPlacement(grid, r, c, num, size, isDiagonal)) {
             candidates.push(num);
           }
         }
@@ -396,7 +580,7 @@ export function findSmartHint(grid: number[][], solution: number[][], size: Sudo
             val,
             techniqueAr: "الخلية الوحيدة المكشوفة (Naked Single)",
             techniqueEn: "Naked Single",
-            explanationAr: `انظر للخلية (${r + 1}, ${c + 1}): جميع الأرقام الأخرى محجوزة في نفس الصف والعمود والمربع، ولم يتبقَ سوى الرقم (${val}) كخيار وحيد ممكن!`,
+            explanationAr: `انظر للخلية (${r + 1}, ${c + 1}): جميع الأرقام الأخرى محجوزة في نفس الصف والعمود والمربع${isDiagonal ? " والقطر" : ""}، ولم يتبقَ سوى الرقم (${val}) كخيار وحيد ممكن!`,
             explanationEn: `Cell (${r + 1}, ${c + 1}) has only one legal candidate: (${val}).`,
             highlightRows: [r],
             highlightCols: [c],
@@ -433,7 +617,7 @@ export function findSmartHint(grid: number[][], solution: number[][], size: Sudo
             for (let c = 0; c < boxCols; c++) {
               const gr = bRow + r;
               const gc = bCol + c;
-              if (grid[gr][gc] === 0 && isValidPlacement(grid, gr, gc, num, size)) {
+              if (grid[gr][gc] === 0 && isValidPlacement(grid, gr, gc, num, size, isDiagonal)) {
                 validSpots.push({ r: gr, c: gc });
               }
             }
@@ -612,6 +796,56 @@ export const INTERACTIVE_SUDOKU_LESSONS: InteractiveSudokuLesson[] = [
   },
 ];
 
+// Official Sudoku & Sudoku X Rules Reference Guide
+export interface SudokuRuleGuide {
+  id: string;
+  titleAr: string;
+  icon: string;
+  descriptionAr: string;
+  examplesAr: string[];
+}
+
+export const SUDOKU_RULES_GUIDE: SudokuRuleGuide[] = [
+  {
+    id: "row",
+    titleAr: "قاعدة الصفوف (Row Rule)",
+    icon: "↔️",
+    descriptionAr: "كل صف يمتد أفقياً من اليمين إلى اليسار يجب أن يحتوي على جميع أرقام الشبكة دون أي تكرار لأي رقم إطلاقاً.",
+    examplesAr: [
+      "في شبكة 4×4: الأرقام [1, 2, 3, 4] تظهر كلها مرة واحدة في الصف.",
+      "في شبكة 9×9: الأرقام من [1 إلى 9] تظهر كاملة في كل صف.",
+    ],
+  },
+  {
+    id: "col",
+    titleAr: "قاعدة الأعمدة (Column Rule)",
+    icon: "↕️",
+    descriptionAr: "كل عمود رأسي يمتد من الأعلى للأسفل يجب أن يحتوي على جميع الأرقام دون أن يتكرر أي رقم مرتين في نفس العمود.",
+    examplesAr: [
+      "إذا كان الرقم 5 موجوداً في الخلية العلوية من العمود، فلا يمكن وضعه في أي خلية أخرى في نفس العمود.",
+    ],
+  },
+  {
+    id: "box",
+    titleAr: "قاعدة الصناديق والمربعات (Box Rule)",
+    icon: "📦",
+    descriptionAr: "الشبكة مقسمة بحدود سميكة إلى صناديق مستقلة (2×2 في الميني أو 3×3 في الكلاسيك)، كل صندوق هو رقعة مغلقة تضم كل الأرقام دون تكرار.",
+    examplesAr: [
+      "تظليل المربعات بالتناوب يساعد عينك على حصر الأرقام المفقودة داخل الصندوق بسرعة فائقة.",
+    ],
+  },
+  {
+    id: "diagonal",
+    titleAr: "قاعدة سودوكو إكس القطرية (Sudoku X)",
+    icon: "❌",
+    descriptionAr: "في نمط السودوكو القطرية (Sudoku X)، يضاف شرط رابع استثنائي: القطران الرئيسيان المتقاطعان (الخطان المشكلان لحرف X) يجب ألا يتكرر فيهما أي رقم أبداً!",
+    examplesAr: [
+      "الخلايا الواقعة على القطر المظلل باللون النيلي/الأزرق تخضع لقانون عدم التكرار على امتداد القطر كاملاً.",
+      "تعتبر من أكثر الأنماط متعة وإثارة لرفع مستوى التركيز والذكاء الرياضي.",
+    ],
+  },
+];
+
 // 4-Stage Academy Lessons
 export interface SudokuLesson {
   id: number;
@@ -653,7 +887,7 @@ export const SUDOKU_LESSONS: SudokuLesson[] = [
     id: 2,
     titleAr: "المستوى 2: قاعدة المربعات الفرعية (Boxes)",
     titleEn: "Stage 2: Sub-grid Boxes",
-    summaryAr: "إتقان استراتيجية المربعات المحددة بحدود سميكة.",
+    summaryAr: "إتقان استراتيجية المربعات المحددة بحدود سميكة والتظليل المتباين.",
     summaryEn: "Mastering regional sub-grids partitioned by bold lines.",
     steps: [
       {
@@ -687,7 +921,7 @@ export const SUDOKU_LESSONS: SudokuLesson[] = [
     summaryEn: "World speedcubing and sudoku championship cross-hatching.",
     steps: [
       {
-        ruleAr: "تتبع رقماً محدداً (مثل 9) عبر صفين متجاورين لاستنتاج مكانه الحتمي في المربع الثالث.",
+        ruleAr: "تتبع رقماً محدداً عبر صفين متجاورين لاستنتاج مكانه الحتمي في المربع الثالث.",
         ruleEn: "Track a digit across adjacent rows to deduce its mandatory spot in the third box.",
         tipAr: "انظر دائماً للأرقام الأكثر تكراراً في الشبكة في بداية الحل.",
         tipEn: "Start solving by looking at the most frequent numbers on the board.",

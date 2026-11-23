@@ -17,6 +17,10 @@ import {
   RefreshCw,
   X,
   Check,
+  Dices,
+  Printer,
+  Info,
+  HelpCircle,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
@@ -33,6 +37,8 @@ import {
   removeCandidateFromPeers,
   findSmartHint,
   SudokuHint,
+  generateDynamicPuzzle,
+  SUDOKU_RULES_GUIDE,
   SUDOKU_LESSONS,
   INTERACTIVE_SUDOKU_LESSONS,
   InteractiveSudokuLesson,
@@ -58,9 +64,11 @@ export default function SudokuPage() {
   const [activeTab, setActiveTab] = useState<SudokuTab>("play");
   const [selectedSize, setSelectedSize] = useState<SudokuSize>(4);
   const [difficulty, setDifficulty] = useState<"easy" | "medium">("easy");
+  const [isDiagonalMode, setIsDiagonalMode] = useState<boolean>(false);
 
   // Game board state
   const [grid, setGrid] = useState<number[][]>([]);
+  const [solution, setSolution] = useState<number[][]>([]);
   const [initialMask, setInitialMask] = useState<boolean[][]>([]);
   const [notes, setNotes] = useState<Record<string, number[]>>({});
   const [pencilMode, setPencilMode] = useState<boolean>(false);
@@ -71,8 +79,13 @@ export default function SudokuPage() {
   const [conflictAlert, setConflictAlert] = useState<SudokuConflict | null>(null);
   const [history, setHistory] = useState<MoveHistory[]>([]);
 
-  // Keypad selected number filter (to highlight all occurrences of this digit)
+  // Keypad selected number filter
   const [highlightedDigit, setHighlightedDigit] = useState<number | null>(null);
+
+  // Modals
+  const [showRulesModal, setShowRulesModal] = useState<boolean>(false);
+  const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
+  const [includePrintSolution, setIncludePrintSolution] = useState<boolean>(false);
 
   // Timer
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
@@ -105,46 +118,81 @@ export default function SudokuPage() {
     loadLesson(activeLessonIdx);
   }, [activeLessonIdx, loadLesson]);
 
-  // Load Main Puzzle
-  const loadPuzzle = useCallback((size: SudokuSize, diff: "easy" | "medium") => {
-    let key = `${size}x${size}-${diff}`;
-    if (!PRESET_PUZZLES[key]) key = `${size}x${size}-easy`;
-    if (!PRESET_PUZZLES[key]) key = `${size}x${size}-medium`;
-    if (!PRESET_PUZZLES[key]) key = "4x4-easy";
+  // Load / Generate Dynamic Puzzle
+  const loadPuzzle = useCallback(
+    (size: SudokuSize, diff: "easy" | "medium", diagonal: boolean, usePreset: boolean = false) => {
+      let pz: SudokuPuzzle;
 
-    const pz: SudokuPuzzle = PRESET_PUZZLES[key] || PRESET_PUZZLES["4x4-easy"];
-    const initialG = pz.initialGrid.map((r) => [...r]);
-    const mask = initialG.map((r) => r.map((c) => c !== 0));
+      if (usePreset) {
+        const key = `${size}x${size}-${diff}`;
+        pz = PRESET_PUZZLES[key] || PRESET_PUZZLES["4x4-easy"];
+      } else {
+        // Generate dynamic random unique puzzle
+        pz = generateDynamicPuzzle(size, diff, diagonal);
+      }
 
-    setGrid(initialG);
-    setInitialMask(mask);
-    setNotes({});
-    setSelectedCell(null);
-    setHighlightedDigit(null);
-    setMistakes(0);
-    setIsCompleted(false);
-    setActiveHint(null);
-    setConflictAlert(null);
-    setHistory([]);
-    setTimerSeconds(0);
-    setTimerRunning(true);
-  }, []);
+      const initialG = pz.initialGrid.map((r) => [...r]);
+      const mask = initialG.map((r) => r.map((c) => c !== 0));
+
+      setGrid(initialG);
+      setSolution(pz.solution);
+      setInitialMask(mask);
+      setNotes({});
+      setSelectedCell(null);
+      setHighlightedDigit(null);
+      setMistakes(0);
+      setIsCompleted(false);
+      setActiveHint(null);
+      setConflictAlert(null);
+      setHistory([]);
+      setTimerSeconds(0);
+      setTimerRunning(true);
+    },
+    []
+  );
 
   const handleSizeChange = (newSize: SudokuSize) => {
     playFx("click");
     setSelectedSize(newSize);
-    loadPuzzle(newSize, difficulty);
+    loadPuzzle(newSize, difficulty, isDiagonalMode);
   };
 
   const handleDifficultyChange = (newDiff: "easy" | "medium") => {
     playFx("click");
     setDifficulty(newDiff);
-    loadPuzzle(selectedSize, newDiff);
+    loadPuzzle(selectedSize, newDiff, isDiagonalMode);
+  };
+
+  const handleDiagonalToggle = () => {
+    playFx("bubble");
+    const nextDiagonal = !isDiagonalMode;
+    setIsDiagonalMode(nextDiagonal);
+    loadPuzzle(selectedSize, difficulty, nextDiagonal);
+  };
+
+  const handleNewRandomPuzzle = () => {
+    playFx("bubble");
+    loadPuzzle(selectedSize, difficulty, isDiagonalMode);
+  };
+
+  const handleResetCurrentPuzzle = () => {
+    playFx("click");
+    const resetG = grid.map((r, rIdx) =>
+      r.map((_, cIdx) => (initialMask[rIdx]?.[cIdx] ? grid[rIdx][cIdx] : 0))
+    );
+    setGrid(resetG);
+    setNotes({});
+    setSelectedCell(null);
+    setConflictAlert(null);
+    setActiveHint(null);
+    setHistory([]);
+    setMistakes(0);
+    setTimerSeconds(0);
   };
 
   useEffect(() => {
-    loadPuzzle(selectedSize, difficulty);
-  }, [selectedSize, difficulty, loadPuzzle]);
+    loadPuzzle(selectedSize, difficulty, isDiagonalMode, false);
+  }, [selectedSize, difficulty, isDiagonalMode, loadPuzzle]);
 
   // Timer Interval
   useEffect(() => {
@@ -154,9 +202,6 @@ export default function SudokuPage() {
     }, 1000);
     return () => clearInterval(interval);
   }, [timerRunning, isCompleted]);
-
-  const currentPuzzleKey = `${selectedSize}x${selectedSize}-${difficulty}`;
-  const currentPuzzle = PRESET_PUZZLES[currentPuzzleKey] || PRESET_PUZZLES["4x4-easy"];
 
   // Remaining counts for keypad
   const remainingCounts = useMemo(() => {
@@ -197,8 +242,8 @@ export default function SudokuPage() {
       return;
     }
 
-    // Check for duplicate conflicts (Easybrain style real-time detection)
-    const conflict = findPlacementConflicts(grid, row, col, num, selectedSize);
+    // Check for duplicate conflicts (including Diagonal in Sudoku X)
+    const conflict = findPlacementConflicts(grid, row, col, num, selectedSize, isDiagonalMode);
     if (conflict) {
       setConflictAlert(conflict);
       playFx("wrong");
@@ -209,7 +254,7 @@ export default function SudokuPage() {
     }
 
     // Direct Placement
-    const isValid = isValidPlacement(grid, row, col, num, selectedSize);
+    const isValid = isValidPlacement(grid, row, col, num, selectedSize, isDiagonalMode);
     const prevVal = grid[row][col];
     const prevNotes = { ...notes };
 
@@ -223,18 +268,19 @@ export default function SudokuPage() {
       { row, col, prevVal, nextVal: num, prevNotes },
     ]);
 
-    // Auto-remove candidate notes in row, col, and box
-    const cleanedNotes = removeCandidateFromPeers(notes, row, col, num, selectedSize);
+    // Auto-remove candidate notes in row, col, box, and diagonal
+    const cleanedNotes = removeCandidateFromPeers(notes, row, col, num, selectedSize, isDiagonalMode);
     setNotes(cleanedNotes);
 
-    if (isValid && num === currentPuzzle.solution[row][col]) {
+    const expectedVal = solution[row]?.[col] ?? 0;
+    if (isValid && (expectedVal === 0 || num === expectedVal)) {
       playFx("click");
 
       // Check if board complete
       let allFilled = true;
       for (let r = 0; r < selectedSize; r++) {
         for (let c = 0; c < selectedSize; c++) {
-          if (nextGrid[r][c] === 0 || nextGrid[r][c] !== currentPuzzle.solution[r][c]) {
+          if (nextGrid[r][c] === 0 || (expectedVal !== 0 && nextGrid[r][c] !== solution[r][c])) {
             allFilled = false;
             break;
           }
@@ -254,7 +300,7 @@ export default function SudokuPage() {
               session_type: "sudoku",
               status: "completed",
               score: selectedSize * 100 - mistakes * 20,
-              metadata: { size: selectedSize, difficulty, timeSeconds: timerSeconds },
+              metadata: { size: selectedSize, difficulty, isDiagonal: isDiagonalMode, timeSeconds: timerSeconds },
             });
           }
         }
@@ -312,7 +358,7 @@ export default function SudokuPage() {
   const handleSmartHint = () => {
     if (isCompleted) return;
     playFx("bubble");
-    const hint = findSmartHint(grid, currentPuzzle.solution, selectedSize);
+    const hint = findSmartHint(grid, solution, selectedSize, isDiagonalMode);
     if (hint) {
       setActiveHint(hint);
       setSelectedCell({ row: hint.row, col: hint.col });
@@ -337,7 +383,7 @@ export default function SudokuPage() {
       { row, col, prevVal, nextVal: val, prevNotes },
     ]);
 
-    const cleanedNotes = removeCandidateFromPeers(notes, row, col, val, selectedSize);
+    const cleanedNotes = removeCandidateFromPeers(notes, row, col, val, selectedSize, isDiagonalMode);
     setNotes(cleanedNotes);
     setActiveHint(null);
   };
@@ -392,7 +438,7 @@ export default function SudokuPage() {
     <ModuleLockedGate moduleId="sudoku" moduleNameAr="أكاديمية السودوكو" moduleIcon="🔢">
       <div className="min-h-screen bg-[#FAF8FF] dark:bg-[#0F0D1E] text-slate-800 dark:text-slate-100 py-8 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto space-y-8">
-          {/* Header Breadcrumb */}
+          {/* Header Breadcrumb & Quick Action Controls */}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <Link
@@ -408,11 +454,30 @@ export default function SudokuPage() {
                 <span>{isAr ? "أكاديمية السودوكو الذكية" : "Sudoku Academy"}</span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-xs">
-                <Sparkles className="w-4 h-4" />
-                <span>{isAr ? "نظام التدريس التفاعلي المتقدم" : "Interactive Master Tutor"}</span>
-              </div>
+
+            {/* Quick Action Badges: Rules & Print */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  playFx("click");
+                  setShowRulesModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-100 transition-all border border-purple-200/50"
+              >
+                <HelpCircle className="w-4 h-4 text-purple-600" />
+                <span>{isAr ? "قواعد السودوكو" : "Rules"}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  playFx("click");
+                  setShowPrintModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-bold text-xs hover:bg-amber-100 transition-all border border-amber-200/50"
+              >
+                <Printer className="w-4 h-4 text-amber-600" />
+                <span>{isAr ? "طباعة ورقة عمل" : "Print Sheet"}</span>
+              </button>
             </div>
           </div>
 
@@ -423,8 +488,8 @@ export default function SudokuPage() {
             </h1>
             <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base">
               {isAr
-                ? "تعلم باللعب التفاعلي كما في أشهر تطبيقات العالم: إضاءة الأرقام المتطابقة، كاشف التعارض، عدادات الأرقام المتبقية، ودروس تطبيقية حية خطوة بخطوة!"
-                : "Master Sudoku with interactive matching highlights, conflict detector, remaining counters, and hands-on guided lessons!"}
+                ? "توليد ديناميكي لشبكات عشوائية غير محدودة، نمط سودوكو إكس القطري (X)، تظليل متباين للمربعات، ومطبوعات أوراق عمل للأبطال والمدربين!"
+                : "Dynamic puzzle generator, Diagonal Sudoku X, distinct subgrid shading, and printable worksheets!"}
             </p>
           </div>
 
@@ -463,8 +528,8 @@ export default function SudokuPage() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               {/* Left: The Board (7 cols) */}
               <div className="lg:col-span-7 bg-white dark:bg-[#1C1A3A] p-5 sm:p-7 rounded-3xl shadow-xl border border-purple-100 dark:border-purple-900/50 space-y-5">
-                {/* Header Controls: Size, Difficulty, Timer, Mistakes */}
-                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-purple-50 dark:border-purple-900/30 pb-4">
+                {/* Header Controls: Size, Difficulty, Mode, Timer, Mistakes */}
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-purple-50 dark:border-purple-900/30 pb-4">
                   {/* Size Switcher */}
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="flex items-center gap-1 bg-purple-50 dark:bg-purple-900/30 p-1 rounded-xl">
@@ -487,6 +552,7 @@ export default function SudokuPage() {
                       ))}
                     </div>
 
+                    {/* Difficulty Switcher */}
                     <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 p-1 rounded-xl">
                       {[
                         { id: "easy" as const, label: isAr ? "مبتدئ" : "Easy" },
@@ -505,9 +571,23 @@ export default function SudokuPage() {
                         </button>
                       ))}
                     </div>
+
+                    {/* Sudoku X (Diagonal Mode) Toggle Button */}
+                    <button
+                      onClick={handleDiagonalToggle}
+                      className={`px-3 py-1.5 rounded-xl font-black text-xs transition-all flex items-center gap-1.5 border ${
+                        isDiagonalMode
+                          ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md ring-2 ring-indigo-400 border-indigo-400"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-indigo-50"
+                      }`}
+                      title={isAr ? "تفعيل شرط القطرين (سودوكو X)" : "Toggle Diagonal Sudoku X"}
+                    >
+                      <span>❌</span>
+                      <span>{isAr ? "نمط X القطري" : "Sudoku X"}</span>
+                    </button>
                   </div>
 
-                  {/* Timer & Mistakes */}
+                  {/* Timer & Mistakes & Reset */}
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 font-mono font-bold text-xs text-purple-700 dark:text-purple-300">
                       <span>⏱ {formatTime(timerSeconds)}</span>
@@ -516,6 +596,35 @@ export default function SudokuPage() {
                       <AlertCircle className="w-3.5 h-3.5" />
                       <span>{mistakes} / 3</span>
                     </div>
+                  </div>
+                </div>
+
+                {/* Generator Bar: Random Generation & Board Actions */}
+                <div className="flex items-center justify-between gap-2 bg-[#FAF8FF] dark:bg-[#141228] p-2.5 rounded-2xl border border-purple-100 dark:border-purple-900/40 text-xs">
+                  <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-bold">
+                    <Sparkles className="w-4 h-4 text-purple-600" />
+                    <span>{isAr ? "مولد الألغاز الديناميكي:" : "Dynamic Puzzle:"}</span>
+                    <span className="text-purple-700 dark:text-purple-300 font-black">
+                      {isDiagonalMode ? "سودوكو X القطرية" : "كلاسيك القياسية"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleNewRandomPuzzle}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-sm transition-all active:scale-95"
+                    >
+                      <Dices className="w-3.5 h-3.5" />
+                      <span>{isAr ? "لغز عشوائي جديد" : "New Random"}</span>
+                    </button>
+
+                    <button
+                      onClick={handleResetCurrentPuzzle}
+                      className="p-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 font-bold text-xs transition-all border border-slate-200 dark:border-slate-700"
+                      title={isAr ? "إعادة ضبط نفس اللغز" : "Reset Board"}
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
 
@@ -535,10 +644,10 @@ export default function SudokuPage() {
                   </div>
                 )}
 
-                {/* Sudoku Interactive Canvas with Crosshair & Number Highlight */}
+                {/* Sudoku Interactive Canvas with Checkerboard Subgrid Shading & Diagonal X */}
                 <div className="flex justify-center py-1">
                   <div
-                    className="grid bg-[#231A4C] p-2 sm:p-3 rounded-2xl sm:rounded-3xl shadow-2xl border-4 border-purple-500/60 select-none overflow-hidden w-full max-w-[430px] aspect-square mx-auto"
+                    className="grid bg-[#231A4C] p-2.5 sm:p-3.5 rounded-2xl sm:rounded-3xl shadow-2xl border-4 border-purple-600/70 select-none overflow-hidden w-full max-w-[430px] aspect-square mx-auto"
                     style={{
                       gridTemplateColumns: `repeat(${selectedSize}, minmax(0, 1fr))`,
                       gridTemplateRows: `repeat(${selectedSize}, minmax(0, 1fr))`,
@@ -553,7 +662,17 @@ export default function SudokuPage() {
                             selectedCell && (selectedCell.row === rIdx || selectedCell.col === cIdx);
                           const isInBox = isCellInSelectedBox(rIdx, cIdx);
 
-                          // Matching number highlight (either matching selected cell number, or keypad digit filter)
+                          // Subgrid Box Coordinates & Shading distinction
+                          const boxR = Math.floor(rIdx / boxRows);
+                          const boxC = Math.floor(cIdx / boxCols);
+                          const isAltBox = (boxR + boxC) % 2 === 1;
+
+                          // Diagonal Cell (in Sudoku X mode)
+                          const isMainDiagonal = rIdx === cIdx;
+                          const isAntiDiagonal = rIdx + cIdx === selectedSize - 1;
+                          const isDiagonalCell = isDiagonalMode && (isMainDiagonal || isAntiDiagonal);
+
+                          // Matching number highlight
                           const targetMatchNum =
                             highlightedDigit ||
                             (selectedCell && grid[selectedCell.row]?.[selectedCell.col] > 0
@@ -583,8 +702,15 @@ export default function SudokuPage() {
                           const borderRight = (cIdx + 1) % boxCols === 0 && cIdx + 1 < selectedSize;
                           const borderBottom = (rIdx + 1) % boxRows === 0 && rIdx + 1 < selectedSize;
 
-                          // Background coloring logic
-                          let cellBg = "bg-white dark:bg-[#1E1B3E]";
+                          // Background coloring logic (including Subgrid Distinction & Diagonal X)
+                          let cellBg = isAltBox
+                            ? "bg-purple-50/70 dark:bg-[#1F1B3E]"
+                            : "bg-white dark:bg-[#16132C]";
+
+                          if (isDiagonalCell) {
+                            cellBg = "bg-indigo-100/60 dark:bg-indigo-950/40";
+                          }
+
                           if (isSelected) {
                             cellBg = "bg-purple-300 dark:bg-purple-700 text-purple-950 dark:text-white ring-2 ring-purple-600 scale-[0.98]";
                           } else if (isConflicting) {
@@ -596,7 +722,7 @@ export default function SudokuPage() {
                           } else if (isHintRow || isHintCol || isHintBox) {
                             cellBg = "bg-amber-50 dark:bg-amber-950/40";
                           } else if (isSameRowOrCol || isInBox) {
-                            cellBg = "bg-[#F3EEFF] dark:bg-[#191535]";
+                            cellBg = "bg-[#ECE6FF] dark:bg-[#201C45]";
                           }
 
                           const noteKey = `${rIdx}-${cIdx}`;
@@ -606,10 +732,10 @@ export default function SudokuPage() {
                             <button
                               key={`${rIdx}-${cIdx}`}
                               onClick={() => handleCellClick(rIdx, cIdx)}
-                              className={`w-full h-full aspect-square flex items-center justify-center font-black transition-all relative border border-slate-200/80 dark:border-slate-800/80 ${cellBg} ${
-                                borderRight ? "border-r-2 sm:border-r-4 border-r-purple-900 dark:border-r-purple-500" : ""
+                              className={`w-full h-full aspect-square flex items-center justify-center font-black transition-all relative border border-slate-300/60 dark:border-slate-800/80 ${cellBg} ${
+                                borderRight ? "border-r-2 sm:border-r-4 border-r-purple-950 dark:border-r-purple-400" : ""
                               } ${
-                                borderBottom ? "border-b-2 sm:border-b-4 border-b-purple-900 dark:border-b-purple-500" : ""
+                                borderBottom ? "border-b-2 sm:border-b-4 border-b-purple-950 dark:border-b-purple-400" : ""
                               } ${
                                 isInitial
                                   ? "text-slate-900 dark:text-slate-100 font-black"
@@ -626,6 +752,10 @@ export default function SudokuPage() {
                                     </span>
                                   ))}
                                 </div>
+                              ) : isDiagonalCell ? (
+                                <span className="text-[9px] text-indigo-400/40 dark:text-indigo-400/30 select-none">
+                                  ✕
+                                </span>
                               ) : null}
                             </button>
                           );
@@ -651,10 +781,10 @@ export default function SudokuPage() {
                     </p>
                     <div className="pt-1 flex items-center justify-center gap-3">
                       <button
-                        onClick={() => loadPuzzle(selectedSize, difficulty)}
+                        onClick={handleNewRandomPuzzle}
                         className="px-5 py-2.5 rounded-xl bg-white text-emerald-800 font-black text-xs hover:bg-emerald-50 shadow-md transition-all active:scale-95"
                       >
-                        {isAr ? "لعب لغز جديد" : "Play Another Puzzle"}
+                        {isAr ? "لعب لغز عشوائي جديد" : "Play Another Puzzle"}
                       </button>
                     </div>
                   </div>
@@ -796,7 +926,7 @@ export default function SudokuPage() {
           )}
 
           {/* ------------------------------------------------------------- */}
-          {/* TAB 2: INTERACTIVE GUIDED ACADEMY (EASYBRAIN TUTOR STYLE) */}
+          {/* TAB 2: INTERACTIVE GUIDED ACADEMY */}
           {/* ------------------------------------------------------------- */}
           {activeTab === "academy" && (
             <div className="space-y-8">
@@ -1007,6 +1137,217 @@ export default function SudokuPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ------------------------------------------------------------- */}
+          {/* MODAL 1: RULES & INSTRUCTIONS GUIDE MODAL */}
+          {/* ------------------------------------------------------------- */}
+          {showRulesModal && (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-[#1A1636] max-w-2xl w-full rounded-3xl p-6 sm:p-8 shadow-2xl border border-purple-100 dark:border-purple-900/60 space-y-6 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between border-b border-purple-100 dark:border-purple-900/40 pb-4">
+                  <div className="flex items-center gap-2 text-purple-900 dark:text-purple-200 font-black text-lg">
+                    <BookOpen className="w-5 h-5 text-purple-600" />
+                    <span>{isAr ? "دليل وقواعد السودوكو الذكية 📖" : "Sudoku Rules & Guidelines"}</span>
+                  </div>
+                  <button
+                    onClick={() => setShowRulesModal(false)}
+                    className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {SUDOKU_RULES_GUIDE.map((rule) => (
+                    <div
+                      key={rule.id}
+                      className="p-4 rounded-2xl bg-[#FAF8FF] dark:bg-[#131028] border border-purple-100 dark:border-purple-900/40 space-y-2"
+                    >
+                      <div className="flex items-center gap-2 font-black text-sm text-purple-950 dark:text-purple-200">
+                        <span>{rule.icon}</span>
+                        <span>{rule.titleAr}</span>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                        {rule.descriptionAr}
+                      </p>
+                      <ul className="text-[11px] text-purple-700 dark:text-purple-300 space-y-1 list-disc list-inside pt-1">
+                        {rule.examplesAr.map((ex, i) => (
+                          <li key={i}>{ex}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setShowRulesModal(false)}
+                  className="w-full py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-black text-sm shadow-md transition-all"
+                >
+                  {isAr ? "فهمت القواعد، فلنبدأ اللعب! 🚀" : "Got it, let's play!"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ------------------------------------------------------------- */}
+          {/* MODAL 2: PRINTABLE WORKSHEET & PDF GENERATOR */}
+          {/* ------------------------------------------------------------- */}
+          {showPrintModal && (
+            <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-[#1A1636] max-w-3xl w-full rounded-3xl p-6 sm:p-8 shadow-2xl border border-purple-100 dark:border-purple-900/60 space-y-6 max-h-[92vh] overflow-y-auto">
+                <div className="flex items-center justify-between border-b border-purple-100 dark:border-purple-900/40 pb-4">
+                  <div className="flex items-center gap-2 text-purple-900 dark:text-purple-200 font-black text-lg">
+                    <Printer className="w-5 h-5 text-purple-600" />
+                    <span>{isAr ? "طباعة وتصدير ورقة عمل السودوكو 📄" : "Print Sudoku Worksheet"}</span>
+                  </div>
+                  <button
+                    onClick={() => setShowPrintModal(false)}
+                    className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Print Sheet Options */}
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-purple-50 dark:bg-purple-950/40 p-4 rounded-2xl text-xs font-bold text-purple-900 dark:text-purple-200">
+                  <div className="flex items-center gap-2">
+                    <Info className="w-4 h-4 text-purple-600" />
+                    <span>
+                      {selectedSize}×{selectedSize} • {difficulty === "easy" ? "مبتدئ" : "تحدي"} •{" "}
+                      {isDiagonalMode ? "سودوكو X القطرية" : "كلاسيك"}
+                    </span>
+                  </div>
+
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={includePrintSolution}
+                      onChange={(e) => setIncludePrintSolution(e.target.checked)}
+                      className="w-4 h-4 text-purple-600 rounded"
+                    />
+                    <span>{isAr ? "إرفاق صفحة مفتاح الحل للمدرب" : "Include Answer Key"}</span>
+                  </label>
+                </div>
+
+                {/* Printable Worksheet Preview Card */}
+                <div
+                  id="sudoku-print-area"
+                  className="bg-white text-slate-900 p-6 sm:p-8 rounded-2xl border-2 border-slate-300 shadow-inner space-y-6 text-center select-none"
+                >
+                  {/* Worksheet Header */}
+                  <div className="border-b-2 border-slate-800 pb-3 flex items-center justify-between">
+                    <div className="text-right">
+                      <h2 className="text-lg font-black text-purple-950">
+                        منصة العقل الخارق SUPER MIND IQ
+                      </h2>
+                      <p className="text-xs text-slate-600 font-bold">
+                        ورقة عمل تدريبية: شبكة سودوكو {selectedSize}×{selectedSize}{" "}
+                        {isDiagonalMode ? "(نمط X القطري)" : ""}
+                      </p>
+                    </div>
+                    <div className="text-xs text-slate-500 font-mono">
+                      <span>المستوى: {difficulty === "easy" ? "مبتدئ ★" : "تحدي ★★"}</span>
+                    </div>
+                  </div>
+
+                  {/* Student Info Fields */}
+                  <div className="grid grid-cols-3 gap-2 text-xs font-bold text-slate-700 text-right pb-2 border-b border-dashed border-slate-300">
+                    <div>اسم الطالب: __________________</div>
+                    <div>التاريخ: ___ / ___ / 2026</div>
+                    <div>الوقت المستغرق: ____ دقيقة</div>
+                  </div>
+
+                  {/* Worksheet Puzzle Grid */}
+                  <div className="flex justify-center py-2">
+                    <div
+                      className="grid bg-white p-2 border-4 border-slate-950 shadow-md aspect-square w-full max-w-[340px]"
+                      style={{
+                        gridTemplateColumns: `repeat(${selectedSize}, minmax(0, 1fr))`,
+                        gridTemplateRows: `repeat(${selectedSize}, minmax(0, 1fr))`,
+                      }}
+                    >
+                      {grid.map((row, rIdx) =>
+                        row.map((val, cIdx) => {
+                          const borderRight = (cIdx + 1) % boxCols === 0 && cIdx + 1 < selectedSize;
+                          const borderBottom = (rIdx + 1) % boxRows === 0 && rIdx + 1 < selectedSize;
+                          const isDiag = isDiagonalMode && (rIdx === cIdx || rIdx + cIdx === selectedSize - 1);
+
+                          return (
+                            <div
+                              key={`${rIdx}-${cIdx}`}
+                              className={`w-full h-full aspect-square flex items-center justify-center font-black text-xl border border-slate-400 ${
+                                borderRight ? "border-r-4 border-r-slate-950" : ""
+                              } ${borderBottom ? "border-b-4 border-b-slate-950" : ""} ${
+                                isDiag ? "bg-slate-100" : "bg-white"
+                              }`}
+                            >
+                              {val > 0 ? val : ""}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Optional Solution Key */}
+                  {includePrintSolution && (
+                    <div className="pt-4 border-t-2 border-dashed border-slate-400 space-y-2">
+                      <div className="text-xs font-black text-emerald-800 text-right">
+                        ✓ مفتاح الحل النموذجي (خاص بالمدرب):
+                      </div>
+                      <div className="flex justify-center">
+                        <div
+                          className="grid bg-emerald-50/50 p-1 border-2 border-emerald-800 aspect-square w-full max-w-[200px]"
+                          style={{
+                            gridTemplateColumns: `repeat(${selectedSize}, minmax(0, 1fr))`,
+                            gridTemplateRows: `repeat(${selectedSize}, minmax(0, 1fr))`,
+                          }}
+                        >
+                          {solution.map((row, rIdx) =>
+                            row.map((val, cIdx) => (
+                              <div
+                                key={`sol-${rIdx}-${cIdx}`}
+                                className="w-full h-full aspect-square flex items-center justify-center font-bold text-xs text-emerald-950 border border-emerald-200"
+                              >
+                                {val}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Trainer Evaluation & Notes */}
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-500 pt-2 border-t border-slate-200">
+                    <span>تقييم المدرب: ⭐ ⭐ ⭐ ⭐ ⭐</span>
+                    <span>ملاحظات: ___________________________</span>
+                  </div>
+                </div>
+
+                {/* Print Action Buttons */}
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => setShowPrintModal(false)}
+                    className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-200"
+                  >
+                    {isAr ? "إلغاء" : "Cancel"}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      playFx("correct");
+                      window.print();
+                    }}
+                    className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-lg transition-all flex items-center gap-2 active:scale-95"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>{isAr ? "بدء الطباعة الآن / حفظ PDF" : "Print / Save PDF"}</span>
+                  </button>
                 </div>
               </div>
             </div>
