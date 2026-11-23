@@ -471,38 +471,6 @@ export default function MentalArithmeticPage() {
                 priority
                 className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700 ease-out"
               />
-
-              {/* تدرج سينمائي سفلي فخم للنصوص وقراءة أوضح */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
-
-              {/* شارات سينمائية علوية أنيقة */}
-              <div className="absolute top-3 sm:top-5 right-3 sm:right-5 flex flex-wrap items-center gap-2">
-                <span className="px-3 sm:px-4 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-white/25 text-white text-[11px] sm:text-xs font-black flex items-center gap-1.5 shadow-lg">
-                  <span>🌟</span>
-                  <span>أكاديمية العباقرة والتدريب الذهني</span>
-                </span>
-                <span className="px-3 py-1.5 rounded-full bg-amber-400 text-slate-950 text-[10px] sm:text-xs font-black shadow-lg">
-                  معداد سوروبان 1:4 أصلي 🧮
-                </span>
-              </div>
-
-              {/* تذييل سينمائي تفاعلي مع العنوان والتوجيه */}
-              <div className="absolute bottom-3 sm:bottom-6 inset-x-3 sm:inset-x-6 flex flex-col sm:flex-row sm:items-end justify-between gap-3 text-white">
-                <div className="space-y-1 max-w-xl">
-                  <h2 className="text-base sm:text-2xl md:text-3xl font-black drop-shadow-md text-white leading-tight">
-                    منظومة العقل الخارق والتدريب الذهني
-                  </h2>
-                  <p className="text-[11px] sm:text-sm text-white/90 font-medium drop-shadow leading-relaxed">
-                    اختر كبسولتك التدريبية أدناه للانطلاق نحو ألعاب السوروبان، تحديات الذكاء، وأسرار الحساب الفوري!
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-[11px] sm:text-xs font-black px-3.5 py-1.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 text-amber-300 shadow-md">
-                    9 برامج وأكاديميات متكاملة 🚀
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
 
