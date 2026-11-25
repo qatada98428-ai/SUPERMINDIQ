@@ -17,6 +17,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { COACH_INFO, getWhatsAppLink } from "@/lib/constants";
+import { FounderSocialRow } from "@/components/ui/SocialIcons";
 
 export const metadata = {
   title: "من نحن | برنامج العقل الخارق — إشراف أ. قتادة كريم",
@@ -186,6 +187,14 @@ export default function AboutPage() {
                 <Medal className="w-3.5 h-3.5 text-yellow-400" />
                 <span>مدرب دولي معتمد</span>
               </span>
+            </div>
+
+            {/* Founder Social Media Accounts (حسابات المؤسس في قسم «من نحن») */}
+            <div className="mt-6 w-full max-w-md pt-5 border-t border-white/10 space-y-2.5 text-center">
+              <span className="text-xs font-bold text-amber-300 block">
+                حسابات التواصل للأستاذ قتادة كريم:
+              </span>
+              <FounderSocialRow />
             </div>
           </div>
 

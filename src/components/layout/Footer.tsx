@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MessageCircle, MapPin } from "lucide-react";
 import BrandLogo from "@/components/ui/BrandLogo";
+import { PlatformSocialBar } from "@/components/ui/SocialIcons";
 import { PLATFORM_INFO, getWhatsAppLink } from "@/lib/constants";
 import { useApp } from "@/context/AppContext";
 
@@ -69,6 +70,12 @@ export default function Footer() {
             <p className="text-slate-400 text-xs sm:text-sm leading-relaxed max-w-sm">
               المنصة التعليمية المتخصصة في الحساب الذهني، العداد الياباني (السوروبان)، الفلاش أنزان، ومحاكي البطولات وتنمية القدرات العقلية.
             </p>
+            <div className="pt-1">
+              <span className="text-[11px] font-bold text-slate-400 block mb-2">
+                {isEn ? "Official Social Media:" : "حسابات التواصل الرسمية للمنصة:"}
+              </span>
+              <PlatformSocialBar />
+            </div>
           </div>
 
           {/* Col 2: Quick Links (Clean 2-subcolumn grid) */}

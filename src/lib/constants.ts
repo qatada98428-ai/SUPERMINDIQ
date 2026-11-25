@@ -12,18 +12,60 @@ export const PLATFORM_INFO = {
   location: "العراق - الأنبار - الرمادي / متاح لجميع المحافظات والدول العربية",
 };
 
-// Official accounts for SUPER MIND program
+// Official accounts for SUPER MIND platform (حسابات التواصل الرئيسية للمنصة)
 export const OFFICIAL_SOCIAL_LINKS = [
-  { platform: "Instagram", label: "إنستغرام العقل الخارق", href: "https://www.instagram.com/4.math/", handle: "@4.math", color: "from-pink-500 via-rose-500 to-purple-600" },
-  { platform: "TikTok", label: "تيك توك العقل الخارق", href: "https://www.tiktok.com/@4.math", handle: "@4.math", color: "from-slate-900 to-slate-800" },
+  {
+    platform: "Facebook",
+    label: "فيسبوك العقل الخارق",
+    enLabel: "SUPER MIND Facebook",
+    href: "https://www.facebook.com/qatada98",
+    handle: "qatada98",
+    color: "from-blue-600 to-blue-800",
+  },
+  {
+    platform: "Instagram",
+    label: "إنستغرام العقل الخارق",
+    enLabel: "SUPER MIND Instagram",
+    href: "https://www.instagram.com/supermindiq/",
+    handle: "@supermindiq",
+    color: "from-amber-500 via-rose-500 to-purple-600",
+  },
+  {
+    platform: "YouTube",
+    label: "يوتيوب العقل الخارق",
+    enLabel: "SUPER MIND YouTube",
+    href: "https://www.youtube.com/@4doot",
+    handle: "@4doot",
+    color: "from-red-600 to-rose-700",
+  },
 ];
 
-// Personal accounts for Author Coach Qatadah Karim
+// Personal accounts for Author Coach Qatadah Karim (حسابات المؤسس في قسم «من نحن»)
 export const AUTHOR_SOCIAL_LINKS = [
-  { platform: "Instagram", label: "إنستغرام الأستاذ قتادة", href: "https://www.instagram.com/4doot/", handle: "@4doot", color: "from-pink-500 via-purple-500 to-indigo-600" },
-  { platform: "Facebook", label: "فيسبوك الأستاذ قتادة", href: "https://www.facebook.com/qatada98", handle: "qatada98", color: "from-blue-600 to-blue-800" },
-  { platform: "YouTube", label: "يوتيوب الأستاذ قتادة", href: "https://www.youtube.com/@4doot", handle: "@4doot", color: "from-red-600 to-rose-700" },
-  { platform: "TikTok", label: "تيك توك الأستاذ قتادة", href: "https://www.tiktok.com/@4doot", handle: "@4doot", color: "from-slate-900 to-slate-800" },
+  {
+    platform: "Facebook",
+    label: "فيسبوك الأستاذ قتادة",
+    enLabel: "Coach Qatadah Facebook",
+    href: "https://www.facebook.com/qatada98",
+    handle: "qatada98",
+    color: "from-blue-600 to-blue-800",
+  },
+  {
+    platform: "Instagram",
+    label: "إنستغرام الأستاذ قتادة",
+    enLabel: "Coach Qatadah Instagram",
+    href: "https://www.instagram.com/4doot/",
+    handle: "@4doot",
+    color: "from-amber-500 via-rose-500 to-purple-600",
+  },
+  {
+    platform: "YouTube",
+    label: "يوتيوب الأستاذ قتادة",
+    enLabel: "Coach Qatadah YouTube",
+    href: "https://www.youtube.com/@4doot",
+    handle: "@4doot",
+    color: "from-red-600 to-rose-700",
+  },
 ];
 
 // Trainer / Coach Qatadah Karim Profile
