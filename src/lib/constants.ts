@@ -388,6 +388,21 @@ export interface SchoolProfile {
 
 export const SCHOOLS_DIRECTORY: SchoolProfile[] = [
   {
+    id: "sch-irtiqaa",
+    name: "مدارس الارتقاء الأهلية ثنائية اللغة | IRTIQAA SCHOOL",
+    enName: "Irtiqaa Bilingual Private Schools",
+    bookCoverImage: "/images/school-irtiqaa.jpg",
+    country: "العراق",
+    governorate: "الأنبار - الرمادي",
+    address: "العراق — الأنبار — الرمادي – مجمع الفاروق 1",
+    bio: "مؤسسة تعليمية في مدينة الرمادي، تقدم خدماتها التعليمية لمراحل الروضة والابتدائية والثانوية، وتعتمد التعليم متعدد اللغات، وتسعى إلى بناء جيل متميز علميًا وفكريًا، وتنمية مهارات الطلبة وقدراتهم بما يواكب متطلبات المستقبل. إحدى المدارس المعتمدة لدى منصة العقل الخارق (SUPER MIND).",
+    enBio: "Distinguished educational institution in Ramadi offering bilingual education for Kindergarten, Primary, and Secondary stages, officially accredited by SUPER MIND platform.",
+    partnershipType: "إحدى المدارس المعتمدة لدى منصة العقل الخارق (SUPER MIND)",
+    curriculumStage: "مدرسة معتمدة (مراحل الروضة والابتدائية والثانوية)",
+    whatsapp: "+9647806086016",
+    status: "مؤسسة تعتمد برنامجنا رسمياً",
+  },
+  {
     id: "sch-hiba-alrahman",
     name: "مدارس هبة الرحمن وزدني علماً الأهلية النموذجية",
     enName: "Hiba Al-Rahman & Zidni Ilman Private Model Schools",

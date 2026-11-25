@@ -92,7 +92,7 @@ export default function SchoolsDirectoryPage() {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {cloudSchools.map((cs) => {
             const csWhatsapp = cs.phone
               ? `https://wa.me/${cs.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
@@ -205,17 +205,25 @@ export default function SchoolsDirectoryPage() {
                 className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between space-y-5"
               >
                 <div className="space-y-4">
-                  {/* The Official Book Cover Photo Proudly Displayed in Front of School */}
-                  <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden bg-slate-950 border-2 border-amber-400/80 shadow-md group">
+                  {/* The Official Book Cover Photo / School Emblem Proudly Displayed in Front of School */}
+                  <div
+                    className={`relative w-full aspect-[3/4] rounded-2xl overflow-hidden ${
+                      school.id === "sch-irtiqaa" ? "bg-white" : "bg-slate-950"
+                    } border-2 border-amber-400/80 shadow-md group`}
+                  >
                     <Image
                       src={school.bookCoverImage}
-                      alt={`غلاف منهج العقل الخارق لـ ${school.name}`}
+                      alt={`شعار ومنهاج ${school.name}`}
                       fill
-                      className="object-cover object-top transform transition-transform duration-500 group-hover:scale-103"
+                      className={`${
+                        school.id === "sch-irtiqaa"
+                          ? "object-contain p-4"
+                          : "object-cover object-top"
+                      } transform transition-transform duration-500 group-hover:scale-103`}
                     />
                     <div className="absolute top-3 right-3 bg-slate-950/85 backdrop-blur-sm px-2.5 py-1 rounded-full text-[10px] font-black text-amber-300 border border-amber-400/50 flex items-center gap-1 shadow-md">
                       <BookOpen className="w-3 h-3 text-amber-400" />
-                      <span>كتاب المنهاج المعتمد</span>
+                      <span>{school.id === "sch-irtiqaa" ? "شعار ومؤسسة معتمدة" : "كتاب المنهاج المعتمد"}</span>
                     </div>
                   </div>
 
