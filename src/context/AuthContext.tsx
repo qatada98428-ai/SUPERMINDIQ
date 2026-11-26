@@ -63,6 +63,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [guestProgress, setGuestProgress] = useState<GuestProgressData>(getGuestProgress());
   const [isGoogleConfigured, setIsGoogleConfigured] = useState<boolean>(false);
+  const [localAdminActive, setLocalAdminActive] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const h = window.location.hostname;
+    const isLocalHost = h === "localhost" || h === "127.0.0.1" || h === "::1";
+    const override = window.localStorage.getItem("supermind_dev_admin_override");
+    setLocalAdminActive(override !== "false" && (isLocalHost || override === "true"));
+  }, []);
 
   const supabaseReady = isSupabaseConfigured();
 
@@ -438,20 +447,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [user, profile?.name]
   );
 
-  const effectiveRole: UserRole | "guest" = isGuest
+  const effectiveRole: UserRole | "guest" = localAdminActive
+    ? "admin"
+    : isGuest
     ? "guest"
     : profile?.role || "student";
 
-  const hasUnmigratedGuestData = !isGuest && hasGuestProgress();
+  const effectiveProfile: UserProfile | null =
+    profile ??
+    (localAdminActive
+      ? {
+          id: "local-admin-preview",
+          email: "qatada98@gmail.com",
+          name: "حساب الأدمن (معاينة محلية)",
+          role: "admin",
+          status: "active",
+          created_at: new Date().toISOString(),
+          last_activity: new Date().toISOString(),
+        }
+      : null);
+
+  const effectiveIsGuest = localAdminActive ? false : isGuest;
+
+  const hasUnmigratedGuestData = !effectiveIsGuest && hasGuestProgress();
 
   return (
     <AuthContext.Provider
       value={{
         user,
         session,
-        profile,
+        profile: effectiveProfile,
         role: effectiveRole,
-        isGuest,
+        isGuest: effectiveIsGuest,
         isLoading,
         isSupabaseReady: supabaseReady,
         isGoogleConfigured,

@@ -36,8 +36,20 @@ export function isLocalDevMode(): boolean {
   return (
     window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1" ||
+    window.location.hostname === "::1" ||
     window.localStorage.getItem("supermind_dev_admin_override") === "true"
   );
+}
+
+export function isLocalAdminAutoEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  const isLocalHost =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname === "::1";
+  const override = window.localStorage.getItem("supermind_dev_admin_override");
+  if (override === "false") return false;
+  return isLocalHost || override === "true";
 }
 
 export function checkModuleAccess(
@@ -46,20 +58,21 @@ export function checkModuleAccess(
   userEmail?: string | null
 ): ModuleAccessInfo {
   const emailLower = userEmail?.toLowerCase() || "";
-  const devOverride = typeof window !== "undefined" && window.localStorage.getItem("supermind_dev_admin_override") === "true";
+  const devAdminActive = isLocalAdminAutoEnabled();
 
   const isAdmin =
     userRole === "admin" ||
     emailLower === "qatada98@gmail.com" ||
-    devOverride;
+    devAdminActive;
 
   const isTrainer = isAdmin || userRole === "trainer";
 
-  // 1. Open Modules: Mental Arithmetic, Memory & Focus, and Sudoku (Open for training)
+  // 1. Open Modules: Mental Arithmetic, Memory & Focus, Sudoku, and Chess (Open for training)
   if (
     moduleId === "mental-arithmetic" ||
     moduleId === "memory-focus" ||
-    moduleId === "sudoku"
+    moduleId === "sudoku" ||
+    moduleId === "chess"
   ) {
     return {
       status: "open",

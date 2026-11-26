@@ -325,9 +325,13 @@ export class ChessGame {
 
       // King cannot be in check after move
       if (!cloned.isCheck(this.turn)) {
-        // If pawn reaches 8th/1st rank, offer queen promotion
+        // If pawn reaches 8th/1st rank, allow all 4 promotion pieces
         if (piece.type === "p" && (dest.r === 0 || dest.r === 7)) {
-          legal.push({ from: sq, to: destSq, promotion: "q" });
+          const captured = this.board[dest.r][dest.c] || undefined;
+          legal.push({ from: sq, to: destSq, promotion: "q", captured });
+          legal.push({ from: sq, to: destSq, promotion: "r", captured });
+          legal.push({ from: sq, to: destSq, promotion: "b", captured });
+          legal.push({ from: sq, to: destSq, promotion: "n", captured });
         } else {
           legal.push({
             from: sq,
@@ -597,13 +601,13 @@ export const CHESS_CURRICULUM: ChessLesson[] = [
     titleEn: "Lesson 1: Pawn Movement & Promotion",
     taglineAr: "كيف يتحول أضعف جندي إلى أقوى قطعة على الرقعة",
     piecesCovered: ["p", "q", "k"],
-    fen: "3k4/4P3/8/8/8/8/8/4K3 w - - 0 1",
+    fen: "k7/4P3/4K3/8/8/8/8/8 w - - 0 1",
     explanationAr: [
       "البيدق يتحرك للأمام خطوة واحدة، وفي نقلته الأولى يمكنه التقدم خطوتين.",
       "عندما ينجح البيدق في الوصول إلى الصف الثامن (آخر صف على الرقعة)، يرتقي فوراً ليتحول إلى وزير أو رخ أو فيل أو حصان!",
-      "الترقية إلى وزير (Queening) هي السلاح الحاسم في نهايات الأدوار.",
+      "الترقية إلى وزير (Queening) هي السلاح الحاسم في نهايات الأدوار، وهنا الملك الأسود بعيد على a8 فلا يستطيع إيقاف الترقية أو أسر الوزير الجديد.",
     ],
-    exerciseGoalAr: "ادفع البيدق الأبيض من e7 إلى e8 ليرتقي إلى وزير متوج!",
+    exerciseGoalAr: "ادفع البيدق الأبيض من e7 إلى e8 ليرتقي إلى وزير متوج بأمان مع كش للملك!",
     expectedMove: { from: "e7", to: "e8" },
   },
   {
@@ -629,13 +633,13 @@ export const CHESS_CURRICULUM: ChessLesson[] = [
     titleEn: "Lesson 3: The Absolute Pin Tactic",
     taglineAr: "شل حركة قطعة الخصم خلف قطعة أكثر قيمة",
     piecesCovered: ["r", "q", "k"],
-    fen: "4k3/4q3/8/8/8/8/4R3/4K3 w - - 0 1",
+    fen: "4k3/4q3/8/8/8/8/4R3/4RK2 w - - 0 1",
     explanationAr: [
       "الربط (Pin) هو إيقاع قطعة للخصم في خط نار مباشر أمام قطعة أهم (مثل الملك).",
       "الربط المطلق: عندما يكون الملك خلف القطعة المربوطة مباشرة، يمنع القانون تحريكها نهائياً لحماية الملك من الكش!",
-      "استغل شل حركة الوزير المربوط واقبض عليه لحسم التفوق المادي.",
+      "استغل شل حركة الوزير المربوط واقبض عليه بالرخ المحمي برخك الثاني في e1 حتى لا يتمكن الملك من استعادته.",
     ],
-    exerciseGoalAr: "الرخ الأبيض يربط الوزير الأسود أمام الملك تماماً: التقط الوزير بنقلة الرخ من e2 إلى e7!",
+    exerciseGoalAr: "الرخ الأبيض على e2 يربط الوزير الأسود أمام الملك وهو محمي بالرخ على e1: التقط الوزير من e2 إلى e7!",
     expectedMove: { from: "e2", to: "e7" },
   },
   {
@@ -677,7 +681,7 @@ export const CHESS_CURRICULUM: ChessLesson[] = [
     titleEn: "Lesson 6: The Skewer Attack",
     taglineAr: "إجبار القطعة الكبرى على الهروب لصيد ما خلفها",
     piecesCovered: ["r", "k"],
-    fen: "4k2r/8/8/8/8/8/8/R3K3 w Qk - 0 1",
+    fen: "4k2r/8/8/8/8/8/8/R3K3 w - - 0 1",
     explanationAr: [
       "السيخ (Skewer) عكس الربط: تهاجم فيه قطعة كبرى في الأمام (الملك)، لإجباره على الابتعاد وكشف قطعة خلفه.",
       "عندما يهرب الملك من الكش على الصف الثامن، يبقى الرخ غير المحمي فريسة سهلة في النقلة التالية.",
@@ -713,15 +717,15 @@ export const TACTICS_PUZZLES: ChessPuzzle[] = [
   {
     id: "puz-2",
     titleAr: "لغز 2: شوكة الحصان القاضية بين الملك والرخ",
-    fen: "4r1k1/5ppp/8/3N4/8/8/5PPP/6K1 w - - 0 1",
+    fen: "2r3k1/5ppp/8/3N4/8/8/5PPP/6K1 w - - 0 1",
     solution: { from: "d5", to: "e7" },
-    hintAr: "الحصان يستطيع القفز إلى خانة يهدد فيها الملك والرخ معاً!",
-    explanationAr: "قفزة الحصان إلى e7 تعلن كش للملك وتهجم على الرخ في e8 في نفس اللحظة!",
+    hintAr: "الحصان يستطيع القفز إلى خانة يهدد فيها الملك على g8 والرخ على c8 معاً بأمان!",
+    explanationAr: "قفزة الحصان إلى e7 تعلن كش للملك على g8 وتهاجم الرخ في c8 في نفس اللحظة دون أن يقدر أحد على أسره!",
   },
   {
     id: "puz-3",
     titleAr: "لغز 3: سيخ الرخ على الصف الأخير",
-    fen: "4k2r/8/8/8/8/8/8/R3K3 w Qk - 0 1",
+    fen: "4k2r/8/8/8/8/8/8/R3K3 w - - 0 1",
     solution: { from: "a1", to: "a8" },
     hintAr: "وجّه كش للملك على نفس الصف الذي يقف عليه رخه غير المحمي!",
     explanationAr: "النقلة Ra8 تهاجم الملك بكش، ومجبراً الملك على الابتعاد لتلتقط رخ h8 في النقلة التالية.",
@@ -745,18 +749,18 @@ export const TACTICS_PUZZLES: ChessPuzzle[] = [
   {
     id: "puz-6",
     titleAr: "لغز 6: الربط المطلق للوزير",
-    fen: "4k3/4q3/8/8/8/8/4R3/4K3 w - - 0 1",
+    fen: "4k3/4q3/8/8/8/8/4R3/4RK2 w - - 0 1",
     solution: { from: "e2", to: "e7" },
-    hintAr: "استغل أن الوزير مربوط أمام الملك تماماً واقبض عليه!",
-    explanationAr: "Rxe7+ تأكل الوزير دون خوف لأن الوزير مربوط ولا يستطيع الهروب من حماية الملك.",
+    hintAr: "استغل أن الوزير مربوط أمام الملك تماماً ورخك محمي بالرخ الآخر على e1!",
+    explanationAr: "Rxe7+ تأكل الوزير مجاناً لأن الرخ الثاني على e1 يحميها فلا يستطيع الملك الأسود أسرها.",
   },
   {
     id: "puz-7",
     titleAr: "لغز 7: ترقية البيدق الخاطفة",
-    fen: "3k4/4P3/8/8/8/8/8/4K3 w - - 0 1",
+    fen: "k7/4P3/4K3/8/8/8/8/8 w - - 0 1",
     solution: { from: "e7", to: "e8" },
-    hintAr: "البيدق على بعد خطوة واحدة فقط من الصف الثامن!",
-    explanationAr: "e8=Q+ يرتقي البيدق فوراً إلى وزير مع كش للملك لتبدأ خطة الفوز الحاسم.",
+    hintAr: "البيدق على بعد خطوة واحدة فقط من الصف الثامن والملك الأسود بعيد على a8!",
+    explanationAr: "e8=Q+ يرتقي البيدق فوراً إلى وزير بأمان مع كش للملك دون أن يتمكن الملك من أسره.",
   },
   {
     id: "puz-8",

@@ -15,6 +15,7 @@ import {
   ProgramModuleId,
   checkModuleAccess,
   isLocalDevMode,
+  isLocalAdminAutoEnabled,
 } from "@/lib/module-access";
 
 interface ModuleLockedGateProps {
@@ -36,10 +37,7 @@ export default function ModuleLockedGate({
 
   useEffect(() => {
     setMounted(true);
-    const hasOverride =
-      typeof window !== "undefined" &&
-      window.localStorage.getItem("supermind_dev_admin_override") === "true";
-    setDevAdminOverride(hasOverride);
+    setDevAdminOverride(isLocalAdminAutoEnabled());
   }, []);
 
   const access = checkModuleAccess(
@@ -51,11 +49,7 @@ export default function ModuleLockedGate({
   const toggleDevAdmin = () => {
     if (typeof window === "undefined") return;
     const nextVal = !devAdminOverride;
-    if (nextVal) {
-      window.localStorage.setItem("supermind_dev_admin_override", "true");
-    } else {
-      window.localStorage.removeItem("supermind_dev_admin_override");
-    }
+    window.localStorage.setItem("supermind_dev_admin_override", nextVal ? "true" : "false");
     setDevAdminOverride(nextVal);
     window.location.reload();
   };
