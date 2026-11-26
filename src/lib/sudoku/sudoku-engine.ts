@@ -238,7 +238,6 @@ export function generateRandomSolvedGrid(
   customRand?: () => number
 ): number[][] {
   const randFn = customRand || Math.random;
-  const grid: number[][] = Array.from({ length: size }, () => Array(size).fill(0));
 
   function shuffle<T>(arr: T[]): T[] {
     const copy = [...arr];
@@ -249,36 +248,16 @@ export function generateRandomSolvedGrid(
     return copy;
   }
 
-  // Pre-fill independent diagonal blocks for speed
-  if (size === 9 && !isDiagonal) {
-    for (let b = 0; b < 9; b += 3) {
-      const nums = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]);
-      let idx = 0;
-      for (let r = 0; r < 3; r++) {
-        for (let c = 0; c < 3; c++) {
-          grid[b + r][b + c] = nums[idx++];
-        }
-      }
-    }
-  } else if (size === 4 && !isDiagonal) {
-    const nums1 = shuffle([1, 2, 3, 4]);
-    const nums2 = shuffle([1, 2, 3, 4]);
-    grid[0][0] = nums1[0]; grid[0][1] = nums1[1];
-    grid[1][0] = nums1[2]; grid[1][1] = nums1[3];
-    grid[2][2] = nums2[0]; grid[2][3] = nums2[1];
-    grid[3][2] = nums2[2]; grid[3][3] = nums2[3];
-  }
-
-  function fill(): boolean {
+  function fillGrid(targetGrid: number[][]): boolean {
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
-        if (grid[r][c] === 0) {
+        if (targetGrid[r][c] === 0) {
           const numbers = shuffle(Array.from({ length: size }, (_, i) => i + 1));
           for (const num of numbers) {
-            if (isValidPlacement(grid, r, c, num, size, isDiagonal)) {
-              grid[r][c] = num;
-              if (fill()) return true;
-              grid[r][c] = 0;
+            if (isValidPlacement(targetGrid, r, c, num, size, isDiagonal)) {
+              targetGrid[r][c] = num;
+              if (fillGrid(targetGrid)) return true;
+              targetGrid[r][c] = 0;
             }
           }
           return false;
@@ -288,8 +267,46 @@ export function generateRandomSolvedGrid(
     return true;
   }
 
-  fill();
-  return grid;
+  // Attempt generation with retry loop to guarantee 100% complete and valid solution
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const grid: number[][] = Array.from({ length: size }, () => Array(size).fill(0));
+
+    // Pre-fill independent diagonal blocks ONLY for 9x9 (and non-diagonal) for speed
+    if (size === 9 && !isDiagonal) {
+      for (let b = 0; b < 9; b += 3) {
+        const nums = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        let idx = 0;
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            grid[b + r][b + c] = nums[idx++];
+          }
+        }
+      }
+    }
+
+    if (fillGrid(grid)) {
+      let hasZero = false;
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (grid[r][c] === 0) {
+            hasZero = true;
+            break;
+          }
+        }
+        if (hasZero) break;
+      }
+      if (!hasZero) {
+        return grid;
+      }
+    }
+  }
+
+  // Fallback to static preset if random search exhausts
+  const fallbackKey = `${size}x${size}-easy`;
+  return (
+    PRESET_PUZZLES[fallbackKey]?.solution?.map((r) => [...r]) ||
+    Array.from({ length: size }, () => Array(size).fill(1))
+  );
 }
 
 // Generate dynamic random puzzle by removing clues based on difficulty with UNIQUE solution verification
@@ -359,6 +376,21 @@ export function generateDynamicPuzzle(
     } else {
       // Revert if removal causes multiple solutions
       initialGrid[pos.r][pos.c] = backup;
+    }
+  }
+
+  // Final verification: ensure initialGrid has a guaranteed unique solution
+  if (countSolutions(initialGrid, size, isDiagonal, 2) !== 1) {
+    const fallbackKey = `${size}x${size}-${difficulty}`;
+    const fallback = PRESET_PUZZLES[fallbackKey] || PRESET_PUZZLES[`${size}x${size}-easy`];
+    if (fallback) {
+      return {
+        size,
+        difficulty,
+        initialGrid: fallback.initialGrid.map((r) => [...r]),
+        solution: fallback.solution.map((r) => [...r]),
+        isDiagonal,
+      };
     }
   }
 

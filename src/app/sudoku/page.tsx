@@ -159,12 +159,17 @@ export default function SudokuPage() {
         setCurrentStreak(data.currentStreak || 0);
       }
 
-      // Check if an active game is saved
+      // Check if an active game is saved and validate integrity
       const savedStr = localStorage.getItem(STORAGE_ACTIVE_GAME_KEY);
       if (savedStr) {
         const saved = JSON.parse(savedStr);
-        if (saved && saved.grid && !saved.isCompleted) {
+        const hasZerosInSol = saved?.solution?.some((r: number[]) => r.some((c: number) => c === 0));
+        if (saved && saved.grid && !saved.isCompleted && !hasZerosInSol && saved.solution?.length > 0) {
           setHasSavedGame(true);
+        } else {
+          // Clean up any corrupted or legacy invalid game state
+          localStorage.removeItem(STORAGE_ACTIVE_GAME_KEY);
+          setHasSavedGame(false);
         }
       }
     } catch (e) {
@@ -299,7 +304,8 @@ export default function SudokuPage() {
       const savedStr = localStorage.getItem(STORAGE_ACTIVE_GAME_KEY);
       if (!savedStr) return;
       const saved = JSON.parse(savedStr);
-      if (saved && saved.grid) {
+      const hasZerosInSol = saved?.solution?.some((r: number[]) => r.some((c: number) => c === 0));
+      if (saved && saved.grid && !hasZerosInSol && saved.solution?.length > 0) {
         playFx("pop");
         setGrid(saved.grid);
         setSolution(saved.solution);
@@ -314,6 +320,9 @@ export default function SudokuPage() {
         setHasSavedGame(false);
         setTimerRunning(true);
         setIsPaused(false);
+      } else {
+        localStorage.removeItem(STORAGE_ACTIVE_GAME_KEY);
+        setHasSavedGame(false);
       }
     } catch (e) {
       console.warn("Restore error:", e);
