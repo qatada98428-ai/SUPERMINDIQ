@@ -80,8 +80,9 @@ export default function SudokuPage() {
 
   const [activeTab, setActiveTab] = useState<SudokuTab>("play");
   const [selectedSize, setSelectedSize] = useState<SudokuSize>(9);
-  const [difficulty, setDifficulty] = useState<SudokuDifficulty>("easy");
+  const [difficulty, setDifficulty] = useState<SudokuDifficulty>("beginner");
   const [isDiagonalMode, setIsDiagonalMode] = useState<boolean>(false);
+  const [maxMistakes, setMaxMistakes] = useState<number | null>(3); // 3, 5, 10, or null for unlimited
 
   // Game board state
   const [grid, setGrid] = useState<number[][]>([]);
@@ -284,6 +285,8 @@ export default function SudokuPage() {
         initialMask,
         notes,
         mistakes,
+        maxMistakes,
+        practiceMode,
         timerSeconds,
         difficulty,
         selectedSize,
@@ -295,7 +298,7 @@ export default function SudokuPage() {
     } catch {
       // ignore storage errors
     }
-  }, [grid, solution, initialMask, notes, mistakes, timerSeconds, difficulty, selectedSize, isDiagonalMode, activeTab, isCompleted]);
+  }, [grid, solution, initialMask, notes, mistakes, maxMistakes, practiceMode, timerSeconds, difficulty, selectedSize, isDiagonalMode, activeTab, isCompleted]);
 
   // Restore Saved Game
   const handleRestoreSavedGame = () => {
@@ -312,8 +315,14 @@ export default function SudokuPage() {
         setInitialMask(saved.initialMask);
         setNotes(saved.notes || {});
         setMistakes(saved.mistakes || 0);
+        if (saved.maxMistakes !== undefined) {
+          setMaxMistakes(saved.maxMistakes);
+        }
+        if (saved.practiceMode !== undefined) {
+          setPracticeMode(saved.practiceMode);
+        }
         setTimerSeconds(saved.timerSeconds || 0);
-        setDifficulty(saved.difficulty || "easy");
+        setDifficulty(saved.difficulty || "beginner");
         setSelectedSize(saved.selectedSize || 9);
         setIsDiagonalMode(saved.isDiagonalMode || false);
         setActiveTab(saved.activeTab || "play");
@@ -455,7 +464,7 @@ export default function SudokuPage() {
       playFx("wrong");
       const nextM = mistakes + 1;
       setMistakes(nextM);
-      if (nextM >= 3 && !practiceMode) {
+      if (maxMistakes !== null && nextM >= maxMistakes && !practiceMode) {
         setShowGameOverModal(true);
         setTimerRunning(false);
       }
@@ -548,7 +557,7 @@ export default function SudokuPage() {
       playFx("wrong");
       const nextM = mistakes + 1;
       setMistakes(nextM);
-      if (nextM >= 3 && !practiceMode) {
+      if (maxMistakes !== null && nextM >= maxMistakes && !practiceMode) {
         setShowGameOverModal(true);
         setTimerRunning(false);
       }
@@ -610,6 +619,100 @@ export default function SudokuPage() {
       setHighlightedDigit(hint.val);
     }
   };
+
+  // Keyboard handlers ref to avoid unnecessary listener re-attachments
+  const keyboardHandlersRef = useRef({ handleNumberInput, handleErase, handleUndo });
+  keyboardHandlersRef.current = { handleNumberInput, handleErase, handleUndo };
+
+  // Keyboard Shortcut Support (1-9, Numpad, Backspace, Delete, Arrows, Notes, Undo)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        document.activeElement?.tagName === "INPUT" ||
+        document.activeElement?.tagName === "TEXTAREA" ||
+        showGameOverModal ||
+        showRulesModal ||
+        showPrintModal ||
+        isSmartHintOpen ||
+        isPaused
+      ) {
+        return;
+      }
+
+      // Check number keys '1' - '9' or Numpad '1' - '9'
+      let digit: number | null = null;
+      if (e.key >= "1" && e.key <= "9") {
+        digit = parseInt(e.key, 10);
+      } else if (e.code && e.code.startsWith("Numpad") && e.code.length === 7) {
+        const num = parseInt(e.code.replace("Numpad", ""), 10);
+        if (num >= 1 && num <= 9) digit = num;
+      }
+
+      if (digit !== null && digit <= selectedSize) {
+        e.preventDefault();
+        keyboardHandlersRef.current.handleNumberInput(digit);
+        return;
+      }
+
+      // Erase / Delete
+      if (e.key === "Backspace" || e.key === "Delete") {
+        e.preventDefault();
+        keyboardHandlersRef.current.handleErase();
+        return;
+      }
+
+      // Toggle Notes ('n' or 'N')
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        setPencilMode((prev) => !prev);
+        return;
+      }
+
+      // Undo ('z' or Ctrl+Z)
+      if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z")) {
+        e.preventDefault();
+        keyboardHandlersRef.current.handleUndo();
+        return;
+      }
+
+      // Arrow navigation
+      if (selectedCell) {
+        let { row, col } = selectedCell;
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          row = Math.max(0, row - 1);
+        } else if (e.key === "ArrowDown") {
+          e.preventDefault();
+          row = Math.min(selectedSize - 1, row + 1);
+        } else if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          col = isAr ? Math.min(selectedSize - 1, col + 1) : Math.max(0, col - 1);
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault();
+          col = isAr ? Math.max(0, col - 1) : Math.min(selectedSize - 1, col + 1);
+        } else {
+          return;
+        }
+        setSelectedCell({ row, col });
+        const cellVal = grid[row]?.[col];
+        setHighlightedDigit(cellVal > 0 ? cellVal : null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    selectedCell,
+    selectedSize,
+    grid,
+    pencilMode,
+    isAr,
+    showGameOverModal,
+    showRulesModal,
+    showPrintModal,
+    isSmartHintOpen,
+    isPaused,
+  ]);
 
   // Apply Hint to board
   const applyHintValue = (row: number, col: number, val: number) => {
@@ -768,14 +871,19 @@ export default function SudokuPage() {
           )}
 
           {/* Hero Section */}
-          <div className="text-center max-w-2xl mx-auto space-y-2">
-            <h1 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-purple-700 via-indigo-600 to-violet-500 bg-clip-text text-transparent">
-              {isAr ? "أكاديمية ومحاكي السودوكو الذكي 🔢" : "Sudoku Master Academy 🔢"}
-            </h1>
-            <p className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm leading-relaxed">
+          <div className="text-center max-w-xl mx-auto space-y-2 pt-1">
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-purple-600 via-indigo-600 to-violet-600 flex items-center justify-center text-2xl shadow-lg shadow-purple-500/25 border border-purple-300/30 text-white select-none shrink-0">
+                🔢
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                {isAr ? "سودوكو العقل الخارق" : "Super Mind Sudoku"}
+              </h1>
+            </div>
+            <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium">
               {isAr
-                ? "توليد ديناميكي بحل وحيد مضمون، 6 مستويات صعوبة، تحديات يومية متتالية، تلميح تعليمي تفاعلي من 3 خطوات، وسودوكو القاتل!"
-                : "Dynamic puzzles with verified unique solution, 6 difficulties, Daily Challenges, 3-step Smart Hint, and Killer Sudoku!"}
+                ? "تحديات يومية وتدريب ذكي بمستويات متدرجة من المبتدئ إلى الاحتراف"
+                : "Smart daily challenges & progressive puzzles from Beginner to Master"}
             </p>
           </div>
 
@@ -927,7 +1035,7 @@ export default function SudokuPage() {
                   )}
 
                   {/* Timer, Pause & Mistakes Bar */}
-                  <div className="flex items-center justify-between gap-2 pt-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                     {/* Timer + Pause Button */}
                     <div className="flex items-center gap-1.5">
                       <div className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-900/40 font-mono font-bold text-xs text-purple-700 dark:text-purple-300">
@@ -947,14 +1055,45 @@ export default function SudokuPage() {
                       </button>
                     </div>
 
-                    {/* Mistakes Counter (Hearts) */}
-                    <div className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 font-bold text-xs text-rose-700 dark:text-rose-300">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      <span>
-                        {practiceMode
-                          ? `تدريب حر (${mistakes} أخطاء)`
-                          : `الأخطاء: ${mistakes} / 3`}
-                      </span>
+                    {/* Mistakes Counter & Allowed Limit Selector */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 font-bold text-xs text-rose-700 dark:text-rose-300">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>
+                          {maxMistakes === null || practiceMode
+                            ? `أخطاء: ${mistakes} (حر)`
+                            : `الأخطاء: ${mistakes} / ${maxMistakes}`}
+                        </span>
+                      </div>
+
+                      {/* Mistakes Limit Options */}
+                      <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-[11px] font-black border border-slate-200 dark:border-slate-700">
+                        <span className="text-[10px] text-slate-400 px-1 hidden sm:inline">{isAr ? "الحد:" : "Limit:"}</span>
+                        {[
+                          { val: 3, label: "3" },
+                          { val: 5, label: "5" },
+                          { val: 10, label: "10" },
+                          { val: null, label: "∞" },
+                        ].map((opt) => (
+                          <button
+                            key={String(opt.val)}
+                            type="button"
+                            onClick={() => {
+                              playFx("click");
+                              setMaxMistakes(opt.val);
+                              setPracticeMode(opt.val === null);
+                            }}
+                            className={`px-1.5 py-0.5 rounded-lg transition-all ${
+                              maxMistakes === opt.val
+                                ? "bg-rose-500 text-white shadow-sm"
+                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                            }`}
+                            title={opt.val === null ? (isAr ? "بدون حدود للأخطاء (تدريب حر)" : "Unlimited practice") : (isAr ? `الحد الأقصى للأخطاء: ${opt.val}` : `Max ${opt.val} mistakes`)}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1032,7 +1171,7 @@ export default function SudokuPage() {
                   )}
 
                   <div
-                    className="grid bg-[#231A4C] p-2.5 sm:p-3.5 rounded-2xl sm:rounded-3xl shadow-2xl border-4 border-purple-600/70 select-none overflow-hidden w-full max-w-[430px] aspect-square mx-auto"
+                    className="grid bg-[#231A4C] p-2 sm:p-3 rounded-2xl sm:rounded-3xl shadow-2xl border-4 border-purple-600/70 select-none overflow-hidden w-full max-w-[360px] sm:max-w-[420px] aspect-square mx-auto"
                     style={{
                       gridTemplateColumns: `repeat(${selectedSize}, minmax(0, 1fr))`,
                       gridTemplateRows: `repeat(${selectedSize}, minmax(0, 1fr))`,
@@ -1187,6 +1326,128 @@ export default function SudokuPage() {
                   </div>
                 </div>
 
+                {/* Mobile & Tablet In-Canvas Quick Keypad & Tools (visible on < lg screens) */}
+                <div className="block lg:hidden space-y-2.5 pt-1 border-t border-purple-50 dark:border-purple-900/30">
+                  {/* Quick Keypad Row */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 font-bold px-1">
+                      <span className="text-slate-700 dark:text-slate-300 font-black">{isAr ? "لوحة الأرقام السريعة:" : "Quick Keypad:"}</span>
+                      {pencilMode && (
+                        <span className="text-purple-600 dark:text-purple-400 font-bold flex items-center gap-1 text-[10px]">
+                          <Edit3 className="w-3 h-3" />
+                          <span>{isAr ? "وضع المسودة نشط" : "Notes Active"}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div
+                      className="grid gap-1 sm:gap-1.5"
+                      style={{
+                        gridTemplateColumns: `repeat(${selectedSize}, minmax(0, 1fr))`,
+                      }}
+                    >
+                      {Array.from({ length: selectedSize }).map((_, idx) => {
+                        const digit = idx + 1;
+                        const remaining = remainingCounts[digit] ?? 0;
+                        const isDone = remaining === 0;
+                        const isHighlighted = highlightedDigit === digit;
+
+                        return (
+                          <button
+                            key={`mobile-key-${digit}`}
+                            type="button"
+                            onClick={() => handleNumberInput(digit)}
+                            className={`py-2 px-1 rounded-xl border transition-all flex flex-col items-center justify-center select-none active:scale-95 ${
+                              isDone
+                                ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 opacity-60"
+                                : isHighlighted
+                                ? "bg-purple-100 dark:bg-purple-900/60 border-purple-500 shadow-sm ring-1 ring-purple-400"
+                                : "bg-white dark:bg-[#231F46] border-purple-100 dark:border-purple-800 hover:border-purple-400 shadow-sm"
+                            }`}
+                          >
+                            <span className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100 leading-none">
+                              {digit}
+                            </span>
+                            <span className="text-[9px] font-bold mt-0.5 leading-none">
+                              {isDone ? (
+                                <span className="text-emerald-600 dark:text-emerald-400">✓</span>
+                              ) : (
+                                <span className="text-slate-400 dark:text-slate-500">{remaining}</span>
+                              )}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Quick Action Tools Strip (Mobile) */}
+                  <div className="grid grid-cols-5 gap-1.5 pt-0.5">
+                    {/* Undo */}
+                    <button
+                      type="button"
+                      onClick={handleUndo}
+                      disabled={history.length === 0}
+                      className="py-2 px-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 font-bold text-[11px] flex flex-col items-center gap-0.5 disabled:opacity-40"
+                      title={isAr ? "تراجع" : "Undo"}
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>{isAr ? "تراجع" : "Undo"}</span>
+                    </button>
+
+                    {/* Notes */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playFx("click");
+                        setPencilMode(!pencilMode);
+                      }}
+                      className={`py-2 px-1 rounded-xl font-bold text-[11px] flex flex-col items-center gap-0.5 transition-all ${
+                        pencilMode
+                          ? "bg-purple-600 text-white shadow-sm ring-2 ring-purple-300"
+                          : "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                      }`}
+                      title={isAr ? "المسودة" : "Notes"}
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>{isAr ? "المسودة" : "Notes"}</span>
+                    </button>
+
+                    {/* Fast Pencil */}
+                    <button
+                      type="button"
+                      onClick={handleFastPencil}
+                      className="py-2 px-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold text-[11px] flex flex-col items-center gap-0.5"
+                      title={isAr ? "قلم سريع" : "Fast"}
+                    >
+                      <Zap className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>{isAr ? "قلم سريع" : "Fast"}</span>
+                    </button>
+
+                    {/* Erase */}
+                    <button
+                      type="button"
+                      onClick={handleErase}
+                      className="py-2 px-1 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold text-[11px] flex flex-col items-center gap-0.5"
+                      title={isAr ? "مسح" : "Erase"}
+                    >
+                      <Eraser className="w-3.5 h-3.5" />
+                      <span>{isAr ? "مسح" : "Erase"}</span>
+                    </button>
+
+                    {/* Smart Hint */}
+                    <button
+                      type="button"
+                      onClick={handleSmartHint}
+                      className="py-2 px-1 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black text-[11px] flex flex-col items-center gap-0.5 shadow-sm active:scale-95"
+                      title={isAr ? "تلميح ذكي" : "Hint"}
+                    >
+                      <Lightbulb className="w-3.5 h-3.5" />
+                      <span>{isAr ? "تلميح" : "Hint"}</span>
+                    </button>
+                  </div>
+                </div>
+
                 {/* Completion Celebration Card */}
                 {isCompleted && (
                   <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-center font-bold shadow-xl space-y-3 animate-in zoom-in-95 duration-200">
@@ -1210,11 +1471,69 @@ export default function SudokuPage() {
                 )}
               </div>
 
-              {/* Right Column: Keypad, Fast Pencil & Controls (5 cols) */}
-              <div className="lg:col-span-5 space-y-4">
-                {/* Utility Action Buttons */}
+              {/* Right Column: Keypad & Tools on Desktop (hidden on mobile, shown on lg+) */}
+              <div className="hidden lg:block lg:col-span-5 space-y-4">
                 <div className="bg-white dark:bg-[#1C1A3A] p-4 sm:p-5 rounded-3xl shadow-xl border border-purple-100 dark:border-purple-900/50 space-y-3.5">
-                  <div className="grid grid-cols-4 gap-2">
+                  {/* Keypad with Remaining Digits Counter - AT THE TOP OF DESKTOP SIDEBAR */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs text-slate-500 font-bold px-1">
+                      <span className="text-slate-800 dark:text-slate-200 font-black">{isAr ? "لوحة الأرقام السريعة" : "Quick Keypad"}</span>
+                      {pencilMode && (
+                        <span className="text-purple-600 dark:text-purple-400 text-[11px] flex items-center gap-1">
+                          <Edit3 className="w-3 h-3" />
+                          <span>{isAr ? "وضع المسودة نشط" : "Notes Active"}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div
+                      className="grid gap-2"
+                      style={{
+                        gridTemplateColumns: `repeat(${selectedSize === 4 ? 4 : 3}, minmax(0, 1fr))`,
+                      }}
+                    >
+                      {Array.from({ length: selectedSize }).map((_, idx) => {
+                        const digit = idx + 1;
+                        const remaining = remainingCounts[digit] ?? 0;
+                        const isDone = remaining === 0;
+                        const isHighlighted = highlightedDigit === digit;
+
+                        return (
+                          <button
+                            key={`desktop-key-${digit}`}
+                            type="button"
+                            onClick={() => handleNumberInput(digit)}
+                            className={`py-3 px-2 rounded-2xl border-2 transition-all flex flex-col items-center justify-center relative active:scale-95 ${
+                              isDone
+                                ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60 opacity-60"
+                                : isHighlighted
+                                ? "bg-purple-100 dark:bg-purple-900/60 border-purple-500 shadow-md scale-105"
+                                : "bg-white dark:bg-[#231F46] border-purple-100 dark:border-purple-800/60 hover:border-purple-400 hover:scale-102"
+                            }`}
+                          >
+                            <span className="text-2xl font-black text-slate-800 dark:text-slate-100">
+                              {digit}
+                            </span>
+                            <span className="text-[10px] font-bold mt-0.5 flex items-center gap-0.5">
+                              {isDone ? (
+                                <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+                                  <Check className="w-3 h-3" />
+                                  <span>{isAr ? "مكتمل" : "Done"}</span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 dark:text-slate-500">
+                                  {isAr ? `بقي ${remaining}` : `${remaining} left`}
+                                </span>
+                              )}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Utility Action Buttons */}
+                  <div className="grid grid-cols-4 gap-2 pt-2 border-t border-purple-50 dark:border-purple-900/30">
                     {/* Undo */}
                     <button
                       type="button"
@@ -1275,66 +1594,8 @@ export default function SudokuPage() {
                     className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:scale-[1.01] active:scale-95 transition-all"
                   >
                     <Lightbulb className="w-4 h-4 animate-bounce" />
-                    <span>تلميح ذكي تعليمي (شرح على 3 خطوات) 💡</span>
+                    <span>{isAr ? "تلميح ذكي تعليمي (شرح على 3 خطوات) 💡" : "3-Step Smart Hint 💡"}</span>
                   </button>
-
-                  {/* Keypad with Remaining Digits Counter & Completion Check */}
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex items-center justify-between text-xs text-slate-500 font-bold px-1">
-                      <span>{isAr ? "لوحة الأرقام والعدادات" : "Keypad & Counters"}</span>
-                      {pencilMode && (
-                        <span className="text-purple-600 dark:text-purple-400 text-[11px] flex items-center gap-1">
-                          <Edit3 className="w-3 h-3" />
-                          <span>{isAr ? "وضع المسودة نشط" : "Notes Active"}</span>
-                        </span>
-                      )}
-                    </div>
-
-                    <div
-                      className="grid gap-2"
-                      style={{
-                        gridTemplateColumns: `repeat(${selectedSize === 4 ? 4 : 3}, minmax(0, 1fr))`,
-                      }}
-                    >
-                      {Array.from({ length: selectedSize }).map((_, idx) => {
-                        const digit = idx + 1;
-                        const remaining = remainingCounts[digit] ?? 0;
-                        const isDone = remaining === 0;
-                        const isHighlighted = highlightedDigit === digit;
-
-                        return (
-                          <button
-                            key={digit}
-                            type="button"
-                            onClick={() => handleNumberInput(digit)}
-                            className={`py-3 px-2 rounded-2xl border-2 transition-all flex flex-col items-center justify-center relative ${
-                              isDone
-                                ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60 opacity-60"
-                                : isHighlighted
-                                ? "bg-purple-100 dark:bg-purple-900/60 border-purple-500 shadow-md scale-105"
-                                : "bg-white dark:bg-[#231F46] border-purple-100 dark:border-purple-800/60 hover:border-purple-400 hover:scale-102"
-                            }`}
-                          >
-                            <span className="text-2xl font-black text-slate-800 dark:text-slate-100">
-                              {digit}
-                            </span>
-                            <span className="text-[10px] font-bold mt-0.5 flex items-center gap-0.5">
-                              {isDone ? (
-                                <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
-                                  <Check className="w-3 h-3" />
-                                  <span>{isAr ? "مكتمل" : "Done"}</span>
-                                </span>
-                              ) : (
-                                <span className="text-slate-400 dark:text-slate-500">
-                                  {isAr ? `بقي ${remaining}` : `${remaining} left`}
-                                </span>
-                              )}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
                 </div>
 
                 {/* Killer Sudoku Cages Status Box */}
@@ -1592,7 +1853,9 @@ export default function SudokuPage() {
               💔
             </div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white">
-              تجاوزت حد الأخطاء المسموح به (3 / 3)
+              {isAr
+                ? `تجاوزت حد الأخطاء المسموح به (${maxMistakes ?? 3} / ${maxMistakes ?? 3})`
+                : `Mistakes limit reached (${maxMistakes ?? 3} / ${maxMistakes ?? 3})`}
             </h3>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
               السودوكو لعبة تدرب على الصبر والدقة. يمكنك إعادة محاولة نفس اللغز بتركيز، أو المتابعة والتدريب بدون قيود أخطاء!
