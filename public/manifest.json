@@ -3,8 +3,11 @@
   "short_name": "SUPER MIND",
   "description": "منصة الحساب الذهني الذكية وتنمية التفكير والذكاء — تدريب الأستاذ قتادة كريم",
   "start_url": "/",
+  "scope": "/",
   "id": "/",
   "display": "standalone",
+  "display_override": ["standalone", "window-controls-overlay", "minimal-ui", "browser"],
+  "prefer_related_applications": false,
   "background_color": "#F3F2FC",
   "theme_color": "#6344F5",
   "orientation": "any",
@@ -28,6 +31,29 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "السوروبان والمعداد الياباني",
+      "short_name": "السوروبان",
+      "description": "التدريب المباشر على المعداد الياباني وتصفير العداد",
+      "url": "/mental-arithmetic/soroban",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "الفلاش أنزان",
+      "short_name": "فلاش أنزان",
+      "description": "تمارين الأرقام السريعة والتخيل الذهني",
+      "url": "/mental-arithmetic/flash-anzan",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "محاكي المسابقات والبطولات",
+      "short_name": "المسابقات",
+      "description": "اختبارات التحدي والسرعة بمؤقت رسمي",
+      "url": "/mental-arithmetic/competitions",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ],
   "categories": ["education", "games", "productivity"]

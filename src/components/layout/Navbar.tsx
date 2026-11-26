@@ -23,7 +23,9 @@ import {
   ArrowRight,
   ArrowLeft,
   Smartphone,
-  } from "lucide-react";
+  Tv,
+  Minimize2,
+} from "lucide-react";
 import BrandLogo from "@/components/ui/BrandLogo";
 import AudioControlPanel from "@/components/ui/AudioControlPanel";
 import { useApp } from "@/context/AppContext";
@@ -33,7 +35,11 @@ import { usePWA } from "@/context/PWAContext";
 export default function Navbar() {
   const { language, theme, soundEnabled, toggleLanguage, toggleTheme, toggleSound, playFx } = useApp();
   const { user, profile, role, isGuest, signOut } = useAuth();
-  const { isStandalone, installApp } = usePWA();
+  const {
+    setGuideModalOpen,
+    toggleInteractiveBoardMode,
+    isBoardModeActive,
+  } = usePWA();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
       const [audioMenuOpen, setAudioMenuOpen] = useState(false);
@@ -152,6 +158,37 @@ export default function Navbar() {
               </Link>
             );
           })}
+
+          {/* زر وضع الشاشة التفاعلية للسبورات الذكية والشاشات الكبيرة */}
+          <button
+            type="button"
+            onClick={() => {
+              playFx("toggle");
+              toggleInteractiveBoardMode();
+            }}
+            title={
+              isBoardModeActive
+                ? (isEn ? "Exit Fullscreen" : "الخروج من ملء الشاشة")
+                : (isEn ? "Interactive Smart Board Mode (Fullscreen)" : "وضع الشاشة التفاعلية للسبورات الذكية (ملء الشاشة ⛶)")
+            }
+            aria-label="Smart Board Mode"
+            className={`hidden lg:flex w-10 h-10 xl:w-auto xl:h-auto xl:px-3 xl:py-2 rounded-2xl text-[13px] font-bold transition-all duration-200 items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 ${
+              isBoardModeActive
+                ? "bg-gradient-to-r from-rose-500 to-amber-500 text-white shadow-md !rounded-2xl"
+                : "bg-[#F7F5FE] dark:bg-[#242146] text-[#4C4578] dark:text-[#D9D5F5] border border-[#E7E3FA] dark:border-[#363268] shadow-[0_4px_10px_-4px_rgba(68,52,138,0.1),inset_0_2px_2px_rgba(255,255,255,0.85)] dark:shadow-none hover:text-brand-600 dark:hover:text-brand-300 hover:-translate-y-0.5"
+            }`}
+          >
+            {isBoardModeActive ? (
+              <Minimize2 className="w-4 h-4 shrink-0 text-white" />
+            ) : (
+              <Tv className="w-4 h-4 shrink-0 text-amber-500" />
+            )}
+            <span className="hidden xl:inline">
+              {isBoardModeActive
+                ? (isEn ? "Exit Fullscreen" : "إنهاء ملء الشاشة")
+                : (isEn ? "Smart Board" : "السبورة الذكية")}
+            </span>
+          </button>
 
           {/* زر الخطوط: لاختيار اللغة والوضع الليلي/النهاري والتحكم بالأصوات وغيرها */}
           <div className="relative">
@@ -335,28 +372,50 @@ export default function Navbar() {
                     </div>
                   )}
 
-                  {/* 3. Install App Option (if not installed) */}
-                  {!isStandalone && (
+                  {/* 3. Interactive Smart Board & PWA App Options */}
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playFx("toggle");
+                        setSettingsOpen(false);
+                        toggleInteractiveBoardMode();
+                      }}
+                      className="w-full clay-card-sm p-2.5 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 border border-indigo-200 dark:border-indigo-800/60 flex items-center justify-between hover:scale-[1.02] active:scale-95 transition-all text-start"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Tv className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                        <span className="text-xs font-black text-[#261E58] dark:text-[#F3F0FD]">
+                          {isBoardModeActive
+                            ? (isEn ? "Exit Fullscreen" : "الخروج من ملء الشاشة")
+                            : (isEn ? "Smart Board Mode (Fullscreen)" : "وضع الشاشة التفاعلية (ملء الشاشة)")}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-800 dark:text-brand-200">
+                        {isBoardModeActive ? "مفعّل ⛶" : "تشغيل ⛶"}
+                      </span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => {
                         playFx("pop");
                         setSettingsOpen(false);
-                        installApp();
+                        setGuideModalOpen(true);
                       }}
                       className="w-full clay-card-sm p-2.5 bg-gradient-to-r from-amber-50 to-brand-50 dark:from-amber-950/40 dark:to-brand-950/40 border border-amber-300/80 dark:border-amber-700/60 flex items-center justify-between hover:scale-[1.02] active:scale-95 transition-all text-start"
                     >
                       <div className="flex items-center gap-2">
                         <Smartphone className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                         <span className="text-xs font-black text-[#261E58] dark:text-[#F3F0FD]">
-                          {isEn ? "Install Platform App" : "تثبيت المنصة كتطبيق"}
+                          {isEn ? "Install App & Smart Boards" : "تثبيت التطبيق والسبورات الذكية"}
                         </span>
                       </div>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-800 dark:text-amber-200">
-                        {isEn ? "Install" : "تثبيت"}
+                        {isEn ? "Guide" : "الدليل 📲"}
                       </span>
                     </button>
-                  )}
+                  </div>
 
                   {/* 4. Auth & Account status in menu */}
                   <div className="pt-1 border-t border-[#E6E2FA] dark:border-[#343063]">
@@ -647,34 +706,61 @@ export default function Navbar() {
             <AudioControlPanel compact />
           </div>
 
-          {!isStandalone && (
-            <div className="clay-card-sm p-3 bg-gradient-to-r from-amber-50 via-brand-50 to-indigo-50 dark:from-amber-950/40 dark:via-brand-950/40 dark:to-indigo-950/40 border border-amber-300/80 dark:border-amber-700/60 flex items-center justify-between gap-2.5">
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => {
+                playFx("toggle");
+                setMobileMenuOpen(false);
+                toggleInteractiveBoardMode();
+              }}
+              className="w-full clay-card-sm p-3 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 border border-indigo-200 dark:border-indigo-800/60 flex items-center justify-between active:scale-95 transition-all text-start"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#1a1738] border border-indigo-300 dark:border-indigo-700 flex items-center justify-center shadow-sm shrink-0">
+                  <Tv className="w-5 h-5 text-brand-600 dark:text-brand-400" />
+                </div>
+                <div className="text-right">
+                  <div className="text-xs font-black text-[#261E58] dark:text-[#F3F0FD]">
+                    {isBoardModeActive ? "الخروج من ملء الشاشة" : "وضع الشاشة التفاعلية (ملء الشاشة ⛶)"}
+                  </div>
+                  <div className="text-[10px] text-[#635A94] dark:text-[#B6B0E3]">
+                    للسبورات الذكية والشاشات الكبيرة لمنع انطفاء الشاشة
+                  </div>
+                </div>
+              </div>
+              <span className="clay-btn-purple px-2.5 py-1 text-[11px] font-black shrink-0 !rounded-xl">
+                {isBoardModeActive ? "إنهاء" : "تفعيل"}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                playFx("pop");
+                setMobileMenuOpen(false);
+                setGuideModalOpen(true);
+              }}
+              className="w-full clay-card-sm p-3 bg-gradient-to-r from-amber-50 via-brand-50 to-indigo-50 dark:from-amber-950/40 dark:via-brand-950/40 dark:to-indigo-950/40 border border-amber-300/80 dark:border-amber-700/60 flex items-center justify-between active:scale-95 transition-all text-start"
+            >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#1a1738] border border-amber-400/60 flex items-center justify-center shadow-sm shrink-0">
                   <Smartphone className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div className="text-right min-w-0">
                   <div className="text-xs font-black text-[#261E58] dark:text-[#F3F0FD] truncate">
-                    تثبيت تطبيق SUPER MIND
+                    تثبيت التطبيق والسبورات الذكية
                   </div>
                   <div className="text-[10px] text-[#635A94] dark:text-[#B6B0E3] truncate">
-                    تشغيل سريع وتدريب شاشة كاملة بدون متصفح
+                    دليل الآيفون، الأندرويد، والشاشات التفاعلية
                   </div>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  playFx("pop");
-                  setMobileMenuOpen(false);
-                  installApp();
-                }}
-                className="clay-btn-purple px-3 py-1.5 text-xs font-black shrink-0 !rounded-xl"
-              >
-                تثبيت الآن 📲
-              </button>
-            </div>
-          )}
+              <span className="clay-btn-purple px-3 py-1.5 text-xs font-black shrink-0 !rounded-xl">
+                الدليل 📲
+              </span>
+            </button>
+          </div>
 
           {/* أزرار الحساب والإدارة */}
           {!isGuest && user && (

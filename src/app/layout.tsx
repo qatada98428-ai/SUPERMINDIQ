@@ -49,6 +49,15 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "SUPER MIND",
+    startupImage: [
+      {
+        url: "/images/logo.jpg",
+      },
+    ],
+  },
+  applicationName: "SUPER MIND",
+  formatDetection: {
+    telephone: false,
   },
   keywords: [
     "الحساب الذهني",
