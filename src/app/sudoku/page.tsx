@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import {
   Grid,
@@ -79,7 +79,7 @@ export default function SudokuPage() {
   const isAr = language === "ar";
 
   const [activeTab, setActiveTab] = useState<SudokuTab>("play");
-  const [selectedSize, setSelectedSize] = useState<SudokuSize>(9);
+  const [selectedSize, setSelectedSize] = useState<SudokuSize>(4);
   const [difficulty, setDifficulty] = useState<SudokuDifficulty>("beginner");
   const [isDiagonalMode, setIsDiagonalMode] = useState<boolean>(false);
   const [maxMistakes, setMaxMistakes] = useState<number | null>(3); // 3, 5, 10, or null for unlimited
@@ -323,7 +323,7 @@ export default function SudokuPage() {
         }
         setTimerSeconds(saved.timerSeconds || 0);
         setDifficulty(saved.difficulty || "beginner");
-        setSelectedSize(saved.selectedSize || 9);
+        setSelectedSize(saved.selectedSize || 4);
         setIsDiagonalMode(saved.isDiagonalMode || false);
         setActiveTab(saved.activeTab || "play");
         setHasSavedGame(false);
