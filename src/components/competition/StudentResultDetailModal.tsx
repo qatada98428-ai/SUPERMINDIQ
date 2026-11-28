@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   X,
   CheckCircle2,
@@ -13,8 +13,13 @@ import {
   User,
   Mail,
   MapPin,
+  RotateCcw,
 } from "lucide-react";
-import { AssignmentSubmission } from "@/lib/platform-store";
+import {
+  AssignmentSubmission,
+  AssignmentAttemptRecord,
+  formatAttemptLabelAr,
+} from "@/lib/platform-store";
 
 interface StudentResultDetailModalProps {
   submission: AssignmentSubmission | null;
@@ -30,25 +35,61 @@ export default function StudentResultDetailModal({
   onClose,
 }: StudentResultDetailModalProps) {
   const [filter, setFilter] = useState<"all" | "wrong" | "correct">("all");
+  const [selectedAttemptIdx, setSelectedAttemptIdx] = useState<number>(-1);
+
+  const attemptsList: AssignmentAttemptRecord[] = submission
+    ? submission.attempts && submission.attempts.length > 0
+      ? submission.attempts
+      : [
+          {
+            attemptNumber: Math.max(1, submission.attemptNumber || 1),
+            score: submission.score,
+            totalQuestions: submission.totalQuestions,
+            correctAnswers: submission.correctAnswers,
+            wrongAnswers: submission.wrongAnswers,
+            unansweredCount: submission.unansweredCount,
+            accuracy: submission.accuracy,
+            durationSeconds: submission.durationSeconds,
+            avgSecondsPerQuestion: submission.avgSecondsPerQuestion,
+            ruleBreakdown: submission.ruleBreakdown,
+            questionDetails: submission.questionDetails,
+            completedAt: submission.completedAt,
+          },
+        ]
+    : [];
+
+  useEffect(() => {
+    if (submission) {
+      setSelectedAttemptIdx(Math.max(0, attemptsList.length - 1));
+      setFilter("all");
+    }
+  }, [submission, attemptsList.length]);
 
   if (!submission) return null;
 
+  const activeAttempt =
+    attemptsList[
+      selectedAttemptIdx >= 0 && selectedAttemptIdx < attemptsList.length
+        ? selectedAttemptIdx
+        : attemptsList.length - 1
+    ];
+
   const wrongCount =
-    submission.wrongAnswers ??
-    Math.max(0, submission.totalQuestions - submission.correctAnswers);
-  const unanswered = submission.unansweredCount ?? 0;
+    activeAttempt.wrongAnswers ??
+    Math.max(0, activeAttempt.totalQuestions - activeAttempt.correctAnswers);
+  const unanswered = activeAttempt.unansweredCount ?? 0;
   const avgSec =
-    submission.avgSecondsPerQuestion ??
-    (submission.totalQuestions > 0
-      ? Number((submission.durationSeconds / submission.totalQuestions).toFixed(1))
+    activeAttempt.avgSecondsPerQuestion ??
+    (activeAttempt.totalQuestions > 0
+      ? Number((activeAttempt.durationSeconds / activeAttempt.totalQuestions).toFixed(1))
       : 0);
 
-  const mins = Math.floor(submission.durationSeconds / 60);
-  const secs = submission.durationSeconds % 60;
+  const mins = Math.floor(activeAttempt.durationSeconds / 60);
+  const secs = activeAttempt.durationSeconds % 60;
   const formattedDuration =
     mins > 0 ? `${mins} د ${secs} ث` : `${secs} ثانية`;
 
-  const details = submission.questionDetails || [];
+  const details = activeAttempt.questionDetails || [];
   const filteredDetails = details.filter((q) => {
     if (filter === "wrong") return !q.isCorrect;
     if (filter === "correct") return q.isCorrect;
@@ -73,8 +114,18 @@ export default function StudentResultDetailModal({
                   {rank === 1 ? "🥇 المركز الأول" : rank === 2 ? "🥈 المركز الثاني" : rank === 3 ? "🥉 المركز الثالث" : `الترتيب #${rank}`}
                 </span>
               )}
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-xs font-black inline-flex items-center gap-1 ${
+                  activeAttempt.attemptNumber >= 2
+                    ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700"
+                    : "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
+                }`}
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>{formatAttemptLabelAr(activeAttempt.attemptNumber)}</span>
+              </span>
               <span className="text-xs font-bold text-slate-500">
-                {new Date(submission.completedAt).toLocaleString("ar-IQ")}
+                {new Date(activeAttempt.completedAt).toLocaleString("ar-IQ")}
               </span>
             </div>
             <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
@@ -119,6 +170,42 @@ export default function StudentResultDetailModal({
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto space-y-5 pr-1">
+          {/* Multiple Attempts Switcher */}
+          {attemptsList.length > 1 && (
+            <div className="p-3.5 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 space-y-2">
+              <div className="text-xs font-black text-indigo-800 dark:text-indigo-200 flex items-center gap-1.5">
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>سجل محاولات الطالب في هذه البطولة ({attemptsList.length} محاولات — اضغط لاستعراض تفاصيل أي محاولة):</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {attemptsList.map((att, idx) => {
+                  const isActive =
+                    (selectedAttemptIdx >= 0 ? selectedAttemptIdx : attemptsList.length - 1) === idx;
+                  return (
+                    <button
+                      key={`${att.attemptNumber}-${att.completedAt}`}
+                      type="button"
+                      onClick={() => {
+                        setSelectedAttemptIdx(idx);
+                        setFilter("all");
+                      }}
+                      className={`px-3 py-2 rounded-xl text-xs font-black border transition-all flex items-center gap-2 ${
+                        isActive
+                          ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
+                          : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-indigo-200 dark:border-slate-700 hover:border-indigo-400"
+                      }`}
+                    >
+                      <span>{formatAttemptLabelAr(att.attemptNumber)}</span>
+                      <span className="font-mono opacity-90">
+                        ({att.correctAnswers}/{att.totalQuestions} • {att.accuracy}%)
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Summary KPI Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
             <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-center">
@@ -126,7 +213,7 @@ export default function StudentResultDetailModal({
                 نسبة الدقة
               </div>
               <div className="text-xl font-black font-mono text-emerald-700 dark:text-emerald-300 mt-0.5">
-                {submission.accuracy}%
+                {activeAttempt.accuracy}%
               </div>
             </div>
             <div className="p-3 rounded-2xl bg-brand-50 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-800 text-center">
@@ -134,7 +221,7 @@ export default function StudentResultDetailModal({
                 الإجابات الصحيحة
               </div>
               <div className="text-xl font-black font-mono text-brand-700 dark:text-brand-300 mt-0.5">
-                {submission.correctAnswers}/{submission.totalQuestions}
+                {activeAttempt.correctAnswers}/{activeAttempt.totalQuestions}
               </div>
             </div>
             <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-center">
@@ -174,14 +261,14 @@ export default function StudentResultDetailModal({
           </div>
 
           {/* Per-Rule Group Performance Breakdown */}
-          {submission.ruleBreakdown && submission.ruleBreakdown.length > 0 && (
+          {activeAttempt.ruleBreakdown && activeAttempt.ruleBreakdown.length > 0 && (
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
               <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <Layers className="w-4 h-4 text-brand-600" />
                 <span>تحليل أداء الطالب حسب كل قاعدة في المسابقة:</span>
               </div>
               <div className="space-y-2.5">
-                {submission.ruleBreakdown.map((rb, idx) => (
+                {activeAttempt.ruleBreakdown.map((rb, idx) => (
                   <div
                     key={idx}
                     className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-1.5"

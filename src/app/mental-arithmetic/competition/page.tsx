@@ -27,7 +27,6 @@ import {
   ListOrdered,
   Keyboard,
   ListChecks,
-  Share2,
   Medal,
   Users,
   Lock,
@@ -51,12 +50,13 @@ import {
   PlatformAssignment,
   SubmissionRuleBreakdown,
   SubmissionQuestionDetail,
+  formatAttemptLabelAr,
+  getStudentAssignmentAttemptCount,
   getExtendedProfile,
   evaluateSubscription,
   getMonthlyTrialStatus,
   consumeMonthlyTrialQuestions,
   parseAssignmentFromSearchParams,
-  buildShareableAssignmentPath,
   syncExtendedProfileFromSupabase,
   recordRealTrainingSession,
   getAllAssignments,
@@ -194,7 +194,8 @@ export default function MentalMathCompetitionPage() {
   const activeUserId = user?.id || (authRole === "admin" ? "admin-local" : "guest-local");
   const isOfficialAccount = !isGuest && (Boolean(user) || authRole === "admin");
   const [activeAssignment, setActiveAssignment] = useState<PlatformAssignment | null>(null);
-  const [copiedActiveLink, setCopiedActiveLink] = useState(false);
+  const [priorAttemptCount, setPriorAttemptCount] = useState<number>(0);
+  const [completedAttemptNumber, setCompletedAttemptNumber] = useState<number>(1);
 
   const navigateToOfficialAuth = useCallback(
     (targetPath: "/login" | "/register") => {
@@ -479,6 +480,7 @@ export default function MentalMathCompetitionPage() {
     if (!found) return;
 
     setActiveAssignment(found);
+    setPriorAttemptCount(getStudentAssignmentAttemptCount(found.id, activeUserId));
     setTimeMode(found.timeMode || "countdown");
     setDurationMinutes(found.timeLimitMinutes || 5);
     setAnswerMode(found.answerMode || "typing");
@@ -706,6 +708,14 @@ export default function MentalMathCompetitionPage() {
         user?.email?.split("@")[0] ||
         "بطل العقل الخارق";
 
+      const nextAttemptNumber = activeAssignment
+        ? getStudentAssignmentAttemptCount(activeAssignment.id, activeUserId) + 1
+        : 1;
+      setCompletedAttemptNumber(nextAttemptNumber);
+      if (activeAssignment) {
+        setPriorAttemptCount(nextAttemptNumber);
+      }
+
       recordRealTrainingSession({
         userId: activeUserId,
         userName: participantDisplayName,
@@ -723,6 +733,7 @@ export default function MentalMathCompetitionPage() {
         assignmentId: activeAssignment?.id,
         assignmentCreatorId: activeAssignment?.creatorId,
         assignmentTitle: activeAssignment?.title,
+        attemptNumber: nextAttemptNumber,
         ruleBreakdown,
         questionDetails,
       });
@@ -990,7 +1001,7 @@ export default function MentalMathCompetitionPage() {
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
-            {stage !== "setup" && (
+            {stage !== "setup" && !activeAssignment && (
               <button
                 type="button"
                 onClick={() => {
@@ -1019,123 +1030,171 @@ export default function MentalMathCompetitionPage() {
       {/* ========================================================================= */}
       {stage === "setup" && (
         <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300">
-          {/* Active Homework / Admin Competition One-Click Ready Banner */}
+          {/* Active Homework / Admin Competition — STRICTLY LOCKED (Read-Only, Start Button Only) */}
           {activeAssignment && (
-            <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-l from-amber-500 via-amber-400 to-yellow-400 text-slate-950 shadow-xl space-y-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="space-y-1.5">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-950 text-amber-300 text-[11px] font-black">
-                    <span>
-                      {activeAssignment.kind === "trainer_homework"
-                        ? `🎓 بطولة / واجب من المدرب: ${activeAssignment.creatorName}`
-                        : `🏆 مسابقة وتحدي رسمي من إدارة المنصة`}
-                    </span>
-                  </div>
-                  <h2 className="text-lg sm:text-2xl font-black">
+            <div className="max-w-3xl mx-auto rounded-[2rem] bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 text-white border-2 border-amber-400/50 shadow-2xl overflow-hidden">
+              {/* Top Locked Ribbon */}
+              <div className="px-6 py-3 bg-gradient-to-l from-amber-500 via-amber-400 to-yellow-400 text-slate-950 flex flex-wrap items-center justify-between gap-2 text-xs font-black">
+                <span className="inline-flex items-center gap-1.5">
+                  <Trophy className="w-4 h-4" />
+                  <span>
+                    {activeAssignment.kind === "trainer_homework"
+                      ? `🎓 بطولة رسمية من المدرب: ${activeAssignment.creatorName}`
+                      : `🏆 مسابقة رسمية من إدارة منصة العقل الخارق`}
+                  </span>
+                </span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-950 text-amber-300 text-[11px]">
+                  <Lock className="w-3 h-3" />
+                  <span>إعدادات مقفلة (غير قابلة للتعديل)</span>
+                </span>
+              </div>
+
+              <div className="p-6 sm:p-8 space-y-6">
+                {/* Title & Description */}
+                <div className="text-center space-y-2">
+                  <h2 className="text-2xl sm:text-3xl font-black text-white">
                     {activeAssignment.title}
                   </h2>
-                  <p className="text-xs sm:text-sm font-bold text-slate-800">
-                    تم ضبط جميع الإعدادات تلقائياً ({totalQuestionsCount} سؤال •{" "}
-                    {timeMode === "countdown" ? `الوقت ${durationMinutes} دقائق` : "تايمر مفتوح"} •{" "}
-                    {ruleGroups.length} {ruleGroups.length > 1 ? "قواعد متعددة" : "قاعدة"}). اضغط زر البدء للانطلاق فوراً!
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 pt-1">
+                  {activeAssignment.description && (
+                    <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto leading-relaxed">
+                      {activeAssignment.description}
+                    </p>
+                  )}
+                </div>
+
+                {/* Read-Only Locked Specs Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
+                  <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
+                    <div className="text-[11px] font-bold text-slate-400">عدد الأسئلة</div>
+                    <div className="text-lg font-black font-mono text-amber-300 mt-0.5">
+                      {totalQuestionsCount} سؤال
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
+                    <div className="text-[11px] font-bold text-slate-400">الوقت المحدد</div>
+                    <div className="text-lg font-black text-emerald-300 mt-0.5">
+                      {timeMode === "countdown" ? `${durationMinutes} دقائق` : "تايمر مفتوح"}
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
+                    <div className="text-[11px] font-bold text-slate-400">طريقة الإجابة</div>
+                    <div className="text-sm sm:text-base font-black text-indigo-300 mt-1">
+                      {answerMode === "typing" ? "✍️ كتابة الجواب" : `🔘 ${choicesCount} اختيارات`}
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
+                    <div className="text-[11px] font-bold text-slate-400">عدد القواعد</div>
+                    <div className="text-lg font-black text-purple-300 mt-0.5">
+                      {ruleGroups.length} {ruleGroups.length > 1 ? "قواعد" : "قاعدة"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Locked Rule Groups Breakdown (Read-Only Chips) */}
+                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                  <div className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>تفاصيل القواعد المقررة في البطولة (للعرض فقط):</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
                     {ruleGroups.map((g, i) => (
                       <span
                         key={g.id}
-                        className="px-2.5 py-0.5 rounded-lg bg-slate-950/15 text-slate-950 text-[11px] font-black"
+                        className="px-3 py-1 rounded-xl bg-slate-900/90 border border-white/10 text-slate-100 text-xs font-bold"
                       >
-                        ({i + 1}) {formatGroupLabel(g)} ({g.count} س)
+                        ({i + 1}) {formatGroupLabel(g)} — {g.count} سؤال
                       </span>
                     ))}
                   </div>
                 </div>
-                <div className="flex flex-col sm:items-end gap-2 shrink-0 w-full sm:w-auto">
-                  {isOfficialAccount ? (
+
+                {/* Previous Attempt Notice (Retry allowed & labeled in results) */}
+                {isOfficialAccount && priorAttemptCount > 0 && (
+                  <div className="p-3.5 rounded-2xl bg-indigo-500/20 border border-indigo-400/40 text-indigo-100 text-xs sm:text-sm font-bold flex items-center gap-2.5">
+                    <RotateCcw className="w-5 h-5 text-amber-300 shrink-0" />
+                    <span>
+                      لقد أكملت <strong className="text-amber-300">{formatAttemptLabelAr(priorAttemptCount)}</strong> بنجاح! يمكنك المحاولة مرة أخرى الآن وستُسجَّل نتيجتك في لوحة المدرب والإدارة بعنوان:{" "}
+                      <strong className="text-emerald-300">{formatAttemptLabelAr(priorAttemptCount + 1)}</strong>.
+                    </span>
+                  </div>
+                )}
+
+                {/* Start Button Only (for Official Accounts) OR Official Account Gate (for Guests) */}
+                {isOfficialAccount ? (
+                  <div className="space-y-4 pt-1">
                     <button
                       type="button"
                       onClick={startCompetition}
-                      className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-slate-950 hover:bg-slate-800 text-amber-300 font-black text-sm sm:text-base shadow-xl flex items-center justify-center gap-2 transition-transform active:scale-95"
+                      className="w-full py-5 px-8 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-lg sm:text-xl shadow-2xl shadow-amber-500/25 flex items-center justify-center gap-3 transition-transform active:scale-95"
                     >
-                      <Play className="w-5 h-5 fill-current" />
-                      <span>ابدأ البطولة الآن 🚀</span>
+                      {priorAttemptCount > 0 ? (
+                        <>
+                          <RotateCcw className="w-6 h-6" />
+                          <span>ابدأ {formatAttemptLabelAr(priorAttemptCount + 1)} الآن 🚀</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-6 h-6 fill-current" />
+                          <span>ابدأ البطولة الآن 🚀</span>
+                        </>
+                      )}
                     </button>
-                  ) : (
-                    <div className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-rose-700 text-white font-black text-xs shadow-md">
-                      <Lock className="w-4 h-4 shrink-0" />
-                      <span>الدخول بحساب رسمي مطلوب للمشاركة</span>
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const url = `${window.location.origin}${buildShareableAssignmentPath(activeAssignment)}`;
-                      navigator.clipboard?.writeText(url);
-                      setCopiedActiveLink(true);
-                      setTimeout(() => setCopiedActiveLink(false), 2000);
-                    }}
-                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-slate-950/15 hover:bg-slate-950/25 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5"
-                  >
-                    <Share2 className="w-3.5 h-3.5" />
-                    <span>{copiedActiveLink ? "✅ تم نسخ الرابط!" : "مشاركة رابط المسابقة"}</span>
-                  </button>
-                </div>
-              </div>
 
-              {isOfficialAccount ? (
-                <div className="pt-3 border-t border-slate-950/15 flex flex-wrap items-center justify-between gap-2 text-xs font-black text-slate-900">
-                  <span className="inline-flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-900 shrink-0" />
-                    <span>
-                      مسجل بحساب رسمي:{" "}
-                      {authProfile?.name || user?.email?.split("@")[0] || "حساب رسمي"}
-                      {user?.email ? ` (${user.email})` : ""}
-                    </span>
-                  </span>
-                  <span className="text-[11px] font-bold text-slate-800">
-                    ستصل نتيجتك الكاملة وتفاصيل جميع إجاباتك إلى مدربك وإدارة المنصة فور انتهاء المسابقة 📊
-                  </span>
-                </div>
-              ) : (
-                <div className="p-4 sm:p-5 rounded-2xl bg-slate-950 text-white border-2 border-rose-500/60 shadow-2xl space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-400/40 text-rose-300 flex items-center justify-center shrink-0">
-                      <Lock className="w-5 h-5" />
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="text-sm sm:text-base font-black text-amber-300">
-                        🔐 المشاركة متاحة للطلاب المسجلين بحساب رسمي فقط
-                      </h3>
-                      <p className="text-xs text-slate-200 leading-relaxed">
-                        لا يمكن دخول المسابقة كزائر. سجّل دخولك بحسابك الرسمي أو أنشئ حساب طالب جديد في المنصة لتُحفظ نتيجتك وتظهر بالتفصيل الكامل لدى مدربك وإدارة المنصة، وسيتم إعادتك تلقائياً إلى هذه المسابقة فور تسجيل الدخول.
-                      </p>
+                    <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
+                      <span className="inline-flex items-center gap-1.5 font-bold text-emerald-300">
+                        <ShieldCheck className="w-4 h-4 shrink-0" />
+                        <span>
+                          مسجل بحساب رسمي:{" "}
+                          {authProfile?.name || user?.email?.split("@")[0] || "حساب رسمي"}
+                          {user?.email ? ` (${user.email})` : ""}
+                        </span>
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        تصل نتيجتك وتفاصيل إجاباتك تلقائياً إلى مدربك وإدارة المنصة 📊
+                      </span>
                     </div>
                   </div>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => navigateToOfficialAuth("/login")}
-                      className="flex-1 px-5 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95"
-                    >
-                      <LogIn className="w-4 h-4" />
-                      <span>تسجيل الدخول بحسابك الرسمي 🔑</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigateToOfficialAuth("/register")}
-                      className="flex-1 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95"
-                    >
-                      <UserPlus className="w-4 h-4" />
-                      <span>إنشاء حساب طالب جديد ✨</span>
-                    </button>
+                ) : (
+                  <div className="p-5 rounded-2xl bg-slate-900/90 border-2 border-rose-500/60 shadow-2xl space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-400/40 text-rose-300 flex items-center justify-center shrink-0">
+                        <Lock className="w-5 h-5" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="text-sm sm:text-base font-black text-amber-300">
+                          🔐 المشاركة متاحة للطلاب المسجلين بحساب رسمي فقط
+                        </h3>
+                        <p className="text-xs text-slate-200 leading-relaxed">
+                          لا يمكن دخول المسابقة كزائر. سجّل دخولك بحسابك الرسمي أو أنشئ حساب طالب جديد في المنصة لتُحفظ نتيجتك وتظهر بالتفصيل الكامل لدى مدربك وإدارة المنصة، وسيتم إعادتك تلقائياً إلى هذه البطولة فور تسجيل الدخول.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => navigateToOfficialAuth("/login")}
+                        className="flex-1 px-5 py-3.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95"
+                      >
+                        <LogIn className="w-4 h-4" />
+                        <span>تسجيل الدخول بحسابك الرسمي 🔑</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigateToOfficialAuth("/register")}
+                        className="flex-1 px-5 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95"
+                      >
+                        <UserPlus className="w-4 h-4" />
+                        <span>إنشاء حساب طالب جديد ✨</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 
-          {/* Trainer / Admin Quick Tournament Action Strip */}
-          {isTrainerOrAdminUser && (
+          {/* Trainer / Admin Quick Tournament Action Strip (Hidden inside a locked tournament link) */}
+          {isTrainerOrAdminUser && !activeAssignment && (
             <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-l from-brand-700 via-indigo-700 to-purple-800 text-white shadow-lg border border-amber-300/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="space-y-0.5">
                 <div className="text-sm sm:text-base font-black flex items-center gap-2">
@@ -1229,6 +1288,7 @@ export default function MentalMathCompetitionPage() {
             );
           })()}
 
+          {!activeAssignment && (
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
             {/* Section 1: Time Settings (تحديد الوقت: 5 إلى 30 دقيقة أو تايمر مفتوح) */}
             <div className="p-6 sm:p-8 space-y-5 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 text-white">
@@ -1968,28 +2028,18 @@ export default function MentalMathCompetitionPage() {
                     <span>إطلاق كـ بطولة لطلابي 🏆</span>
                   </button>
                 )}
-                {activeAssignment && !isOfficialAccount ? (
-                  <button
-                    type="button"
-                    onClick={() => navigateToOfficialAuth("/login")}
-                    className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-300 font-black text-sm sm:text-base shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2.5 border border-amber-400/40"
-                  >
-                    <Lock className="w-5 h-5" />
-                    <span>سجّل دخولك بحساب رسمي لبدء المسابقة 🔐</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={startCompetition}
-                    className="w-full sm:w-auto px-10 py-4 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-black text-base shadow-xl shadow-brand-500/25 transition-all hover:scale-102 active:scale-95 flex items-center justify-center gap-2.5"
-                  >
-                    <Play className="w-5 h-5 fill-white" />
-                    <span>بدء المسابقة الآن ({totalQuestionsCount} سؤال) 🏅</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={startCompetition}
+                  className="w-full sm:w-auto px-10 py-4 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-black text-base shadow-xl shadow-brand-500/25 transition-all hover:scale-102 active:scale-95 flex items-center justify-center gap-2.5"
+                >
+                  <Play className="w-5 h-5 fill-white" />
+                  <span>بدء المسابقة الآن ({totalQuestionsCount} سؤال) 🏅</span>
+                </button>
               </div>
             </div>
           </div>
+          )}
 
           {/* Trainer Tournament Create Modal & Results Board */}
           <TrainerTournamentModal
@@ -2637,9 +2687,27 @@ export default function MentalMathCompetitionPage() {
         <div className="space-y-8 animate-in zoom-in-95 duration-300">
           {/* Score Hero Banner */}
           <div className="rounded-[2.5rem] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white p-8 sm:p-12 border-2 border-amber-400/40 shadow-2xl text-center space-y-6">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-400/20 border border-amber-400/30 text-amber-300 text-xs sm:text-sm font-black">
-              <Award className="w-4 h-4" />
-              <span>تقرير التصحيح الرسمي — مسابقة الحساب الذهني</span>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-400/20 border border-amber-400/30 text-amber-300 text-xs sm:text-sm font-black">
+                <Award className="w-4 h-4" />
+                <span>
+                  {activeAssignment
+                    ? `تقرير التصحيح الرسمي — ${activeAssignment.title}`
+                    : "تقرير التصحيح الرسمي — مسابقة الحساب الذهني"}
+                </span>
+              </div>
+              {activeAssignment && (
+                <div
+                  className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs sm:text-sm font-black border ${
+                    completedAttemptNumber >= 2
+                      ? "bg-indigo-500/30 border-indigo-400/50 text-indigo-200"
+                      : "bg-emerald-500/20 border-emerald-400/40 text-emerald-300"
+                  }`}
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>{formatAttemptLabelAr(completedAttemptNumber)}</span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -2769,17 +2837,23 @@ export default function MentalMathCompetitionPage() {
                 className="px-7 py-3.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm shadow-lg transition-all hover:scale-102 flex items-center gap-2"
               >
                 <RotateCcw className="w-4 h-4" />
-                <span>إعادة المسابقة بنفس الإعدادات</span>
+                <span>
+                  {activeAssignment
+                    ? `المحاولة مرة أخرى (${formatAttemptLabelAr(completedAttemptNumber + 1)}) 🔄`
+                    : "إعادة المسابقة بنفس الإعدادات"}
+                </span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => setStage("setup")}
-                className="px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/15 transition-colors flex items-center gap-2"
-              >
-                <Settings2 className="w-4 h-4" />
-                <span>تغيير الإعدادات والقواعد</span>
-              </button>
+              {!activeAssignment && (
+                <button
+                  type="button"
+                  onClick={() => setStage("setup")}
+                  className="px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/15 transition-colors flex items-center gap-2"
+                >
+                  <Settings2 className="w-4 h-4" />
+                  <span>تغيير الإعدادات والقواعد</span>
+                </button>
+              )}
 
               <button
                 type="button"

@@ -104,39 +104,87 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const results = filtered.map((row) => {
+    // Group all rows by (assignmentId, studentId) chronologically so every retry is tracked
+    type RawRow = (typeof filtered)[number];
+    const grouped = new Map<string, RawRow[]>();
+    for (const row of filtered) {
       const meta = (row.metadata || {}) as Record<string, unknown>;
-      const prof = profileMap.get(String(row.user_id));
-      const totalQ = Number(row.total_questions || 0);
-      const correct = Number(row.correct_answers || 0);
-      const wrong = Number(row.wrong_answers || Math.max(0, totalQ - correct));
-      const duration = Number(row.duration_seconds || 0);
+      const assignId = String(meta.assignmentId || "");
+      const studentId = String(row.user_id || "");
+      if (!assignId || !studentId) continue;
+      const key = `${assignId}::${studentId}`;
+      const arr = grouped.get(key) || [];
+      arr.push(row);
+      grouped.set(key, arr);
+    }
+
+    const results = Array.from(grouped.values()).map((rows) => {
+      // Chronological order: Attempt 1, Attempt 2, ...
+      const ordered = [...rows].sort((a, b) =>
+        String(a.created_at || "").localeCompare(String(b.created_at || ""))
+      );
+
+      const attempts = ordered.map((row, idx) => {
+        const meta = (row.metadata || {}) as Record<string, unknown>;
+        const totalQ = Number(row.total_questions || 0);
+        const correct = Number(row.correct_answers || 0);
+        const wrong = Number(row.wrong_answers || Math.max(0, totalQ - correct));
+        const duration = Number(row.duration_seconds || 0);
+        const rawAttemptNum = Number(meta.attemptNumber || 0);
+        const attemptNumber = Math.max(idx + 1, rawAttemptNum);
+
+        return {
+          attemptNumber,
+          score: Number(row.score || 0),
+          totalQuestions: totalQ,
+          correctAnswers: correct,
+          wrongAnswers: wrong,
+          unansweredCount: Number(meta.unansweredCount || 0),
+          accuracy: Math.round(Number(row.accuracy_rate || 0)),
+          durationSeconds: duration,
+          avgSecondsPerQuestion:
+            typeof meta.avgSecondsPerQuestion === "number"
+              ? meta.avgSecondsPerQuestion
+              : totalQ > 0
+              ? Number((duration / totalQ).toFixed(1))
+              : 0,
+          ruleBreakdown: Array.isArray(meta.ruleBreakdown) ? meta.ruleBreakdown : undefined,
+          questionDetails: Array.isArray(meta.questionDetails) ? meta.questionDetails : undefined,
+          completedAt: String(row.created_at || new Date().toISOString()),
+        };
+      });
+
+      const latestRow = ordered[ordered.length - 1];
+      const latestAttempt = attempts[attempts.length - 1];
+      const latestMeta = (latestRow.metadata || {}) as Record<string, unknown>;
+      const prof = profileMap.get(String(latestRow.user_id));
 
       return {
-        assignmentId: String(meta.assignmentId || ""),
-        assignmentTitle: typeof meta.assignmentTitle === "string" ? meta.assignmentTitle : undefined,
+        assignmentId: String(latestMeta.assignmentId || ""),
+        assignmentTitle:
+          typeof latestMeta.assignmentTitle === "string" ? latestMeta.assignmentTitle : undefined,
         assignmentCreatorId:
-          typeof meta.assignmentCreatorId === "string" ? meta.assignmentCreatorId : undefined,
-        studentId: String(row.user_id || ""),
-        studentName: String(prof?.name || meta.studentName || "بطل العقل الخارق"),
-        studentEmail: String(prof?.email || meta.studentEmail || ""),
-        governorate: String(meta.governorate || ""),
-        score: Number(row.score || 0),
-        totalQuestions: totalQ,
-        correctAnswers: correct,
-        wrongAnswers: wrong,
-        unansweredCount: Number(meta.unansweredCount || 0),
-        accuracy: Math.round(Number(row.accuracy_rate || 0)),
-        durationSeconds: duration,
-        avgSecondsPerQuestion:
-          typeof meta.avgSecondsPerQuestion === "number"
-            ? meta.avgSecondsPerQuestion
-            : totalQ > 0
-            ? Number((duration / totalQ).toFixed(1))
-            : 0,
-        ruleBreakdown: Array.isArray(meta.ruleBreakdown) ? meta.ruleBreakdown : undefined,
-        questionDetails: Array.isArray(meta.questionDetails) ? meta.questionDetails : undefined,
-        completedAt: String(row.created_at || new Date().toISOString()),
+          typeof latestMeta.assignmentCreatorId === "string"
+            ? latestMeta.assignmentCreatorId
+            : undefined,
+        studentId: String(latestRow.user_id || ""),
+        studentName: String(prof?.name || latestMeta.studentName || "بطل العقل الخارق"),
+        studentEmail: String(prof?.email || latestMeta.studentEmail || ""),
+        governorate: String(latestMeta.governorate || ""),
+        score: latestAttempt.score,
+        totalQuestions: latestAttempt.totalQuestions,
+        correctAnswers: latestAttempt.correctAnswers,
+        wrongAnswers: latestAttempt.wrongAnswers,
+        unansweredCount: latestAttempt.unansweredCount,
+        accuracy: latestAttempt.accuracy,
+        durationSeconds: latestAttempt.durationSeconds,
+        avgSecondsPerQuestion: latestAttempt.avgSecondsPerQuestion,
+        attemptNumber: latestAttempt.attemptNumber,
+        totalAttempts: attempts.length,
+        attempts,
+        ruleBreakdown: latestAttempt.ruleBreakdown,
+        questionDetails: latestAttempt.questionDetails,
+        completedAt: latestAttempt.completedAt,
       };
     });
 

@@ -32,6 +32,7 @@ import {
   syncAllAssignmentsSubmissionsFromCloud,
   buildShareableAssignmentPath,
   formatRuleGroupShortAr,
+  formatAttemptLabelAr,
 } from "@/lib/platform-store";
 import StudentResultDetailModal from "@/components/competition/StudentResultDetailModal";
 
@@ -663,52 +664,83 @@ export function TrainerTournamentsBoard({
                         <span>{t.submissions.length} نتيجة مسجلة</span>
                       </div>
                       <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-52 overflow-y-auto">
-                        {t.submissions.map((sub, idx) => (
-                          <div
-                            key={`${sub.studentId}-${idx}`}
-                            className="px-3.5 py-2 flex items-center justify-between gap-2 text-xs"
-                          >
-                            <div className="flex items-center gap-2 font-bold">
-                              <span className="w-6 text-center font-black">
-                                {idx === 0
-                                  ? "🥇"
-                                  : idx === 1
-                                  ? "🥈"
-                                  : idx === 2
-                                  ? "🥉"
-                                  : `#${idx + 1}`}
-                              </span>
-                              <span className="text-slate-900 dark:text-white">
-                                {sub.studentName}
-                              </span>
-                              {sub.governorate && (
-                                <span className="text-[10px] text-slate-400">
-                                  ({sub.governorate})
+                        {t.submissions.map((sub, idx) => {
+                          const attemptNum = Math.max(
+                            1,
+                            sub.attemptNumber || sub.attempts?.length || 1
+                          );
+                          return (
+                            <div
+                              key={`${sub.studentId}-${idx}`}
+                              className="px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs"
+                            >
+                              <div className="space-y-0.5">
+                                <div className="flex flex-wrap items-center gap-1.5 font-bold">
+                                  <span className="w-6 text-center font-black">
+                                    {idx === 0
+                                      ? "🥇"
+                                      : idx === 1
+                                      ? "🥈"
+                                      : idx === 2
+                                      ? "🥉"
+                                      : `#${idx + 1}`}
+                                  </span>
+                                  <span className="text-slate-900 dark:text-white">
+                                    {sub.studentName}
+                                  </span>
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                                      attemptNum >= 2
+                                        ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300/70 dark:border-indigo-700"
+                                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                                    }`}
+                                  >
+                                    {attemptNum >= 2 ? "🔄 " : ""}
+                                    {formatAttemptLabelAr(attemptNum)}
+                                  </span>
+                                  {sub.governorate && (
+                                    <span className="text-[10px] text-slate-400">
+                                      ({sub.governorate})
+                                    </span>
+                                  )}
+                                </div>
+                                {sub.attempts && sub.attempts.length > 1 && (
+                                  <div className="pr-7 text-[10px] font-bold text-slate-500 flex flex-wrap gap-1.5">
+                                    {sub.attempts.map((att, aIdx) => (
+                                      <span key={`${att.attemptNumber}-${aIdx}`}>
+                                        {formatAttemptLabelAr(att.attemptNumber)}:{" "}
+                                        <span className="font-mono">
+                                          {att.correctAnswers}/{att.totalQuestions} ({att.accuracy}%)
+                                        </span>
+                                        {aIdx < (sub.attempts?.length || 0) - 1 ? " • " : ""}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 font-mono text-[11px]">
+                                <span className="font-black text-emerald-600 dark:text-emerald-400">
+                                  {sub.correctAnswers}/{sub.totalQuestions} ({sub.accuracy}%)
                                 </span>
-                              )}
+                                <span className="text-slate-500">⏱ {sub.durationSeconds}ث</span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setSelectedDetail({
+                                      submission: sub,
+                                      title: t.title,
+                                      rank: idx + 1,
+                                    })
+                                  }
+                                  className="px-2.5 py-1 rounded-lg bg-brand-100 hover:bg-brand-200 dark:bg-brand-950/70 text-brand-700 dark:text-brand-300 font-sans font-black text-[11px] flex items-center gap-1"
+                                >
+                                  <FileBarChart2 className="w-3.5 h-3.5" />
+                                  <span>التفاصيل</span>
+                                </button>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 font-mono text-[11px]">
-                              <span className="font-black text-emerald-600 dark:text-emerald-400">
-                                {sub.correctAnswers}/{sub.totalQuestions} ({sub.accuracy}%)
-                              </span>
-                              <span className="text-slate-500">⏱ {sub.durationSeconds}ث</span>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setSelectedDetail({
-                                    submission: sub,
-                                    title: t.title,
-                                    rank: idx + 1,
-                                  })
-                                }
-                                className="px-2.5 py-1 rounded-lg bg-brand-100 hover:bg-brand-200 dark:bg-brand-950/70 text-brand-700 dark:text-brand-300 font-sans font-black text-[11px] flex items-center gap-1"
-                              >
-                                <FileBarChart2 className="w-3.5 h-3.5" />
-                                <span>التفاصيل</span>
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   ) : (

@@ -102,6 +102,21 @@ export interface SubmissionQuestionDetail {
   isCorrect: boolean;
 }
 
+export interface AssignmentAttemptRecord {
+  attemptNumber: number;
+  score: number;
+  totalQuestions: number;
+  correctAnswers: number;
+  wrongAnswers?: number;
+  unansweredCount?: number;
+  accuracy: number;
+  durationSeconds: number;
+  avgSecondsPerQuestion?: number;
+  ruleBreakdown?: SubmissionRuleBreakdown[];
+  questionDetails?: SubmissionQuestionDetail[];
+  completedAt: string;
+}
+
 export interface AssignmentSubmission {
   studentId: string;
   studentName: string;
@@ -119,9 +134,22 @@ export interface AssignmentSubmission {
   avgSecondsPerQuestion?: number;
   assignmentCreatorId?: string;
   assignmentTitle?: string;
+  attemptNumber?: number;
+  totalAttempts?: number;
+  attempts?: AssignmentAttemptRecord[];
   ruleBreakdown?: SubmissionRuleBreakdown[];
   questionDetails?: SubmissionQuestionDetail[];
   completedAt: string;
+}
+
+export function formatAttemptLabelAr(attemptNumber?: number): string {
+  const n = Math.max(1, Math.floor(attemptNumber || 1));
+  if (n === 1) return "المحاولة الأولى";
+  if (n === 2) return "المحاولة الثانية";
+  if (n === 3) return "المحاولة الثالثة";
+  if (n === 4) return "المحاولة الرابعة";
+  if (n === 5) return "المحاولة الخامسة";
+  return `المحاولة رقم ${n}`;
 }
 
 export interface AssignmentRuleGroup {
@@ -973,6 +1001,7 @@ export async function recordRealTrainingSession(params: {
   assignmentTitle?: string;
   studentEmail?: string;
   studentPhone?: string;
+  attemptNumber?: number;
   ruleBreakdown?: SubmissionRuleBreakdown[];
   questionDetails?: SubmissionQuestionDetail[];
 }): Promise<RealTrainingSession> {
@@ -989,6 +1018,13 @@ export async function recordRealTrainingSession(params: {
       : 0;
   // Cap serialized question details safely to keep cloud JSONB fast
   const compactDetails = params.questionDetails ? params.questionDetails.slice(0, 200) : undefined;
+  const resolvedAttemptNumber = params.assignmentId
+    ? Math.max(
+        1,
+        params.attemptNumber ??
+          getStudentAssignmentAttemptCount(params.assignmentId, params.userId) + 1
+      )
+    : undefined;
 
   const session: RealTrainingSession = {
     id: `sess_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -1056,6 +1092,7 @@ export async function recordRealTrainingSession(params: {
       avgSecondsPerQuestion: avgSecPerQ,
       assignmentCreatorId: params.assignmentCreatorId,
       assignmentTitle: params.assignmentTitle || params.title,
+      attemptNumber: resolvedAttemptNumber,
       ruleBreakdown: params.ruleBreakdown,
       questionDetails: compactDetails,
       completedAt: new Date().toISOString(),
@@ -1092,6 +1129,7 @@ export async function recordRealTrainingSession(params: {
             assignmentId: params.assignmentId || null,
             assignmentCreatorId: params.assignmentCreatorId || null,
             assignmentTitle: params.assignmentTitle || params.title,
+            attemptNumber: resolvedAttemptNumber || 1,
             studentName: prof.name,
             studentEmail: params.studentEmail || prof.email || "",
             governorate: prof.governorate || "",
@@ -1520,12 +1558,32 @@ export async function syncAllAssignmentsSubmissionsFromCloud(): Promise<Platform
             const subIdx = existingSubs.findIndex((s) => s.studentId === item.studentId);
             if (subIdx >= 0) {
               const prev = existingSubs[subIdx];
-              const isBetter =
-                item.accuracy > prev.accuracy ||
-                (item.accuracy === prev.accuracy && item.durationSeconds <= prev.durationSeconds) ||
+              const prevAttempts = prev.attempts || [];
+              const incomingAttempts = item.attempts || [];
+              const mergedAttemptsMap = new Map<number, AssignmentAttemptRecord>();
+              prevAttempts.forEach((a) => mergedAttemptsMap.set(a.attemptNumber, a));
+              incomingAttempts.forEach((a) => mergedAttemptsMap.set(a.attemptNumber, a));
+              const mergedAttempts = Array.from(mergedAttemptsMap.values()).sort(
+                (a, b) => a.attemptNumber - b.attemptNumber
+              );
+              const incomingAttemptNum = Math.max(
+                item.attemptNumber || 1,
+                mergedAttempts.length
+              );
+              const prevAttemptNum = Math.max(prev.attemptNumber || 1, prevAttempts.length);
+              const shouldUpdate =
+                incomingAttemptNum > prevAttemptNum ||
+                mergedAttempts.length > prevAttempts.length ||
+                item.completedAt > prev.completedAt ||
                 (!prev.questionDetails && Boolean(item.questionDetails));
-              if (isBetter) {
-                existingSubs[subIdx] = { ...prev, ...item };
+              if (shouldUpdate) {
+                existingSubs[subIdx] = {
+                  ...prev,
+                  ...item,
+                  attemptNumber: Math.max(incomingAttemptNum, prevAttemptNum),
+                  totalAttempts: Math.max(mergedAttempts.length, incomingAttemptNum, prevAttemptNum),
+                  attempts: mergedAttempts.length > 0 ? mergedAttempts : prev.attempts,
+                };
                 updatedAny = true;
               }
             } else {
@@ -1550,10 +1608,11 @@ export async function syncAllAssignmentsSubmissionsFromCloud(): Promise<Platform
     const { data: sessions } = await supabase
       .from("training_sessions")
       .select("*")
-      .order("created_at", { ascending: false })
+      .order("created_at", { ascending: true })
       .limit(300);
 
     if (sessions && sessions.length > 0) {
+      const attemptCounters = new Map<string, number>();
       for (const row of sessions) {
         const meta = (row.metadata || {}) as Record<string, unknown>;
         const assignId = meta.assignmentId as string | undefined;
@@ -1588,50 +1647,76 @@ export async function syncAllAssignmentsSubmissionsFromCloud(): Promise<Platform
         }
 
         const studentId = String(row.user_id || "");
+        const countKey = `${assignId}::${studentId}`;
+        const seqNum = (attemptCounters.get(countKey) || 0) + 1;
+        attemptCounters.set(countKey, seqNum);
+        const attemptNum = Math.max(seqNum, Number(meta.attemptNumber || 0));
+
         const studentName = String(meta.studentName || "بطل العقل الخارق");
         const studentEmail = String(meta.studentEmail || "");
         const governorate = String(meta.governorate || "");
         const totalQ = Number(row.total_questions || 0);
         const correct = Number(row.correct_answers || 0);
+        const wrong = Number(row.wrong_answers || Math.max(0, totalQ - correct));
         const duration = Number(row.duration_seconds || 0);
-        const submission: AssignmentSubmission = {
-          studentId,
-          studentName,
-          studentEmail,
-          governorate,
+        const avgSec =
+          typeof meta.avgSecondsPerQuestion === "number"
+            ? meta.avgSecondsPerQuestion
+            : totalQ > 0
+            ? Number((duration / totalQ).toFixed(1))
+            : 0;
+        const completedAt = String(row.created_at || new Date().toISOString());
+        const attemptRec: AssignmentAttemptRecord = {
+          attemptNumber: attemptNum,
           score: Number(row.score || 0),
           totalQuestions: totalQ,
           correctAnswers: correct,
-          wrongAnswers: Number(row.wrong_answers || Math.max(0, totalQ - correct)),
+          wrongAnswers: wrong,
           unansweredCount: Number(meta.unansweredCount || 0),
           accuracy: Math.round(Number(row.accuracy_rate || 0)),
           durationSeconds: duration,
-          avgSecondsPerQuestion:
-            typeof meta.avgSecondsPerQuestion === "number"
-              ? meta.avgSecondsPerQuestion
-              : totalQ > 0
-              ? Number((duration / totalQ).toFixed(1))
-              : 0,
+          avgSecondsPerQuestion: avgSec,
           ruleBreakdown: Array.isArray(meta.ruleBreakdown)
             ? (meta.ruleBreakdown as SubmissionRuleBreakdown[])
             : undefined,
           questionDetails: Array.isArray(meta.questionDetails)
             ? (meta.questionDetails as SubmissionQuestionDetail[])
             : undefined,
-          completedAt: String(row.created_at || new Date().toISOString()),
+          completedAt,
+        };
+        const submission: AssignmentSubmission = {
+          studentId,
+          studentName,
+          studentEmail,
+          governorate,
+          ...attemptRec,
+          totalAttempts: attemptNum,
+          attempts: [attemptRec],
         };
 
         const existingSubs = list[idx].submissions || [];
         const subIdx = existingSubs.findIndex((s) => s.studentId === studentId);
         if (subIdx >= 0) {
           const prev = existingSubs[subIdx];
-          if (
-            submission.accuracy > prev.accuracy ||
-            (submission.accuracy === prev.accuracy &&
-              submission.durationSeconds < prev.durationSeconds) ||
-            (!prev.questionDetails && Boolean(submission.questionDetails))
-          ) {
-            existingSubs[subIdx] = { ...prev, ...submission };
+          const prevAttempts = prev.attempts || [];
+          const hasAttempt = prevAttempts.some(
+            (a) => a.attemptNumber === attemptNum || a.completedAt === completedAt
+          );
+          if (!hasAttempt) {
+            const nextAttempts = [...prevAttempts, attemptRec].sort(
+              (a, b) => a.attemptNumber - b.attemptNumber
+            );
+            const latest = nextAttempts[nextAttempts.length - 1];
+            existingSubs[subIdx] = {
+              ...prev,
+              ...latest,
+              studentName: studentName || prev.studentName,
+              studentEmail: studentEmail || prev.studentEmail,
+              governorate: governorate || prev.governorate,
+              attemptNumber: latest.attemptNumber,
+              totalAttempts: nextAttempts.length,
+              attempts: nextAttempts,
+            };
             updatedAny = true;
           }
         } else {
@@ -1778,6 +1863,41 @@ export function deletePlatformAssignment(id: string): void {
   }
 }
 
+export function getStudentAssignmentAttemptCount(
+  assignmentId: string,
+  studentId: string
+): number {
+  if (!assignmentId || !studentId) return 0;
+  let count = 0;
+
+  const existing = getAssignmentById(assignmentId);
+  const sub = existing?.submissions?.find((s) => s.studentId === studentId);
+  if (sub) {
+    count = Math.max(
+      count,
+      sub.totalAttempts || 0,
+      sub.attemptNumber || 0,
+      sub.attempts?.length || 0,
+      1
+    );
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.SESSIONS);
+      if (raw) {
+        const sessions: RealTrainingSession[] = JSON.parse(raw);
+        const sessionCount = sessions.filter(
+          (s) => s.assignmentId === assignmentId && s.userId === studentId
+        ).length;
+        count = Math.max(count, sessionCount);
+      }
+    } catch {}
+  }
+
+  return count;
+}
+
 export function submitAssignmentResult(assignmentId: string, submission: AssignmentSubmission): void {
   const list = getInitialAssignments();
   const idx = list.findIndex((a) => a.id === assignmentId);
@@ -1785,17 +1905,57 @@ export function submitAssignmentResult(assignmentId: string, submission: Assignm
     const existingSubs = list[idx].submissions || [];
     const subIdx = existingSubs.findIndex((s) => s.studentId === submission.studentId);
 
+    const makeSnapshot = (
+      s: AssignmentSubmission,
+      attemptNumber: number
+    ): AssignmentAttemptRecord => ({
+      attemptNumber,
+      score: s.score,
+      totalQuestions: s.totalQuestions,
+      correctAnswers: s.correctAnswers,
+      wrongAnswers: s.wrongAnswers,
+      unansweredCount: s.unansweredCount,
+      accuracy: s.accuracy,
+      durationSeconds: s.durationSeconds,
+      avgSecondsPerQuestion: s.avgSecondsPerQuestion,
+      ruleBreakdown: s.ruleBreakdown,
+      questionDetails: s.questionDetails,
+      completedAt: s.completedAt,
+    });
+
     if (subIdx >= 0) {
-      // Keep the better score or faster time
+      // Preserve full attempt history & always record Attempt 2, Attempt 3, ... prominently
       const prev = existingSubs[subIdx];
-      if (
-        submission.accuracy > prev.accuracy ||
-        (submission.accuracy === prev.accuracy && submission.durationSeconds <= prev.durationSeconds)
-      ) {
-        existingSubs[subIdx] = submission;
-      }
+      const prevAttempts: AssignmentAttemptRecord[] =
+        prev.attempts && prev.attempts.length > 0
+          ? [...prev.attempts]
+          : [makeSnapshot(prev, Math.max(1, prev.attemptNumber || 1))];
+
+      const nextAttemptNumber = Math.max(
+        submission.attemptNumber || 0,
+        prevAttempts.length + 1
+      );
+      const nextAttempts = [...prevAttempts, makeSnapshot(submission, nextAttemptNumber)];
+
+      existingSubs[subIdx] = {
+        ...prev,
+        ...submission,
+        attemptNumber: nextAttemptNumber,
+        totalAttempts: nextAttempts.length,
+        attempts: nextAttempts,
+      };
     } else {
-      existingSubs.push(submission);
+      const attemptNum = Math.max(1, submission.attemptNumber || 1);
+      const attempts =
+        submission.attempts && submission.attempts.length > 0
+          ? submission.attempts
+          : [makeSnapshot(submission, attemptNum)];
+      existingSubs.push({
+        ...submission,
+        attemptNumber: attemptNum,
+        totalAttempts: attempts.length,
+        attempts,
+      });
     }
 
     // Sort leaderboard by highest correctAnswers/accuracy then fastest durationSeconds
