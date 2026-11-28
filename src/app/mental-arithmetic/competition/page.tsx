@@ -268,6 +268,7 @@ export default function MentalMathCompetitionPage() {
   const [remainingSeconds, setRemainingSeconds] = useState<number>(600);
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("all");
   const [reviewGroupFilter, setReviewGroupFilter] = useState<string>("all");
+  const [showConfirmFinish, setShowConfirmFinish] = useState<boolean>(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const inputRefs = useRef<Record<number, HTMLInputElement | null>>({});
@@ -594,6 +595,7 @@ export default function MentalMathCompetitionPage() {
     setRemainingSeconds(durationMinutes * 60);
     setReviewFilter("all");
     setReviewGroupFilter("all");
+    setShowConfirmFinish(false);
     setCountdownNum(3);
     setStage("countdown");
     if (typeof window !== "undefined") {
@@ -628,6 +630,7 @@ export default function MentalMathCompetitionPage() {
   const finishAndGrade = useCallback(
     (overrideQuestions?: CompetitionQuestion[]) => {
       clearCompetitionTimer();
+      setShowConfirmFinish(false);
       const targetQuestions = overrideQuestions || questions;
       setStage("results");
       setResultsPage(0);
@@ -2108,113 +2111,226 @@ export default function MentalMathCompetitionPage() {
       {/* ========================================================================= */}
       {stage === "running" && (
         <div className="space-y-3 animate-in fade-in duration-200">
-          {/* Compact Non-Overlapping HUD Bar */}
-          <div className="bg-slate-950 text-white p-3 sm:px-5 rounded-2xl border border-slate-800 shadow-lg flex flex-wrap items-center justify-between gap-3">
-            {/* Live Timer & Quick Settings Back */}
-            <div className="flex items-center gap-2.5">
+          {/* Sticky Professional Exam HUD Bar — Always Reachable Without Scrolling */}
+          {(() => {
+            const remainingCount = Math.max(0, questions.length - answeredCount);
+            const allAnswered = questions.length > 0 && remainingCount === 0;
+            const progressPct =
+              questions.length > 0
+                ? Math.min(100, Math.round((answeredCount / questions.length) * 100))
+                : 0;
+
+            return (
+              <div className="sticky top-[110px] sm:top-[118px] md:top-[68px] xl:top-[72px] z-30 bg-slate-950/95 backdrop-blur-md text-white rounded-2xl border border-slate-800/90 shadow-xl overflow-hidden">
+                <div className="px-3 py-2.5 sm:px-5 sm:py-3 flex flex-wrap items-center justify-between gap-2.5">
+                  {/* Live Timer & Remaining Questions Counter */}
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className={`px-3 py-1.5 rounded-xl font-mono font-black text-base sm:text-lg flex items-center gap-1.5 border ${
+                        timeMode === "countdown" && remainingSeconds <= 60
+                          ? "bg-rose-600/30 border-rose-500 text-rose-300 animate-pulse"
+                          : "bg-slate-900 border-amber-400/40 text-amber-400"
+                      }`}
+                    >
+                      <Timer className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span dir="ltr">
+                        {timeMode === "countdown"
+                          ? formatTime(remainingSeconds)
+                          : formatTime(elapsedSeconds)}
+                      </span>
+                    </div>
+                    <div className="text-[11px] sm:text-xs leading-tight">
+                      <div className="font-black text-white flex items-center gap-1.5">
+                        <span>
+                          تم حل <span className="font-mono text-amber-300">{answeredCount}</span> من{" "}
+                          <span className="font-mono">{questions.length}</span>
+                        </span>
+                      </div>
+                      <div className="text-slate-400 font-bold">
+                        {allAnswered ? (
+                          <span className="text-emerald-400">✅ أتممت جميع الأسئلة</span>
+                        ) : (
+                          <span>متبقي {remainingCount} سؤال لم يُحل</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Live Answer Mode Switcher (Hidden in locked tournament assignments) */}
+                  {!activeAssignment && (
+                    <div className="hidden lg:flex flex-wrap items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setAnswerMode("typing")}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all flex items-center gap-1 ${
+                          answerMode === "typing"
+                            ? "bg-brand-600 text-white"
+                            : "text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <Keyboard className="w-3.5 h-3.5" />
+                        <span>كتابة</span>
+                      </button>
+                      {CHOICES_COUNT_OPTIONS.map((cnt) => (
+                        <button
+                          key={cnt}
+                          type="button"
+                          onClick={() => {
+                            setAnswerMode("choices");
+                            setChoicesCount(cnt);
+                          }}
+                          className={`px-2 py-1 rounded-lg text-[11px] font-black transition-all ${
+                            answerMode === "choices" && choicesCount === cnt
+                              ? "bg-emerald-600 text-white"
+                              : "text-slate-400 hover:text-white"
+                          }`}
+                        >
+                          {cnt} اختيارات
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Display Mode Switcher, Settings & Fixed-Position Submit Button */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 mr-auto sm:mr-0">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDisplayMode(displayMode === "sheet" ? "focus" : "sheet")
+                      }
+                      className="px-2.5 sm:px-3 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 font-bold text-[11px] sm:text-xs flex items-center gap-1.5 border border-slate-700 transition-colors"
+                      title={displayMode === "sheet" ? "التبديل لوضع سؤال بسؤال" : "عرض الورقة كاملة"}
+                    >
+                      {displayMode === "sheet" ? (
+                        <>
+                          <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+                          <span className="hidden sm:inline">سؤال بسؤال</span>
+                        </>
+                      ) : (
+                        <>
+                          <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+                          <span className="hidden sm:inline">الورقة كاملة</span>
+                        </>
+                      )}
+                    </button>
+
+                    {!activeAssignment && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          clearCompetitionTimer();
+                          setStage("setup");
+                        }}
+                        className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
+                        title="إعدادات المسابقة"
+                      >
+                        <Settings2 className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    {/* Fixed Submit Button: Calm Secondary Style While Questions Remain, Celebratory Emerald Only When 100% Complete */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (remainingCount > 0) {
+                          setShowConfirmFinish(true);
+                        } else {
+                          finishAndGrade();
+                        }
+                      }}
+                      className={`px-3.5 sm:px-4 py-2 rounded-xl font-black text-xs sm:text-sm transition-all active:scale-95 flex items-center gap-1.5 border ${
+                        allAnswered
+                          ? "bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 border-emerald-300 shadow-lg shadow-emerald-500/25"
+                          : "bg-slate-800/95 hover:bg-slate-700 text-slate-100 border-slate-600/80"
+                      }`}
+                    >
+                      <CheckCircle2
+                        className={`w-4 h-4 shrink-0 ${
+                          allAnswered ? "text-slate-950" : "text-amber-400"
+                        }`}
+                      />
+                      <span>
+                        {allAnswered ? "إنهاء وتصحيح الآن" : "إنهاء وتصحيح"}
+                      </span>
+                      <span
+                        dir="ltr"
+                        className={`px-1.5 py-0.5 rounded-md font-mono text-[10px] sm:text-[11px] ${
+                          allAnswered
+                            ? "bg-slate-950/20 text-slate-950"
+                            : "bg-slate-900 text-slate-300"
+                        }`}
+                      >
+                        {answeredCount}/{questions.length}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Live Thin Progress Bar (visually clarifies questions are still in progress) */}
+                <div className="w-full h-1 bg-slate-800">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      allAnswered
+                        ? "bg-emerald-400"
+                        : "bg-gradient-to-r from-brand-500 to-amber-400"
+                    }`}
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Early Finish Confirmation Dialog (prevents accidental submit while questions remain) */}
+          {showConfirmFinish && (
+            <div
+              className="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-in fade-in duration-150"
+              onClick={() => setShowConfirmFinish(false)}
+            >
               <div
-                className={`px-3.5 py-1.5 rounded-xl font-mono font-black text-lg sm:text-xl flex items-center gap-2 border ${
-                  timeMode === "countdown" && remainingSeconds <= 60
-                    ? "bg-rose-600/30 border-rose-500 text-rose-300 animate-pulse"
-                    : "bg-slate-900 border-amber-400/40 text-amber-400"
-                }`}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border-2 border-amber-400/70 shadow-2xl p-6 text-right space-y-4"
               >
-                <Timer className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span dir="ltr">
-                  {timeMode === "countdown"
-                    ? formatTime(remainingSeconds)
-                    : formatTime(elapsedSeconds)}
-                </span>
-              </div>
-              <div className="text-xs text-slate-400">
-                <div className="font-bold text-white">
-                  {timeMode === "countdown" ? "الوقت المتبقي" : "الزمن المستغرق"}
+                <div className="space-y-1.5">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 text-xs font-black">
+                    <span>⚠️ ما زالت هناك أسئلة لم تُحل بعد</span>
+                  </div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                    هل تريد إنهاء المسابقة والتصحيح الآن؟
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    قمت بحل{" "}
+                    <strong className="font-mono text-brand-600 dark:text-amber-300">
+                      {answeredCount}
+                    </strong>{" "}
+                    من أصل{" "}
+                    <strong className="font-mono">{questions.length}</strong> سؤال — وما زال متبقياً{" "}
+                    <strong className="font-mono text-rose-600 dark:text-rose-400">
+                      {Math.max(0, questions.length - answeredCount)}
+                    </strong>{" "}
+                    سؤال بدون إجابة.
+                  </p>
                 </div>
-                <div>
-                  تم حل {answeredCount} من {questions.length}
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmFinish(false)}
+                    className="flex-1 py-3 px-4 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-black text-xs sm:text-sm shadow-md"
+                  >
+                    متابعة حل الأسئلة المتبقية ✍️
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => finishAndGrade()}
+                    className="py-3 px-4 rounded-2xl bg-slate-100 hover:bg-emerald-100 dark:bg-slate-800 dark:hover:bg-emerald-950/60 text-slate-800 dark:text-slate-100 font-black text-xs sm:text-sm border border-slate-200 dark:border-slate-700"
+                  >
+                    نعم، إنهاء وتصحيح ✔
+                  </button>
                 </div>
               </div>
             </div>
-
-            {/* Live Answer Mode Switcher (كتابة vs اختيارات 2, 3, 4, 5) */}
-            <div className="flex flex-wrap items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
-              <button
-                type="button"
-                onClick={() => setAnswerMode("typing")}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1 ${
-                  answerMode === "typing"
-                    ? "bg-brand-600 text-white"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <Keyboard className="w-3.5 h-3.5" />
-                <span>كتابة</span>
-              </button>
-              {CHOICES_COUNT_OPTIONS.map((cnt) => (
-                <button
-                  key={cnt}
-                  type="button"
-                  onClick={() => {
-                    setAnswerMode("choices");
-                    setChoicesCount(cnt);
-                  }}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition-all ${
-                    answerMode === "choices" && choicesCount === cnt
-                      ? "bg-emerald-600 text-white"
-                      : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  {cnt} اختيارات
-                </button>
-              ))}
-            </div>
-
-            {/* Display Mode Switcher, Settings & Submit Button */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  setDisplayMode(displayMode === "sheet" ? "focus" : "sheet")
-                }
-                className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center gap-1.5 border border-slate-700 transition-colors"
-              >
-                {displayMode === "sheet" ? (
-                  <>
-                    <Target className="w-4 h-4 text-amber-400" />
-                    <span>سؤال بسؤال</span>
-                  </>
-                ) : (
-                  <>
-                    <LayoutGrid className="w-4 h-4 text-amber-400" />
-                    <span>الورقة كاملة</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  clearCompetitionTimer();
-                  setStage("setup");
-                }}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
-                title="إعدادات المسابقة"
-              >
-                <Settings2 className="w-4 h-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => finishAndGrade()}
-                className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center gap-1.5"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>
-                  إنهاء وتصحيح ({answeredCount}/{questions.length})
-                </span>
-              </button>
-            </div>
-          </div>
+          )}
 
           {/* ================================================================= */}
           {/* MODE B: FOCUS QUESTION-BY-QUESTION (وضع التركيز بجانب بعض بدون تمرير) */}
