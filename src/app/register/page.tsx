@@ -195,11 +195,19 @@ export default function RegisterPage() {
       setSuccessMessage(
         isEn
           ? "Student account created! Welcome Champion..."
-          : "تم إنشاء حساب البطل بنجاح! جاري تحويلك إلى واجهة الطالب..."
+          : "تم إنشاء حساب البطل بنجاح! جاري تحويلك الآن..."
       );
       playFx("fanfare");
       setTimeout(() => {
-        router.push("/dashboard");
+        let nextPath = "/dashboard";
+        try {
+          const savedNext = sessionStorage.getItem("supermind_post_login_redirect");
+          if (savedNext && savedNext.startsWith("/") && !savedNext.startsWith("//")) {
+            nextPath = savedNext;
+            sessionStorage.removeItem("supermind_post_login_redirect");
+          }
+        } catch {}
+        router.push(nextPath);
       }, 1200);
     }
   };

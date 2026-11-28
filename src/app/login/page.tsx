@@ -71,7 +71,15 @@ export default function LoginPage() {
       setSuccessMessage(isEn ? "Welcome back! Redirecting..." : "أهلاً بك مجدداً! جاري التحويل...");
       playFx("fanfare");
       setTimeout(() => {
-        router.push("/dashboard");
+        let nextPath = "/dashboard";
+        try {
+          const savedNext = sessionStorage.getItem("supermind_post_login_redirect");
+          if (savedNext && savedNext.startsWith("/") && !savedNext.startsWith("//")) {
+            nextPath = savedNext;
+            sessionStorage.removeItem("supermind_post_login_redirect");
+          }
+        } catch {}
+        router.push(nextPath);
       }, 700);
     }
   };

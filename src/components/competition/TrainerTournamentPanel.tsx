@@ -17,9 +17,11 @@ import {
   Clock,
   Layers,
   ExternalLink,
+  FileBarChart2,
 } from "lucide-react";
 import {
   PlatformAssignment,
+  AssignmentSubmission,
   AssignmentRuleGroup,
   ExtendedUserProfile,
   createPlatformAssignment,
@@ -31,6 +33,7 @@ import {
   buildShareableAssignmentPath,
   formatRuleGroupShortAr,
 } from "@/lib/platform-store";
+import StudentResultDetailModal from "@/components/competition/StudentResultDetailModal";
 
 interface TrainerTournamentModalProps {
   open: boolean;
@@ -465,6 +468,11 @@ export function TrainerTournamentsBoard({
   const [tournaments, setTournaments] = useState<PlatformAssignment[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<{
+    submission: AssignmentSubmission;
+    title: string;
+    rank: number;
+  } | null>(null);
 
   const loadList = useCallback(async (withCloud = false) => {
     const filterMine = (all: PlatformAssignment[]) =>
@@ -679,11 +687,25 @@ export function TrainerTournamentsBoard({
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-3 font-mono text-[11px]">
+                            <div className="flex items-center gap-2 font-mono text-[11px]">
                               <span className="font-black text-emerald-600 dark:text-emerald-400">
                                 {sub.correctAnswers}/{sub.totalQuestions} ({sub.accuracy}%)
                               </span>
                               <span className="text-slate-500">⏱ {sub.durationSeconds}ث</span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSelectedDetail({
+                                    submission: sub,
+                                    title: t.title,
+                                    rank: idx + 1,
+                                  })
+                                }
+                                className="px-2.5 py-1 rounded-lg bg-brand-100 hover:bg-brand-200 dark:bg-brand-950/70 text-brand-700 dark:text-brand-300 font-sans font-black text-[11px] flex items-center gap-1"
+                              >
+                                <FileBarChart2 className="w-3.5 h-3.5" />
+                                <span>التفاصيل</span>
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -700,6 +722,13 @@ export function TrainerTournamentsBoard({
           )}
         </div>
       </div>
+
+      <StudentResultDetailModal
+        submission={selectedDetail?.submission || null}
+        assignmentTitle={selectedDetail?.title}
+        rank={selectedDetail?.rank}
+        onClose={() => setSelectedDetail(null)}
+      />
     </div>
   );
 }

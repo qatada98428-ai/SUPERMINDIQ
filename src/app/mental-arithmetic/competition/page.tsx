@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import confetti from "canvas-confetti";
 import {
   Trophy,
@@ -29,6 +30,10 @@ import {
   Share2,
   Medal,
   Users,
+  Lock,
+  LogIn,
+  UserPlus,
+  ShieldCheck,
 } from "lucide-react";
 import {
   generateFlashAnzanSeries,
@@ -44,6 +49,8 @@ import { useAuth } from "@/context/AuthContext";
 import { getWhatsAppLink } from "@/lib/constants";
 import {
   PlatformAssignment,
+  SubmissionRuleBreakdown,
+  SubmissionQuestionDetail,
   getExtendedProfile,
   evaluateSubscription,
   getMonthlyTrialStatus,
@@ -52,7 +59,6 @@ import {
   buildShareableAssignmentPath,
   syncExtendedProfileFromSupabase,
   recordRealTrainingSession,
-  submitAssignmentResult,
   getAllAssignments,
   SUBSCRIPTION_PLANS,
   MONTHLY_FREE_QUESTIONS_LIMIT,
@@ -183,11 +189,27 @@ function generateChoicesForAnswer(
 }
 
 export default function MentalMathCompetitionPage() {
+  const router = useRouter();
   const { user, profile: authProfile, role: authRole, isGuest, recordProgressAnswer } = useAuth();
-  const activeUserId = user?.id || "guest-local";
+  const activeUserId = user?.id || (authRole === "admin" ? "admin-local" : "guest-local");
+  const isOfficialAccount = !isGuest && (Boolean(user) || authRole === "admin");
   const [activeAssignment, setActiveAssignment] = useState<PlatformAssignment | null>(null);
-  const [guestParticipantName, setGuestParticipantName] = useState<string>("");
   const [copiedActiveLink, setCopiedActiveLink] = useState(false);
+
+  const navigateToOfficialAuth = useCallback(
+    (targetPath: "/login" | "/register") => {
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem(
+            "supermind_post_login_redirect",
+            `${window.location.pathname}${window.location.search}`
+          );
+        } catch {}
+      }
+      router.push(targetPath);
+    },
+    [router]
+  );
   const [showTrainerTournamentModal, setShowTrainerTournamentModal] = useState(false);
   const [showTrainerResultsBoard, setShowTrainerResultsBoard] = useState(false);
   const [trainerTournamentsCount, setTrainerTournamentsCount] = useState(0);
@@ -500,6 +522,12 @@ export default function MentalMathCompetitionPage() {
 
   // ── Launch Competition ─────────────────────────────────────
   const startCompetition = () => {
+    // Strict Official Account Gate: unregistered/guest users cannot participate in any competition
+    if (activeAssignment && !isOfficialAccount) {
+      navigateToOfficialAuth("/login");
+      return;
+    }
+
     const extProf = getExtendedProfile(activeUserId, {
       email: user?.email || authProfile?.email,
       name: authProfile?.name,
@@ -512,7 +540,7 @@ export default function MentalMathCompetitionPage() {
       authProfile?.role === "trainer" ||
       authProfile?.role === "admin";
     const hasUnlimitedAccess =
-      subEval.isActive || isTrainerOrAdmin || activeAssignment !== null;
+      subEval.isActive || isTrainerOrAdmin || (activeAssignment !== null && isOfficialAccount);
 
     if (!hasUnlimitedAccess) {
       if (isGuest) {
@@ -608,6 +636,12 @@ export default function MentalMathCompetitionPage() {
           parseInt(q.userAnswer.trim(), 10) === q.correctAnswer
       ).length;
 
+      const unansweredCnt = targetQuestions.filter(
+        (q) => q.userAnswer.trim() === ""
+      ).length;
+
+      const wrongCnt = Math.max(0, targetQuestions.length - correctCnt - unansweredCnt);
+
       const ratio = correctCnt / Math.max(1, targetQuestions.length);
       if (ratio >= 0.8) {
         soundSynth.playOutcomeSound("excellent");
@@ -617,20 +651,65 @@ export default function MentalMathCompetitionPage() {
 
       const primaryLevel: ArithmeticLevel = ruleGroups[0]?.level || "simple";
 
-      // Record full competition session & homework/admin competition submission
+      // Compute detailed per-rule breakdown & question-by-question sheet for trainer/admin reports
+      const breakdownMap = new Map<
+        string,
+        { total: number; correct: number; wrong: number; unanswered: number }
+      >();
+      const questionDetails: SubmissionQuestionDetail[] = targetQuestions.map((q) => {
+        const trimmed = q.userAnswer.trim();
+        const isUnanswered = trimmed === "";
+        const isCorrect =
+          !isUnanswered && parseInt(trimmed, 10) === q.correctAnswer;
+        const lbl = q.groupLabel || "عام";
+        const cur = breakdownMap.get(lbl) || {
+          total: 0,
+          correct: 0,
+          wrong: 0,
+          unanswered: 0,
+        };
+        cur.total += 1;
+        if (isCorrect) {
+          cur.correct += 1;
+        } else if (isUnanswered) {
+          cur.unanswered += 1;
+        } else {
+          cur.wrong += 1;
+        }
+        breakdownMap.set(lbl, cur);
+
+        return {
+          id: q.id,
+          groupLabel: lbl,
+          numbers: q.numbers,
+          correctAnswer: q.correctAnswer,
+          userAnswer: trimmed,
+          isCorrect,
+        };
+      });
+
+      const ruleBreakdown: SubmissionRuleBreakdown[] = Array.from(
+        breakdownMap.entries()
+      ).map(([groupLabel, stats]) => ({
+        groupLabel,
+        total: stats.total,
+        correct: stats.correct,
+        wrong: stats.wrong,
+        unanswered: stats.unanswered,
+        accuracy:
+          stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
+      }));
+
+      // Record full official student session & detailed competition result (synced locally & to cloud)
       const participantDisplayName =
-        guestParticipantName.trim() ||
         authProfile?.name ||
         user?.email?.split("@")[0] ||
         "بطل العقل الخارق";
-      const participantSubmitId =
-        activeUserId !== "guest-local"
-          ? activeUserId
-          : `guest_${participantDisplayName.replace(/\s+/g, "_").slice(0, 20)}_${Date.now().toString(36)}`;
 
       recordRealTrainingSession({
         userId: activeUserId,
         userName: participantDisplayName,
+        studentEmail: user?.email || authProfile?.email || undefined,
         type: "competition",
         title: activeAssignment
           ? activeAssignment.title
@@ -638,27 +717,15 @@ export default function MentalMathCompetitionPage() {
         level: LEVEL_LABELS[primaryLevel] || primaryLevel,
         totalQuestions: targetQuestions.length,
         correctAnswers: correctCnt,
+        wrongAnswers: wrongCnt,
+        unansweredCount: unansweredCnt,
         durationSeconds: Math.max(1, elapsedSeconds),
         assignmentId: activeAssignment?.id,
+        assignmentCreatorId: activeAssignment?.creatorId,
+        assignmentTitle: activeAssignment?.title,
+        ruleBreakdown,
+        questionDetails,
       });
-
-      // Ensure guest link participants also post their custom name to the tournament leaderboard
-      if (activeAssignment && activeUserId === "guest-local") {
-        const acc =
-          targetQuestions.length > 0
-            ? Math.round((correctCnt / targetQuestions.length) * 100)
-            : 0;
-        submitAssignmentResult(activeAssignment.id, {
-          studentId: participantSubmitId,
-          studentName: participantDisplayName,
-          score: correctCnt * 10 + (acc >= 90 ? 25 : 5),
-          totalQuestions: targetQuestions.length,
-          correctAnswers: correctCnt,
-          accuracy: acc,
-          durationSeconds: Math.max(1, elapsedSeconds),
-          completedAt: new Date().toISOString(),
-        });
-      }
 
       if (correctCnt > 0) {
         recordProgressAnswer({
@@ -690,8 +757,8 @@ export default function MentalMathCompetitionPage() {
       ruleGroups,
       elapsedSeconds,
       activeUserId,
-      guestParticipantName,
       authProfile?.name,
+      authProfile?.email,
       user?.email,
       activeAssignment,
     ]
@@ -984,14 +1051,21 @@ export default function MentalMathCompetitionPage() {
                   </div>
                 </div>
                 <div className="flex flex-col sm:items-end gap-2 shrink-0 w-full sm:w-auto">
-                  <button
-                    type="button"
-                    onClick={startCompetition}
-                    className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-slate-950 hover:bg-slate-800 text-amber-300 font-black text-sm sm:text-base shadow-xl flex items-center justify-center gap-2 transition-transform active:scale-95"
-                  >
-                    <Play className="w-5 h-5 fill-current" />
-                    <span>ابدأ البطولة الآن 🚀</span>
-                  </button>
+                  {isOfficialAccount ? (
+                    <button
+                      type="button"
+                      onClick={startCompetition}
+                      className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-slate-950 hover:bg-slate-800 text-amber-300 font-black text-sm sm:text-base shadow-xl flex items-center justify-center gap-2 transition-transform active:scale-95"
+                    >
+                      <Play className="w-5 h-5 fill-current" />
+                      <span>ابدأ البطولة الآن 🚀</span>
+                    </button>
+                  ) : (
+                    <div className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-rose-700 text-white font-black text-xs shadow-md">
+                      <Lock className="w-4 h-4 shrink-0" />
+                      <span>الدخول بحساب رسمي مطلوب للمشاركة</span>
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => {
@@ -1008,18 +1082,53 @@ export default function MentalMathCompetitionPage() {
                 </div>
               </div>
 
-              {isGuest && (
-                <div className="pt-3 border-t border-slate-950/15 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                  <label className="text-xs font-black text-slate-900 shrink-0">
-                    ✍️ اكتب اسمك ليظهر في لوحة نتائج البطولة:
-                  </label>
-                  <input
-                    type="text"
-                    value={guestParticipantName}
-                    onChange={(e) => setGuestParticipantName(e.target.value)}
-                    placeholder="مثال: علي محمد — الصف الرابع"
-                    className="flex-1 px-3.5 py-2 rounded-xl bg-white/95 border border-slate-950/20 text-xs font-bold text-slate-900 outline-none"
-                  />
+              {isOfficialAccount ? (
+                <div className="pt-3 border-t border-slate-950/15 flex flex-wrap items-center justify-between gap-2 text-xs font-black text-slate-900">
+                  <span className="inline-flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-900 shrink-0" />
+                    <span>
+                      مسجل بحساب رسمي:{" "}
+                      {authProfile?.name || user?.email?.split("@")[0] || "حساب رسمي"}
+                      {user?.email ? ` (${user.email})` : ""}
+                    </span>
+                  </span>
+                  <span className="text-[11px] font-bold text-slate-800">
+                    ستصل نتيجتك الكاملة وتفاصيل جميع إجاباتك إلى مدربك وإدارة المنصة فور انتهاء المسابقة 📊
+                  </span>
+                </div>
+              ) : (
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-950 text-white border-2 border-rose-500/60 shadow-2xl space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-400/40 text-rose-300 flex items-center justify-center shrink-0">
+                      <Lock className="w-5 h-5" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-sm sm:text-base font-black text-amber-300">
+                        🔐 المشاركة متاحة للطلاب المسجلين بحساب رسمي فقط
+                      </h3>
+                      <p className="text-xs text-slate-200 leading-relaxed">
+                        لا يمكن دخول المسابقة كزائر. سجّل دخولك بحسابك الرسمي أو أنشئ حساب طالب جديد في المنصة لتُحفظ نتيجتك وتظهر بالتفصيل الكامل لدى مدربك وإدارة المنصة، وسيتم إعادتك تلقائياً إلى هذه المسابقة فور تسجيل الدخول.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => navigateToOfficialAuth("/login")}
+                      className="flex-1 px-5 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95"
+                    >
+                      <LogIn className="w-4 h-4" />
+                      <span>تسجيل الدخول بحسابك الرسمي 🔑</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigateToOfficialAuth("/register")}
+                      className="flex-1 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>إنشاء حساب طالب جديد ✨</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -1859,14 +1968,25 @@ export default function MentalMathCompetitionPage() {
                     <span>إطلاق كـ بطولة لطلابي 🏆</span>
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={startCompetition}
-                  className="w-full sm:w-auto px-10 py-4 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-black text-base shadow-xl shadow-brand-500/25 transition-all hover:scale-102 active:scale-95 flex items-center justify-center gap-2.5"
-                >
-                  <Play className="w-5 h-5 fill-white" />
-                  <span>بدء المسابقة الآن ({totalQuestionsCount} سؤال) 🏅</span>
-                </button>
+                {activeAssignment && !isOfficialAccount ? (
+                  <button
+                    type="button"
+                    onClick={() => navigateToOfficialAuth("/login")}
+                    className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-300 font-black text-sm sm:text-base shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2.5 border border-amber-400/40"
+                  >
+                    <Lock className="w-5 h-5" />
+                    <span>سجّل دخولك بحساب رسمي لبدء المسابقة 🔐</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={startCompetition}
+                    className="w-full sm:w-auto px-10 py-4 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-black text-base shadow-xl shadow-brand-500/25 transition-all hover:scale-102 active:scale-95 flex items-center justify-center gap-2.5"
+                  >
+                    <Play className="w-5 h-5 fill-white" />
+                    <span>بدء المسابقة الآن ({totalQuestionsCount} سؤال) 🏅</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>

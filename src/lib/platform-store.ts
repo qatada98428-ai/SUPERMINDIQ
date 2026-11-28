@@ -84,16 +84,43 @@ export interface RealTrainingSession {
   createdAt: string;
 }
 
+export interface SubmissionRuleBreakdown {
+  groupLabel: string;
+  total: number;
+  correct: number;
+  wrong: number;
+  unanswered: number;
+  accuracy: number;
+}
+
+export interface SubmissionQuestionDetail {
+  id: number;
+  groupLabel: string;
+  numbers: number[];
+  correctAnswer: number;
+  userAnswer: string;
+  isCorrect: boolean;
+}
+
 export interface AssignmentSubmission {
   studentId: string;
   studentName: string;
+  studentEmail?: string;
+  studentPhone?: string;
   studentAvatar?: string;
   governorate?: string;
   score: number;
   totalQuestions: number;
   correctAnswers: number;
+  wrongAnswers?: number;
+  unansweredCount?: number;
   accuracy: number;
   durationSeconds: number;
+  avgSecondsPerQuestion?: number;
+  assignmentCreatorId?: string;
+  assignmentTitle?: string;
+  ruleBreakdown?: SubmissionRuleBreakdown[];
+  questionDetails?: SubmissionQuestionDetail[];
   completedAt: string;
 }
 
@@ -938,14 +965,30 @@ export async function recordRealTrainingSession(params: {
   level: string;
   totalQuestions: number;
   correctAnswers: number;
+  wrongAnswers?: number;
+  unansweredCount?: number;
   durationSeconds: number;
   assignmentId?: string;
+  assignmentCreatorId?: string;
+  assignmentTitle?: string;
+  studentEmail?: string;
+  studentPhone?: string;
+  ruleBreakdown?: SubmissionRuleBreakdown[];
+  questionDetails?: SubmissionQuestionDetail[];
 }): Promise<RealTrainingSession> {
   const accuracy =
     params.totalQuestions > 0
       ? Math.round((params.correctAnswers / params.totalQuestions) * 100)
       : 0;
   const earnedPoints = params.correctAnswers * 10 + (accuracy >= 90 ? 25 : 5);
+  const wrongCnt =
+    params.wrongAnswers ?? Math.max(0, params.totalQuestions - params.correctAnswers);
+  const avgSecPerQ =
+    params.totalQuestions > 0
+      ? Number((params.durationSeconds / params.totalQuestions).toFixed(1))
+      : 0;
+  // Cap serialized question details safely to keep cloud JSONB fast
+  const compactDetails = params.questionDetails ? params.questionDetails.slice(0, 200) : undefined;
 
   const session: RealTrainingSession = {
     id: `sess_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -994,23 +1037,32 @@ export async function recordRealTrainingSession(params: {
     lastActivity: new Date().toISOString(),
   });
 
-  // If linked to an assignment or competition, record submission automatically!
+  // If linked to an assignment or competition, record full detailed submission automatically!
   if (params.assignmentId) {
     submitAssignmentResult(params.assignmentId, {
       studentId: params.userId,
       studentName: prof.name,
+      studentEmail: params.studentEmail || prof.email,
+      studentPhone: params.studentPhone || prof.phone,
       studentAvatar: prof.avatarUrl,
       governorate: prof.governorate,
       score: earnedPoints,
       totalQuestions: params.totalQuestions,
       correctAnswers: params.correctAnswers,
+      wrongAnswers: wrongCnt,
+      unansweredCount: params.unansweredCount ?? 0,
       accuracy,
       durationSeconds: params.durationSeconds,
+      avgSecondsPerQuestion: avgSecPerQ,
+      assignmentCreatorId: params.assignmentCreatorId,
+      assignmentTitle: params.assignmentTitle || params.title,
+      ruleBreakdown: params.ruleBreakdown,
+      questionDetails: compactDetails,
       completedAt: new Date().toISOString(),
     });
   }
 
-  // Also persist training session & assignment submission in Supabase training_sessions
+  // Also persist training session & detailed assignment submission in Supabase training_sessions
   const supabase = getSupabaseClient();
   if (supabase && params.userId && params.userId !== "guest-local" && !params.userId.startsWith("trainer-")) {
     try {
@@ -1030,7 +1082,7 @@ export async function recordRealTrainingSession(params: {
           level: params.level || "المستوى الأول",
           total_questions: params.totalQuestions,
           correct_answers: params.correctAnswers,
-          wrong_answers: Math.max(0, params.totalQuestions - params.correctAnswers),
+          wrong_answers: wrongCnt,
           accuracy_rate: accuracy,
           duration_seconds: params.durationSeconds,
           score: earnedPoints,
@@ -1038,8 +1090,15 @@ export async function recordRealTrainingSession(params: {
             kind: params.type,
             title: params.title,
             assignmentId: params.assignmentId || null,
+            assignmentCreatorId: params.assignmentCreatorId || null,
+            assignmentTitle: params.assignmentTitle || params.title,
             studentName: prof.name,
+            studentEmail: params.studentEmail || prof.email || "",
             governorate: prof.governorate || "",
+            unansweredCount: params.unansweredCount ?? 0,
+            avgSecondsPerQuestion: avgSecPerQ,
+            ruleBreakdown: params.ruleBreakdown || null,
+            questionDetails: compactDetails || null,
           },
         },
       ]);
@@ -1411,7 +1470,82 @@ export async function syncAllAssignmentsSubmissionsFromCloud(): Promise<Platform
     // Graceful fallback
   }
 
-  // 3. Also merge submissions recorded inside training_sessions.metadata.assignmentId
+  // 3. Fetch detailed submissions via secure server API (works for BOTH Trainers & Admins cross-device!)
+  if (typeof window !== "undefined") {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (accessToken) {
+        const idsQuery = list.map((a) => a.id).join(",");
+        const resp = await fetch(
+          `/api/competitions/results?assignmentIds=${encodeURIComponent(idsQuery)}`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }
+        );
+        if (resp.ok) {
+          const payload = (await resp.json()) as {
+            results?: Array<AssignmentSubmission & { assignmentId: string }>;
+          };
+          for (const item of payload.results || []) {
+            let idx = list.findIndex((a) => a.id === item.assignmentId);
+            if (idx === -1) {
+              // Auto-reconstruct the competition entry cross-device so trainer/admin never misses a result
+              list.unshift({
+                id: item.assignmentId,
+                kind: "trainer_homework",
+                title: item.assignmentTitle || "🏆 مسابقة / بطولة مرسلة عبر الرابط",
+                description: "تم استرجاع هذه المسابقة ونتائج طلابها تلقائياً من السحابة.",
+                creatorId: item.assignmentCreatorId || "trainer-qatada",
+                creatorName: "المدرب / إدارة المنصة",
+                creatorRole: "trainer",
+                targetType: "all_students",
+                exerciseType: "competition",
+                rulesLevel: "general",
+                allowSubtraction: true,
+                digitPlace: "units",
+                termsCount: 4,
+                questionsCount: item.totalQuestions || 20,
+                timeLimitMinutes: 10,
+                answerMode: "typing",
+                choicesCount: 4,
+                isActive: true,
+                createdAt: item.completedAt || new Date().toISOString(),
+                submissions: [],
+              });
+              idx = 0;
+              updatedAny = true;
+            }
+            const existingSubs = list[idx].submissions || [];
+            const subIdx = existingSubs.findIndex((s) => s.studentId === item.studentId);
+            if (subIdx >= 0) {
+              const prev = existingSubs[subIdx];
+              const isBetter =
+                item.accuracy > prev.accuracy ||
+                (item.accuracy === prev.accuracy && item.durationSeconds <= prev.durationSeconds) ||
+                (!prev.questionDetails && Boolean(item.questionDetails));
+              if (isBetter) {
+                existingSubs[subIdx] = { ...prev, ...item };
+                updatedAny = true;
+              }
+            } else {
+              existingSubs.push(item);
+              updatedAny = true;
+            }
+            existingSubs.sort((a, b) => {
+              if (b.correctAnswers !== a.correctAnswers) return b.correctAnswers - a.correctAnswers;
+              return a.durationSeconds - b.durationSeconds;
+            });
+            list[idx].submissions = existingSubs;
+          }
+        }
+      }
+    } catch {
+      // Fallback gracefully to direct query below
+    }
+  }
+
+  // 4. Also merge submissions recorded inside training_sessions.metadata.assignmentId (Admin/self direct read)
   try {
     const { data: sessions } = await supabase
       .from("training_sessions")
@@ -1425,21 +1559,65 @@ export async function syncAllAssignmentsSubmissionsFromCloud(): Promise<Platform
         const assignId = meta.assignmentId as string | undefined;
         if (!assignId) continue;
 
-        const idx = list.findIndex((a) => a.id === assignId);
-        if (idx === -1) continue;
+        let idx = list.findIndex((a) => a.id === assignId);
+        if (idx === -1) {
+          list.unshift({
+            id: assignId,
+            kind: "trainer_homework",
+            title: String(meta.assignmentTitle || meta.title || "🏆 مسابقة / بطولة مرسلة عبر الرابط"),
+            description: "تم استرجاع هذه المسابقة ونتائج طلابها تلقائياً من السحابة.",
+            creatorId: String(meta.assignmentCreatorId || "trainer-qatada"),
+            creatorName: "المدرب / إدارة المنصة",
+            creatorRole: "trainer",
+            targetType: "all_students",
+            exerciseType: "competition",
+            rulesLevel: "general",
+            allowSubtraction: true,
+            digitPlace: "units",
+            termsCount: 4,
+            questionsCount: Number(row.total_questions || 20),
+            timeLimitMinutes: 10,
+            answerMode: "typing",
+            choicesCount: 4,
+            isActive: true,
+            createdAt: String(row.created_at || new Date().toISOString()),
+            submissions: [],
+          });
+          idx = 0;
+          updatedAny = true;
+        }
 
         const studentId = String(row.user_id || "");
         const studentName = String(meta.studentName || "بطل العقل الخارق");
+        const studentEmail = String(meta.studentEmail || "");
         const governorate = String(meta.governorate || "");
+        const totalQ = Number(row.total_questions || 0);
+        const correct = Number(row.correct_answers || 0);
+        const duration = Number(row.duration_seconds || 0);
         const submission: AssignmentSubmission = {
           studentId,
           studentName,
+          studentEmail,
           governorate,
           score: Number(row.score || 0),
-          totalQuestions: Number(row.total_questions || 0),
-          correctAnswers: Number(row.correct_answers || 0),
+          totalQuestions: totalQ,
+          correctAnswers: correct,
+          wrongAnswers: Number(row.wrong_answers || Math.max(0, totalQ - correct)),
+          unansweredCount: Number(meta.unansweredCount || 0),
           accuracy: Math.round(Number(row.accuracy_rate || 0)),
-          durationSeconds: Number(row.duration_seconds || 0),
+          durationSeconds: duration,
+          avgSecondsPerQuestion:
+            typeof meta.avgSecondsPerQuestion === "number"
+              ? meta.avgSecondsPerQuestion
+              : totalQ > 0
+              ? Number((duration / totalQ).toFixed(1))
+              : 0,
+          ruleBreakdown: Array.isArray(meta.ruleBreakdown)
+            ? (meta.ruleBreakdown as SubmissionRuleBreakdown[])
+            : undefined,
+          questionDetails: Array.isArray(meta.questionDetails)
+            ? (meta.questionDetails as SubmissionQuestionDetail[])
+            : undefined,
           completedAt: String(row.created_at || new Date().toISOString()),
         };
 
@@ -1450,9 +1628,10 @@ export async function syncAllAssignmentsSubmissionsFromCloud(): Promise<Platform
           if (
             submission.accuracy > prev.accuracy ||
             (submission.accuracy === prev.accuracy &&
-              submission.durationSeconds < prev.durationSeconds)
+              submission.durationSeconds < prev.durationSeconds) ||
+            (!prev.questionDetails && Boolean(submission.questionDetails))
           ) {
-            existingSubs[subIdx] = submission;
+            existingSubs[subIdx] = { ...prev, ...submission };
             updatedAny = true;
           }
         } else {

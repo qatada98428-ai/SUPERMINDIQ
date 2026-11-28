@@ -33,6 +33,7 @@ import { getWhatsAppLink } from "@/lib/constants";
 import {
   ExtendedUserProfile,
   PlatformAssignment,
+  AssignmentSubmission,
   SubscriptionPlanId,
   getAllExtendedProfiles,
   getExtendedProfile,
@@ -48,6 +49,7 @@ import {
   unpackProfilePhoneColumn,
 } from "@/lib/platform-store";
 import AdminCompetitionCreatorModal from "@/components/admin/AdminCompetitionCreatorModal";
+import StudentResultDetailModal from "@/components/competition/StudentResultDetailModal";
 import {
   UserProfile,
   UserProgressRecord,
@@ -83,6 +85,11 @@ export default function AdminDashboardPage() {
   const [subSearch, setSubSearch] = useState("");
   const [platformAssignments, setPlatformAssignments] = useState<PlatformAssignment[]>([]);
   const [showCreateCompModal, setShowCreateCompModal] = useState(false);
+  const [selectedCompSubmission, setSelectedCompSubmission] = useState<{
+    submission: AssignmentSubmission;
+    title: string;
+    rank: number;
+  } | null>(null);
 
   // Data states from Supabase
   const [loadingData, setLoadingData] = useState(false);
@@ -1873,9 +1880,24 @@ export default function AdminDashboardPage() {
                               {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`}{" "}
                               {sub.studentName} {sub.governorate ? `(${sub.governorate})` : ""}
                             </span>
-                            <span className="font-mono text-emerald-600">
-                              {sub.correctAnswers}/{sub.totalQuestions} ({sub.accuracy}%) • {sub.durationSeconds}ث
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-emerald-600">
+                                {sub.correctAnswers}/{sub.totalQuestions} ({sub.accuracy}%) • {sub.durationSeconds}ث
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSelectedCompSubmission({
+                                    submission: sub,
+                                    title: item.title,
+                                    rank: idx + 1,
+                                  })
+                                }
+                                className="px-2.5 py-1 rounded-lg bg-brand-100 hover:bg-brand-200 dark:bg-brand-950/70 text-brand-700 dark:text-brand-300 font-black text-[11px]"
+                              >
+                                التفاصيل 📊
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1939,6 +1961,13 @@ export default function AdminDashboardPage() {
               setPlatformAssignments(getAllAssignments());
               playFx("fanfare");
             }}
+          />
+
+          <StudentResultDetailModal
+            submission={selectedCompSubmission?.submission || null}
+            assignmentTitle={selectedCompSubmission?.title}
+            rank={selectedCompSubmission?.rank}
+            onClose={() => setSelectedCompSubmission(null)}
           />
         </div>
       )}
