@@ -33,6 +33,7 @@ import {
   calculateCognitiveScore,
   CognitiveProfile,
 } from "@/lib/memory/memory-engine";
+import { speakCustomText, stopActiveSpeech } from "@/lib/soroban-engine";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import ModuleLockedGate from "@/components/common/ModuleLockedGate";
 
@@ -155,40 +156,52 @@ export default function MemoryFocusPage() {
   const [auditoryInput, setAuditoryInput] = useState<string>("");
   const [auditorySpeaking, setAuditorySpeaking] = useState<boolean>(false);
   const [auditoryResult, setAuditoryResult] = useState<"idle" | "correct" | "wrong">("idle");
+  const auditoryRunIdRef = useRef<number>(0);
+  const auditoryNextTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      auditoryRunIdRef.current += 1;
+      if (auditoryNextTimerRef.current) clearTimeout(auditoryNextTimerRef.current);
+      stopActiveSpeech();
+    };
+  }, []);
 
   const playArabicNumberAudio = useCallback((problem: AuditoryProblem) => {
+    auditoryRunIdRef.current += 1;
+    const runId = auditoryRunIdRef.current;
+    if (auditoryNextTimerRef.current) {
+      clearTimeout(auditoryNextTimerRef.current);
+      auditoryNextTimerRef.current = null;
+    }
+    stopActiveSpeech();
+
     setAuditorySpeaking(true);
     setAuditoryResult("idle");
     setAuditoryInput("");
 
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-      let index = 0;
+    let index = 0;
 
-      const speakNext = () => {
-        if (index >= problem.spokenWords.length) {
-          setAuditorySpeaking(false);
-          return;
-        }
+    const speakNext = () => {
+      if (auditoryRunIdRef.current !== runId) return;
+      if (index >= problem.spokenWords.length) {
+        setAuditorySpeaking(false);
+        return;
+      }
 
-        const utterance = new SpeechSynthesisUtterance(problem.spokenWords[index]);
-        utterance.lang = "ar-SA";
-        utterance.rate = 0.85;
-        utterance.onend = () => {
+      const word = problem.spokenWords[index];
+      speakCustomText(word, "arabic", {
+        rate: 0.9,
+        force: true,
+        onComplete: () => {
+          if (auditoryRunIdRef.current !== runId) return;
           index++;
-          setTimeout(speakNext, 600);
-        };
-        utterance.onerror = () => {
-          index++;
-          speakNext();
-        };
-        window.speechSynthesis.speak(utterance);
-      };
+          auditoryNextTimerRef.current = setTimeout(speakNext, 550);
+        },
+      });
+    };
 
-      speakNext();
-    } else {
-      setTimeout(() => setAuditorySpeaking(false), 2000);
-    }
+    speakNext();
   }, []);
 
   const startAuditoryRound = useCallback((len: number) => {

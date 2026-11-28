@@ -35,6 +35,7 @@ import {
   playSoundEffect,
   speakSorobanCountdown,
   speakQuestionSequence,
+  stopActiveSpeech,
   warmupSpeechEngine,
   ArithmeticLevel,
 } from "@/lib/soroban-engine";
@@ -248,6 +249,10 @@ export default function MentalMathCompetitionPage() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const inputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const focusInputRef = useRef<HTMLInputElement | null>(null);
+  const questionsRef = useRef<CompetitionQuestion[]>([]);
+  const lastSpokenQuestionKeyRef = useRef<string>("");
+
+  questionsRef.current = questions;
 
   const clearCompetitionTimer = useCallback(() => {
     if (timerRef.current) {
@@ -257,7 +262,10 @@ export default function MentalMathCompetitionPage() {
   }, []);
 
   useEffect(() => {
-    return () => clearCompetitionTimer();
+    return () => {
+      clearCompetitionTimer();
+      stopActiveSpeech();
+    };
   }, [clearCompetitionTimer]);
 
   // Total requested questions across all groups (capped at MAX_TOTAL_QUESTIONS)
@@ -573,7 +581,9 @@ export default function MentalMathCompetitionPage() {
       c -= 1;
       if (c <= 0) {
         clearInterval(interval);
-        speakSorobanCountdown(0, voiceMode);
+        // Play crisp ready chime only — avoids "ابدأ" colliding with Question #1 speech!
+        soundSynth.playFlashCue("ready");
+        stopActiveSpeech();
         setStage("running");
       } else {
         setCountdownNum(c);
@@ -719,12 +729,22 @@ export default function MentalMathCompetitionPage() {
     }
   }, [stage, timeMode, remainingSeconds, finishAndGrade]);
 
-  // Auto-speak active question in Focus Mode & focus input if typing
+  // Auto-speak active question ONCE in Focus Mode (never re-speaks on typing!)
   useEffect(() => {
-    if (stage === "running" && displayMode === "focus") {
-      if (voiceMode !== "off") {
-        const currentQ = questions[activeQuestionIdx];
-        if (currentQ) {
+    if (stage !== "running") {
+      lastSpokenQuestionKeyRef.current = "";
+      if (stage === "setup" || stage === "results") {
+        stopActiveSpeech();
+      }
+      return;
+    }
+
+    if (displayMode === "focus") {
+      const currentQ = questionsRef.current[activeQuestionIdx];
+      if (voiceMode !== "off" && currentQ) {
+        const speakKey = `${currentQ.id}:${currentQ.numbers.join(",")}:${voiceMode}`;
+        if (lastSpokenQuestionKeyRef.current !== speakKey) {
+          lastSpokenQuestionKeyRef.current = speakKey;
           speakQuestionSequence(currentQ.numbers, voiceMode);
         }
       }
@@ -734,14 +754,7 @@ export default function MentalMathCompetitionPage() {
         }, 60);
       }
     }
-  }, [
-    stage,
-    displayMode,
-    activeQuestionIdx,
-    voiceMode,
-    questions,
-    answerMode,
-  ]);
+  }, [stage, displayMode, activeQuestionIdx, voiceMode, answerMode]);
 
   // Focus first input when entering sheet mode
   useEffect(() => {
@@ -2069,7 +2082,9 @@ export default function MentalMathCompetitionPage() {
                       onClick={() =>
                         speakQuestionSequence(
                           activeQuestion.numbers,
-                          voiceMode === "off" ? "arabic" : voiceMode
+                          voiceMode === "off" ? "arabic" : voiceMode,
+                          undefined,
+                          { force: true }
                         )
                       }
                       className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold flex items-center gap-1.5"
@@ -2378,7 +2393,9 @@ export default function MentalMathCompetitionPage() {
                             e.stopPropagation();
                             speakQuestionSequence(
                               q.numbers,
-                              voiceMode === "off" ? "arabic" : voiceMode
+                              voiceMode === "off" ? "arabic" : voiceMode,
+                              undefined,
+                              { force: true }
                             );
                           }}
                           className="p-1 rounded-lg hover:bg-black/10 transition-colors"

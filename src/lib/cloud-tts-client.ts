@@ -1,8 +1,7 @@
 /**
-/**
- * SUPER MIND — Smart Cloud Text-To-Speech Client
- * Seamlessly provides studio-quality Arabic & English narration for all devices
- * when no local OS speech package is detected, completely eliminating the "missing voice pack" error.
+ * SUPER MIND — Smart Cloud Text-To-Speech Client (Single-Channel Hardened)
+ * Guarantees at most ONE cloud audio stream plays at any moment across the entire app.
+ * Uses monotonic playback sequencing so cancelled/superseded promises can never overlap or replay.
  */
 
 import { VoiceGender } from "./speech-engine";
@@ -15,10 +14,12 @@ export interface PlayCloudSpeechOptions {
   onComplete?: () => void;
 }
 
-// In-memory cache for audio elements to enable 0ms instantaneous replay
+// In-memory cache of audio URLs -> preloaded HTMLAudioElement (bounded to avoid mobile RAM bloat)
+const MAX_AUDIO_CACHE = 80;
 const audioCache = new Map<string, HTMLAudioElement>();
 let activeAudio: HTMLAudioElement | null = null;
-let activeOnComplete: (() => void) | null = null;
+let activeCleanup: (() => void) | null = null;
+let cloudPlaybackSeq = 0;
 
 export function getCloudTtsUrl(
   text: string,
@@ -32,7 +33,6 @@ export function getCloudTtsUrl(
 
 /**
  * Prefetches an array of speech phrases (e.g. during the 3-2-1 countdown).
- * Ensures that when numbers flash, audio is already fully buffered in memory.
  */
 export function prefetchCloudSpeech(
   phrases: string[],
@@ -48,10 +48,13 @@ export function prefetchCloudSpeech(
     if (audioCache.has(cacheKey)) continue;
 
     try {
+      if (audioCache.size >= MAX_AUDIO_CACHE) {
+        const firstKey = audioCache.keys().next().value;
+        if (firstKey) audioCache.delete(firstKey);
+      }
       const url = getCloudTtsUrl(trimmed, lang, gender);
       const audio = new Audio(url);
       audio.preload = "auto";
-      // Load into memory
       audio.load();
       audioCache.set(cacheKey, audio);
     } catch {
@@ -61,10 +64,22 @@ export function prefetchCloudSpeech(
 }
 
 /**
- * Stops any currently playing cloud audio cleanly.
+ * Stops any currently playing cloud audio cleanly without firing stale completion callbacks.
  */
 export function stopAllCloudSpeech(): void {
+  cloudPlaybackSeq += 1;
   if (typeof window === "undefined") return;
+
+  if (activeCleanup) {
+    const fn = activeCleanup;
+    activeCleanup = null;
+    try {
+      fn();
+    } catch {
+      // Ignore
+    }
+  }
+
   if (activeAudio) {
     try {
       activeAudio.pause();
@@ -74,15 +89,10 @@ export function stopAllCloudSpeech(): void {
     }
     activeAudio = null;
   }
-  if (activeOnComplete) {
-    const cb = activeOnComplete;
-    activeOnComplete = null;
-    cb();
-  }
 }
 
 /**
- * Plays speech text through the Cloud TTS service with caching and error fallbacks.
+ * Plays speech text through the Cloud TTS service with strict single-channel locking.
  * Returns a cancel function to stop speech immediately.
  */
 export function playCloudSpeech(
@@ -94,7 +104,9 @@ export function playCloudSpeech(
     return () => {};
   }
 
+  // Stop any previous cloud audio and claim a fresh sequence ID
   stopAllCloudSpeech();
+  const mySeq = ++cloudPlaybackSeq;
 
   const trimmed = text.trim();
   if (!trimmed) {
@@ -107,14 +119,18 @@ export function playCloudSpeech(
   let audio = audioCache.get(cacheKey);
 
   if (!audio) {
+    if (audioCache.size >= MAX_AUDIO_CACHE) {
+      const firstKey = audioCache.keys().next().value;
+      if (firstKey) audioCache.delete(firstKey);
+    }
     const url = getCloudTtsUrl(trimmed, options.lang, gender);
     audio = new Audio(url);
     audio.preload = "auto";
     audioCache.set(cacheKey, audio);
   }
 
-  // Clone or reuse clean instance
   try {
+    audio.pause();
     audio.currentTime = 0;
   } catch {
     // Ignore
@@ -123,7 +139,6 @@ export function playCloudSpeech(
   const volume = options.volume !== undefined ? Math.max(0, Math.min(1, options.volume)) : 1.0;
   audio.volume = volume;
 
-  // Rate tuning & Distinct Voice Persona Acoustics
   const baseRate = options.rate && Number.isFinite(options.rate) ? options.rate : 1.0;
   try {
     if (gender === "male") {
@@ -138,56 +153,76 @@ export function playCloudSpeech(
   }
 
   let settled = false;
-  activeAudio = audio;
+  let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+  const currentAudio = audio;
+  activeAudio = currentAudio;
+
+  const detach = () => {
+    if (safetyTimer) {
+      clearTimeout(safetyTimer);
+      safetyTimer = null;
+    }
+    currentAudio.removeEventListener("ended", handleFinish);
+    currentAudio.removeEventListener("error", handleFinish);
+    if (activeAudio === currentAudio) {
+      activeAudio = null;
+    }
+    if (activeCleanup === cancelSelf) {
+      activeCleanup = null;
+    }
+  };
 
   const handleFinish = () => {
     if (settled) return;
     settled = true;
-    cleanup();
-    options.onComplete?.();
-  };
-
-  const cleanup = () => {
-    if (activeAudio === audio) {
-      activeAudio = null;
-      activeOnComplete = null;
+    detach();
+    // Only invoke onComplete if this playback was NOT superseded/cancelled
+    if (mySeq === cloudPlaybackSeq) {
+      options.onComplete?.();
     }
-    audio?.removeEventListener("ended", handleFinish);
-    audio?.removeEventListener("error", handleFinish);
   };
 
-  activeOnComplete = options.onComplete || null;
+  const cancelSelf = () => {
+    if (settled) return;
+    settled = true;
+    detach();
+    try {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    } catch {
+      // Ignore
+    }
+  };
 
-  audio.addEventListener("ended", handleFinish, { once: true });
-  audio.addEventListener("error", handleFinish, { once: true });
+  activeCleanup = cancelSelf;
+  currentAudio.addEventListener("ended", handleFinish, { once: true });
+  currentAudio.addEventListener("error", handleFinish, { once: true });
 
-  const playPromise = audio.play();
+  const playPromise = currentAudio.play();
   if (playPromise !== undefined) {
-    playPromise.catch((err) => {
-      // Autoplay restriction or network error -> finish gracefully so app doesn't stall
-      console.warn("Cloud TTS playback error:", err);
-      handleFinish();
-    });
+    playPromise
+      .then(() => {
+        // If cancelled while play() was resolving (common on mobile Safari/Chrome!), pause immediately!
+        if (settled || mySeq !== cloudPlaybackSeq) {
+          try {
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+          } catch {
+            // Ignore
+          }
+        }
+      })
+      .catch(() => {
+        handleFinish();
+      });
   }
 
-  // Safety fallback timer: ensure onComplete is invoked if audio hangs
-  const safetyTimer = setTimeout(() => {
+  // Safety fallback timer so synced modes never hang on poor networks
+  safetyTimer = setTimeout(() => {
     if (!settled) {
       handleFinish();
     }
-  }, 6000);
+  }, 6500);
 
-  return () => {
-    clearTimeout(safetyTimer);
-    if (!settled) {
-      settled = true;
-      cleanup();
-      try {
-        audio?.pause();
-        if (audio) audio.currentTime = 0;
-      } catch {
-        // Ignore
-      }
-    }
-  };
+  return cancelSelf;
 }

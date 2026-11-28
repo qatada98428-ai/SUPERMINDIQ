@@ -25,6 +25,7 @@ import {
   playSoundEffect,
   speakSorobanNumber,
   speakSorobanCountdown,
+  stopActiveSpeech,
   warmupSpeechEngine,
   formatTermSpeechText,
   prefetchCloudSpeech,
@@ -284,7 +285,10 @@ export default function TeamsBattlePage() {
       }
     }, 850);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      stopActiveSpeech();
+    };
   }, [stage, voiceMode]);
 
   // Flash Animation Sequence Loop
@@ -326,6 +330,7 @@ export default function TeamsBattlePage() {
 
     return () => {
       timers.forEach((t) => clearTimeout(t));
+      stopActiveSpeech();
     };
   }, [stage, currentSeries, showDelayMs, speakNumber]);
 

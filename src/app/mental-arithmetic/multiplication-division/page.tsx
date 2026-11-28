@@ -18,6 +18,7 @@ import SorobanBeadVisualizer, { RodVisualConfig } from "@/components/soroban/Sor
 import { COACH_INFO, getWhatsAppLink } from "@/lib/constants";
 import { soundSynth } from "@/lib/audio-synthesizer";
 import { triggerClayCelebration } from "@/lib/celebrations";
+import { speakCustomText, stopActiveSpeech } from "@/lib/soroban-engine";
 
 type ActiveTab = "tables" | "multiplication" | "division";
 
@@ -122,15 +123,17 @@ export default function MultiplicationDivisionPage() {
     }, 1200);
   };
 
-  // Speak Table cell
+  useEffect(() => {
+    return () => {
+      stopActiveSpeech();
+    };
+  }, []);
+
+  // Speak Table cell cleanly through unified single-channel speech engine
   const speakEquation = (a: number, b: number, res: number) => {
-    if (!soundEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
+    if (!soundEnabled || typeof window === "undefined") return;
     const text = `${a} في ${b} يساوي ${res}`;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "ar-SA";
-    utterance.rate = 1.3;
-    window.speechSynthesis.speak(utterance);
+    speakCustomText(text, "arabic", { rate: 1.15, force: true });
   };
 
   // =========================================================================

@@ -641,19 +641,29 @@ if (typeof window !== "undefined" && "speechSynthesis" in window) {
   };
 }
 
+// =========================================================================
+// UNIFIED SINGLE-CHANNEL SPEECH COORDINATOR (ZERO OVERLAP / ZERO DUPLICATION)
+// =========================================================================
+
+let activeSpeechToken = 0;
+let activeUtteranceRef: SpeechSynthesisUtterance | null = null;
+let pendingSpeakTimer: ReturnType<typeof setTimeout> | null = null;
+let lastSpokenKey = "";
+let lastSpokenAt = 0;
+const unreliableLocalLangs = new Set<"arabic" | "english">();
+
 /**
- * Warms up browser speechSynthesis on user button click so first number never lags
+ * Warms up voice discovery & Web Audio safely on user gesture without queuing dummy utterances
+ * (queuing silent utterances + cancel() causes Android Chrome to glitch/drop subsequent speech).
  */
 export function warmupSpeechEngine() {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  try {
-    cachedVoices = window.speechSynthesis.getVoices();
-    window.speechSynthesis.cancel();
-    const silent = new SpeechSynthesisUtterance("");
-    silent.volume = 0;
-    window.speechSynthesis.speak(silent);
-  } catch {
-    // Ignore
+  if (typeof window === "undefined") return;
+  if ("speechSynthesis" in window) {
+    try {
+      cachedVoices = window.speechSynthesis.getVoices();
+    } catch {
+      // Ignore
+    }
   }
 }
 
@@ -662,55 +672,73 @@ export function shouldUseCloudSpeech(
   prefs: SpeechPreferences
 ): { useCloud: boolean; gender: VoiceGender } {
   const uri = langMode === "arabic" ? prefs.voiceUriAr : prefs.voiceUriEn;
-  if (isCloudVoiceUri(uri)) {
-    let gender: VoiceGender = "female";
-    if (uri === CLOUD_VOICE_MALE_2_URI) {
-      gender = "male_2";
-    } else if (uri === CLOUD_VOICE_MALE_URI) {
-      gender = "male";
+  const detectGender = (): VoiceGender => {
+    if (uri === CLOUD_VOICE_MALE_2_URI || uri.includes("male_2") || uri.includes("tarik")) {
+      return "male_2";
     }
-    return {
-      useCloud: true,
-      gender,
-    };
-  }
-  const voices = getRawBrowserVoices();
-  const hasLocal = hasLocalLanguageVoices(voices, langMode);
-  if (!hasLocal) {
-    let gender: VoiceGender = "female";
-    if (uri.includes("male_2") || uri.includes("tarik")) {
-      gender = "male_2";
-    } else if (
+    if (
+      uri === CLOUD_VOICE_MALE_URI ||
       uri.toLowerCase().includes("male") ||
       uri.includes("ذكر") ||
       uri.includes("hamed") ||
       uri.includes("shakir") ||
       uri.includes("naayf")
     ) {
-      gender = "male";
+      return "male";
     }
-    return {
-      useCloud: true,
-      gender,
-    };
+    return "female";
+  };
+
+  if (isCloudVoiceUri(uri)) {
+    return { useCloud: true, gender: detectGender() };
   }
+
+  // If local OS speech already proved broken/unreliable for this language in this session,
+  // keep ONE consistent studio cloud voice rather than alternating between two voices.
+  if (unreliableLocalLangs.has(langMode)) {
+    return { useCloud: true, gender: detectGender() };
+  }
+
+  const voices = getRawBrowserVoices();
+  const hasLocal = hasLocalLanguageVoices(voices, langMode);
+  if (!hasLocal) {
+    return { useCloud: true, gender: detectGender() };
+  }
+
   return {
     useCloud: false,
-    gender: "female",
+    gender: detectGender(),
   };
 }
 
+/**
+ * Immediately halts EVERY active speech channel (both OS SpeechSynthesis & Cloud TTS)
+ * and invalidates any in-flight callbacks so cancelled speech can NEVER trigger a second voice.
+ */
 export function stopActiveSpeech() {
+  activeSpeechToken += 1;
+  if (pendingSpeakTimer) {
+    clearTimeout(pendingSpeakTimer);
+    pendingSpeakTimer = null;
+  }
+  if (activeUtteranceRef) {
+    activeUtteranceRef.onend = null;
+    activeUtteranceRef.onerror = null;
+    activeUtteranceRef = null;
+  }
+
   if (typeof window === "undefined") return;
   try {
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
+    stopAllCloudSpeech();
   } catch {
     // Ignore
   }
   try {
-    stopAllCloudSpeech();
+    if ("speechSynthesis" in window) {
+      if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+        window.speechSynthesis.cancel();
+      }
+    }
   } catch {
     // Ignore
   }
@@ -746,14 +774,20 @@ function createConfiguredUtterance(
   text: string,
   langMode: "arabic" | "english",
   prefs: SpeechPreferences,
-  speedMs?: number
+  speedMs?: number,
+  explicitRate?: number
 ): SpeechSynthesisUtterance {
   const utterance = new SpeechSynthesisUtterance(text);
   const targetUri = langMode === "arabic" ? prefs.voiceUriAr : prefs.voiceUriEn;
   const voice = resolveSpeechVoice(langMode, targetUri);
   if (voice) utterance.voice = voice;
   utterance.lang = voice?.lang || (langMode === "arabic" ? "ar-SA" : "en-US");
-  const rate = speedMs !== undefined ? computeAdaptiveSpeechRate(speedMs) : 1.25;
+  const rate =
+    explicitRate !== undefined
+      ? explicitRate
+      : speedMs !== undefined
+      ? computeAdaptiveSpeechRate(speedMs)
+      : 1.15;
   utterance.rate = Math.max(0.5, Math.min(2.0, rate));
 
   const isMale2 =
@@ -769,18 +803,180 @@ function createConfiguredUtterance(
 
   let pitch = 1.04;
   if (isMale1) {
-    pitch = 0.84; // Deeper resonant tone
+    pitch = 0.84;
   } else if (isMale2) {
-    pitch = 0.98; // Energetic, clear youth tone
+    pitch = 0.98;
   }
   utterance.pitch = pitch;
   utterance.volume = getEffectiveSpeechVolume();
   return utterance;
 }
 
+interface UnifiedSpeakOptions {
+  speedMs?: number;
+  explicitRate?: number;
+  overrides?: Partial<SpeechPreferences>;
+  force?: boolean; // Bypass short deduplication window (e.g., manual replay button)
+  onComplete?: () => void;
+}
+
+/**
+ * Single authoritative speech dispatcher across the entire platform.
+ * - Cancels ALL previous OS & Cloud voices atomically via activeSpeechToken.
+ * - Deduplicates accidental double-triggers within 260ms (unless force=true).
+ * - Never triggers a fallback cloud voice when an OS utterance was merely canceled/interrupted.
+ */
+function speakUnified(
+  rawText: string,
+  langMode: "arabic" | "english",
+  options: UnifiedSpeakOptions = {}
+): () => void {
+  if (typeof window === "undefined") {
+    options.onComplete?.();
+    return () => {};
+  }
+
+  const text = rawText.trim();
+  const prefs = getEffectiveSpeechSettings(options.overrides);
+  const volume = getEffectiveSpeechVolume();
+
+  if (!text || volume <= 0) {
+    options.onComplete?.();
+    return () => {};
+  }
+
+  // Guard against accidental React double-invocation or rapid duplicate triggers
+  const now = Date.now();
+  const dedupeKey = `${langMode}:${text}`;
+  if (!options.force && dedupeKey === lastSpokenKey && now - lastSpokenAt < 260) {
+    return () => {};
+  }
+  lastSpokenKey = dedupeKey;
+  lastSpokenAt = now;
+
+  // Atomically halt every existing speech stream and acquire an exclusive token
+  stopActiveSpeech();
+  const myToken = ++activeSpeechToken;
+
+  const cloudStatus = shouldUseCloudSpeech(langMode, prefs);
+  const resolvedRate =
+    options.explicitRate !== undefined
+      ? options.explicitRate
+      : options.speedMs !== undefined
+      ? computeAdaptiveSpeechRate(options.speedMs)
+      : 1.1;
+
+  let settled = false;
+  let cancelCloud: (() => void) | null = null;
+
+  const finishOnce = () => {
+    if (settled) return;
+    settled = true;
+    if (myToken === activeSpeechToken) {
+      if (activeUtteranceRef) {
+    activeUtteranceRef.onend = null;
+    activeUtteranceRef.onerror = null;
+    activeUtteranceRef = null;
+  }
+      options.onComplete?.();
+    }
+  };
+
+  const cancelThis = () => {
+    if (settled) return;
+    settled = true;
+    if (cancelCloud) {
+      cancelCloud();
+      cancelCloud = null;
+    }
+    if (myToken === activeSpeechToken) {
+      stopActiveSpeech();
+    }
+  };
+
+  const runCloud = () => {
+    if (settled || myToken !== activeSpeechToken) return;
+    cancelCloud = playCloudSpeech(text, {
+      lang: langMode,
+      gender: cloudStatus.gender,
+      rate: resolvedRate,
+      volume,
+      onComplete: finishOnce,
+    });
+  };
+
+  if (cloudStatus.useCloud || !("speechSynthesis" in window)) {
+    runCloud();
+    return cancelThis;
+  }
+
+  // Use local OS SpeechSynthesis cleanly with a tiny 20ms yield after cancel() on mobile browsers
+  // so Android Chrome / iOS Safari never drop or overlap the new utterance.
+  const dispatchLocal = () => {
+    if (settled || myToken !== activeSpeechToken) return;
+    try {
+      const utterance = createConfiguredUtterance(
+        text,
+        langMode,
+        prefs,
+        options.speedMs,
+        options.explicitRate
+      );
+      activeUtteranceRef = utterance;
+
+      utterance.onend = () => {
+        if (myToken !== activeSpeechToken) return;
+        finishOnce();
+      };
+
+      utterance.onerror = (ev) => {
+        // CRITICAL: Ignore canceled/interrupted events completely so they NEVER spawn a 2nd voice!
+        if (myToken !== activeSpeechToken) return;
+        const errCode = (ev as SpeechSynthesisErrorEvent | undefined)?.error;
+        if (errCode === "canceled" || errCode === "interrupted") {
+          return;
+        }
+        // Genuine local engine error -> switch this language cleanly to studio Cloud TTS for the session
+        unreliableLocalLangs.add(langMode);
+        runCloud();
+      };
+
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      if (myToken === activeSpeechToken) {
+        unreliableLocalLangs.add(langMode);
+        runCloud();
+      }
+    }
+  };
+
+  // On mobile WebKit/Blink, a micro-delay after cancel() guarantees the previous utterance is flushed
+  pendingSpeakTimer = setTimeout(() => {
+    pendingSpeakTimer = null;
+    dispatchLocal();
+  }, 18);
+
+  return cancelThis;
+}
+
+/**
+ * Cleanly speaks any custom Arabic/English text (for Memory-Focus, Multiplication, etc.)
+ * through the unified single-channel speech engine.
+ */
+export function speakCustomText(
+  text: string,
+  langMode: "arabic" | "english" = "arabic",
+  options?: { rate?: number; force?: boolean; onComplete?: () => void }
+): () => void {
+  return speakUnified(text, langMode, {
+    explicitRate: options?.rate ?? 1.05,
+    force: options?.force,
+    onComplete: options?.onComplete,
+  });
+}
+
 /**
  * Speaks a flashed/question number cleanly according to fixed-speed rules.
- * Automatically prefers real device local voice when working; falls back to Smart Cloud TTS seamlessly.
  */
 export function speakSorobanNumber(
   num: number,
@@ -790,69 +986,26 @@ export function speakSorobanNumber(
 ) {
   if (typeof window === "undefined") return;
 
-  // Always play ultra-short crystal digital cue strictly synced to the digit appearance (zero delay)
+  // Crisp digital cue strictly synced to the digit appearance
   soundSynth.playFlashCue("number");
 
-  const prefs = getEffectiveSpeechSettings(overrides);
   const volume = getEffectiveSpeechVolume();
-  if (voiceMode === "off" || volume <= 0) {
-    return;
-  }
+  if (voiceMode === "off" || volume <= 0) return;
 
-  // At extreme rapid fixed speeds (<= 300ms), keep crisp digital cue only so OS TTS never queues
-  if (speedMs <= 300) {
-    return;
-  }
+  // At extreme rapid fixed speeds (<= 300ms), keep crisp digital cue only so speech never queues
+  if (speedMs <= 300) return;
 
   const text = formatTermSpeechText(num, voiceMode);
-  const cloudStatus = shouldUseCloudSpeech(voiceMode, prefs);
-
-  if (cloudStatus.useCloud) {
-    playCloudSpeech(text, {
-      lang: voiceMode,
-      gender: cloudStatus.gender,
-      rate: computeAdaptiveSpeechRate(speedMs),
-      volume,
-    });
-    return;
-  }
-
-  if ("speechSynthesis" in window) {
-    try {
-      window.speechSynthesis.cancel();
-      const utterance = createConfiguredUtterance(text, voiceMode, prefs, speedMs);
-      utterance.onerror = () => {
-        // Transparent fallback to cloud voice on any device error
-        playCloudSpeech(text, {
-          lang: voiceMode,
-          gender: cloudStatus.gender,
-          rate: computeAdaptiveSpeechRate(speedMs),
-          volume,
-        });
-      };
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      playCloudSpeech(text, {
-        lang: voiceMode,
-        gender: cloudStatus.gender,
-        rate: computeAdaptiveSpeechRate(speedMs),
-        volume,
-      });
-    }
-  } else {
-    playCloudSpeech(text, {
-      lang: voiceMode,
-      gender: cloudStatus.gender,
-      rate: computeAdaptiveSpeechRate(speedMs),
-      volume,
-    });
-  }
+  speakUnified(text, voiceMode, {
+    speedMs,
+    overrides,
+    force: true, // Consecutive identical numbers in Flash Anzan (e.g. +2, +2) MUST both be spoken!
+  });
 }
 
 /**
  * Async variant for Flash Anzan Synchronized Speech mode:
  * Speaks the full number tuned to speedMs and invokes onComplete when speech finishes.
- * Uses local OS speech if present, or Smart Cloud TTS with zero latency and automatic caching.
  */
 export function speakSorobanNumberAsync(
   num: number,
@@ -872,7 +1025,6 @@ export function speakSorobanNumberAsync(
 
   soundSynth.playFlashCue("number");
 
-  const prefs = getEffectiveSpeechSettings(options.overrides);
   const volume = getEffectiveSpeechVolume();
   const minVisibleMs = options.minVisibleMs ?? 320;
   const maxWaitMs = options.maxWaitMs ?? 4500;
@@ -881,13 +1033,26 @@ export function speakSorobanNumberAsync(
   let settled = false;
   let minTimer: ReturnType<typeof setTimeout> | null = null;
   let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
-  let cancelCloud: (() => void) | null = null;
+  let cancelSpeech: (() => void) | null = null;
+
+  const clearTimers = () => {
+    if (minTimer) {
+      clearTimeout(minTimer);
+      minTimer = null;
+    }
+    if (fallbackTimer) {
+      clearTimeout(fallbackTimer);
+      fallbackTimer = null;
+    }
+  };
 
   const cleanup = () => {
     settled = true;
-    if (minTimer) clearTimeout(minTimer);
-    if (fallbackTimer) clearTimeout(fallbackTimer);
-    if (cancelCloud) cancelCloud();
+    clearTimers();
+    if (cancelSpeech) {
+      cancelSpeech();
+      cancelSpeech = null;
+    }
   };
 
   const finishRespectingMin = () => {
@@ -895,12 +1060,14 @@ export function speakSorobanNumberAsync(
     const elapsed = Date.now() - startedAt;
     const remaining = Math.max(0, minVisibleMs - elapsed);
     if (remaining === 0) {
-      cleanup();
+      settled = true;
+      clearTimers();
       options.onComplete();
     } else {
       minTimer = setTimeout(() => {
         if (!settled) {
-          cleanup();
+          settled = true;
+          clearTimers();
           options.onComplete();
         }
       }, remaining);
@@ -913,56 +1080,14 @@ export function speakSorobanNumberAsync(
   }
 
   const text = formatTermSpeechText(num, voiceMode);
-  const cloudStatus = shouldUseCloudSpeech(voiceMode, prefs);
   fallbackTimer = setTimeout(finishRespectingMin, maxWaitMs);
 
-  if (cloudStatus.useCloud) {
-    cancelCloud = playCloudSpeech(text, {
-      lang: voiceMode,
-      gender: cloudStatus.gender,
-      rate: computeAdaptiveSpeechRate(options.speedMs),
-      volume,
-      onComplete: finishRespectingMin,
-    });
-    return cleanup;
-  }
-
-  if ("speechSynthesis" in window) {
-    try {
-      window.speechSynthesis.cancel();
-      const utterance = createConfiguredUtterance(text, voiceMode, prefs, options.speedMs);
-
-      utterance.onend = () => finishRespectingMin();
-      utterance.onerror = () => {
-        // Fallback to cloud on error
-        cancelCloud = playCloudSpeech(text, {
-          lang: voiceMode,
-          gender: cloudStatus.gender,
-          rate: computeAdaptiveSpeechRate(options.speedMs),
-          volume,
-          onComplete: finishRespectingMin,
-        });
-      };
-
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      cancelCloud = playCloudSpeech(text, {
-        lang: voiceMode,
-        gender: cloudStatus.gender,
-        rate: computeAdaptiveSpeechRate(options.speedMs),
-        volume,
-        onComplete: finishRespectingMin,
-      });
-    }
-  } else {
-    cancelCloud = playCloudSpeech(text, {
-      lang: voiceMode,
-      gender: cloudStatus.gender,
-      rate: computeAdaptiveSpeechRate(options.speedMs),
-      volume,
-      onComplete: finishRespectingMin,
-    });
-  }
+  cancelSpeech = speakUnified(text, voiceMode, {
+    speedMs: options.speedMs,
+    overrides: options.overrides,
+    force: true,
+    onComplete: finishRespectingMin,
+  });
 
   return cleanup;
 }
@@ -973,10 +1098,10 @@ export function speakSorobanNumberAsync(
 export function speakQuestionSequence(
   series: number[],
   voiceMode: "arabic" | "english" | "off",
-  overrides?: Partial<SpeechPreferences>
+  overrides?: Partial<SpeechPreferences>,
+  options?: { force?: boolean }
 ) {
   if (typeof window === "undefined") return;
-  const prefs = getEffectiveSpeechSettings(overrides);
   const volume = getEffectiveSpeechVolume();
 
   if (voiceMode === "off" || volume <= 0) {
@@ -986,51 +1111,17 @@ export function speakQuestionSequence(
 
   const parts = series.map((n) => formatTermSpeechText(n, voiceMode));
   const text = parts.join(voiceMode === "arabic" ? " ، " : ", ");
-  const cloudStatus = shouldUseCloudSpeech(voiceMode, prefs);
 
-  if (cloudStatus.useCloud) {
-    playCloudSpeech(text, {
-      lang: voiceMode,
-      gender: cloudStatus.gender,
-      rate: 1.1,
-      volume,
-    });
-    return;
-  }
-
-  if ("speechSynthesis" in window) {
-    try {
-      window.speechSynthesis.cancel();
-      const utterance = createConfiguredUtterance(text, voiceMode, prefs, 800);
-      utterance.onerror = () => {
-        playCloudSpeech(text, {
-          lang: voiceMode,
-          gender: cloudStatus.gender,
-          rate: 1.1,
-          volume,
-        });
-      };
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      playCloudSpeech(text, {
-        lang: voiceMode,
-        gender: cloudStatus.gender,
-        rate: 1.1,
-        volume,
-      });
-    }
-  } else {
-    playCloudSpeech(text, {
-      lang: voiceMode,
-      gender: cloudStatus.gender,
-      rate: 1.1,
-      volume,
-    });
-  }
+  speakUnified(text, voiceMode, {
+    speedMs: 950,
+    explicitRate: 1.08,
+    overrides,
+    force: options?.force,
+  });
 }
 
 /**
- * Plays countdown ticks (3, 2, 1, Go / ابدأ) respecting Flash Anzan & global settings.
+ * Plays countdown ticks (3, 2, 1, Go / ابدأ) cleanly on the unified speech channel.
  */
 export function speakSorobanCountdown(
   count: number,
@@ -1040,7 +1131,6 @@ export function speakSorobanCountdown(
   if (typeof window === "undefined") return;
   soundSynth.playFlashCue(count === 0 ? "ready" : "countdown");
 
-  const prefs = getEffectiveSpeechSettings(overrides);
   const volume = getEffectiveSpeechVolume();
   if (voiceMode === "off" || volume <= 0) return;
 
@@ -1049,59 +1139,20 @@ export function speakSorobanCountdown(
   const text = voiceMode === "arabic" ? arMap[count] || "" : enMap[count] || "";
   if (!text) return;
 
-  const cloudStatus = shouldUseCloudSpeech(voiceMode, prefs);
-
-  if (cloudStatus.useCloud) {
-    playCloudSpeech(text, {
-      lang: voiceMode,
-      gender: cloudStatus.gender,
-      rate: 1.15,
-      volume,
-    });
-    return;
-  }
-
-  if ("speechSynthesis" in window) {
-    try {
-      window.speechSynthesis.cancel();
-      const utterance = createConfiguredUtterance(text, voiceMode, prefs, 750);
-      utterance.onerror = () => {
-        playCloudSpeech(text, {
-          lang: voiceMode,
-          gender: cloudStatus.gender,
-          rate: 1.15,
-          volume,
-        });
-      };
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      playCloudSpeech(text, {
-        lang: voiceMode,
-        gender: cloudStatus.gender,
-        rate: 1.15,
-        volume,
-      });
-    }
-  } else {
-    playCloudSpeech(text, {
-      lang: voiceMode,
-      gender: cloudStatus.gender,
-      rate: 1.15,
-      volume,
-    });
-  }
+  speakUnified(text, voiceMode, {
+    explicitRate: 1.15,
+    overrides,
+  });
 }
 
 /**
- * Speaks a test sample phrase immediately using chosen language & device voice.
- * Returns true if speech was triggered successfully.
+ * Speaks a test sample phrase immediately using chosen language & voice.
  */
 export function speakTestSample(
   langMode: "arabic" | "english",
   overrides?: Partial<SpeechPreferences>
 ): boolean {
   if (typeof window === "undefined") return false;
-  const prefs = getEffectiveSpeechSettings(overrides);
   const volume = getEffectiveSpeechVolume();
   if (volume <= 0) return false;
 
@@ -1110,48 +1161,10 @@ export function speakTestSample(
     .map((t) => formatTermSpeechText(t, langMode))
     .join(langMode === "arabic" ? " ، " : ", ");
 
-  const cloudStatus = shouldUseCloudSpeech(langMode, prefs);
-
-  if (cloudStatus.useCloud) {
-    playCloudSpeech(sampleText, {
-      lang: langMode,
-      gender: cloudStatus.gender,
-      rate: 1.05,
-      volume,
-    });
-    return true;
-  }
-
-  if ("speechSynthesis" in window) {
-    try {
-      window.speechSynthesis.cancel();
-      const utterance = createConfiguredUtterance(sampleText, langMode, prefs, 850);
-      utterance.onerror = () => {
-        playCloudSpeech(sampleText, {
-          lang: langMode,
-          gender: cloudStatus.gender,
-          rate: 1.05,
-          volume,
-        });
-      };
-      window.speechSynthesis.speak(utterance);
-      return true;
-    } catch {
-      playCloudSpeech(sampleText, {
-        lang: langMode,
-        gender: cloudStatus.gender,
-        rate: 1.05,
-        volume,
-      });
-      return true;
-    }
-  }
-
-  playCloudSpeech(sampleText, {
-    lang: langMode,
-    gender: cloudStatus.gender,
-    rate: 1.05,
-    volume,
+  speakUnified(sampleText, langMode, {
+    explicitRate: 1.05,
+    overrides,
+    force: true,
   });
   return true;
 }

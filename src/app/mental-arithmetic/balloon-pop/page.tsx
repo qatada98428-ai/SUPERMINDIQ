@@ -21,6 +21,7 @@ import {
   generateFlashAnzanSeries,
   speakSorobanNumber,
   speakSorobanCountdown,
+  stopActiveSpeech,
   warmupSpeechEngine,
   ArithmeticLevel,
   FlashAnzanConfig,
@@ -581,6 +582,12 @@ function FlashDisplay({
   const [visible, setVisible] = useState(true);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
+
+  useEffect(() => {
+    return () => {
+      stopActiveSpeech();
+    };
+  }, []);
 
   useEffect(() => {
     if (idx >= numbers.length) {
