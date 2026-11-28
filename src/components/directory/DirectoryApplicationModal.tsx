@@ -61,7 +61,15 @@ export default function DirectoryApplicationModal({
     if (isOpen) {
       soundSynth.playModalSound("open");
       setAppType(defaultType);
-      setName(defaultName && defaultName !== "بطل العقل الخارق" ? defaultName : "");
+      // Pre-fill personal name for trainer cards only; keep school name clean for easy entry
+      setName(
+        defaultType === "trainer" &&
+          defaultName &&
+          defaultName !== "بطل العقل الخارق" &&
+          !defaultName.includes("معاينة محلية")
+          ? defaultName
+          : ""
+      );
       setPhone(defaultPhone);
       setEmail(defaultEmail);
       setError(null);
@@ -96,12 +104,22 @@ export default function DirectoryApplicationModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!name.trim() || name.trim().length < 3) {
-      setError("يرجى إدخال الاسم الكامل بشكل صحيح.");
+    const normalizedPhone = phone
+      .trim()
+      .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)))
+      .replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)));
+    const digitsOnly = normalizedPhone.replace(/[^0-9]/g, "");
+
+    if (!name.trim() || name.trim().length < 2) {
+      setError(
+        appType === "trainer"
+          ? "يرجى إدخال الاسم الكامل للمدرب بشكل صحيح."
+          : "يرجى إدخال اسم المدرسة أو المركز بشكل صحيح."
+      );
       return;
     }
-    if (!phone.trim() || phone.trim().length < 8) {
-      setError("يرجى إدخال رقم واتساب للتواصل وتوثيق الطلب.");
+    if (digitsOnly.length < 8) {
+      setError("يرجى إدخال رقم واتساب صحيح للتواصل وتوثيق الطلب.");
       return;
     }
 
@@ -111,7 +129,7 @@ export default function DirectoryApplicationModal({
         appType === "trainer"
           ? await submitTrainerDirectoryCardToCloud({
               name,
-              phone,
+              phone: normalizedPhone,
               email,
               country,
               governorate,
@@ -122,7 +140,7 @@ export default function DirectoryApplicationModal({
             })
           : await submitSchoolDirectoryCardToCloud({
               name,
-              phone,
+              phone: normalizedPhone,
               email,
               country,
               governorate,
@@ -367,24 +385,25 @@ export default function DirectoryApplicationModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    العنوان التفصيلي للمدرسة
+                    العنوان التفصيلي للمدرسة (اختياري)
                   </label>
                   <input
                     type="text"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder="مثال: حي الحسين - قرب..."
+                    placeholder="مثال: حي الحسين - قرب... (اختياري)"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold"
                   />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    المراحل / المنهج المعتمد
+                    المراحل / المنهج المعتمد (اختياري)
                   </label>
                   <input
                     type="text"
                     value={curriculumStage}
                     onChange={(e) => setCurriculumStage(e.target.value)}
+                    placeholder="المستوى التمهيدي والمستوى الأول"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold"
                   />
                 </div>

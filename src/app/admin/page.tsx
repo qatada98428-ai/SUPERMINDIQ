@@ -121,14 +121,32 @@ export default function AdminDashboardPage() {
 
     setLoadingData(true);
     try {
-      // 1. Fetch Users & Audit Logs
-      const [{ data: profilesData }, { data: logs }] = await Promise.all([
+      // 1. Fetch Users, Audit Logs, Trainer Apps, and School Apps in parallel
+      const [
+        { data: profilesData },
+        { data: logs },
+        { data: tApps },
+        { data: sApps },
+      ] = await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("admin_audit_logs").select("*").order("created_at", { ascending: false }).limit(200),
+        supabase.from("trainer_applications").select("*").order("created_at", { ascending: false }),
+        supabase.from("school_applications").select("*").order("created_at", { ascending: false }),
       ]);
 
       const fetchedLogs = (logs || []) as AdminAuditLogRecord[];
+      const fetchedTrainerApps = (tApps || []) as TrainerApplicationRecord[];
+      const fetchedSchoolApps = (sApps || []) as SchoolApplicationRecord[];
       setAuditLogs(fetchedLogs);
+      setTrainerApps(fetchedTrainerApps);
+      setSchoolApps(fetchedSchoolApps);
+
+      const normalizePhoneTail = (raw?: string | null) =>
+        String(raw || "")
+          .replace(/[^0-9]/g, "")
+          .slice(-9);
+
+      const approvedTrainerApps = fetchedTrainerApps.filter((a) => a.status === "active");
 
       if (profilesData) {
         const mergedUsers = (profilesData as UserProfile[]).map((u) => {
@@ -140,10 +158,22 @@ export default function AdminDashboardPage() {
             | "trainer"
             | undefined;
 
+          const unpacked = unpackProfilePhoneColumn(u.phone);
+          const cleanUserPhoneTail = normalizePhoneTail(unpacked.cleanPhone || u.phone);
+          const cleanUserEmail = (u.email || "").trim().toLowerCase();
+
+          const matchedApprovedApp = approvedTrainerApps.some((app) => {
+            const appEmail = (app.email || "").trim().toLowerCase();
+            const appPhoneTail = normalizePhoneTail(app.phone);
+            if (cleanUserEmail && appEmail && cleanUserEmail === appEmail) return true;
+            if (cleanUserPhoneTail.length >= 8 && appPhoneTail && cleanUserPhoneTail === appPhoneTail) return true;
+            return false;
+          });
+
           const ext = getExtendedProfile(u.id, {
             email: u.email,
             name: u.name,
-            role: logRole || u.role,
+            role: logRole || unpacked.meta?.role || (matchedApprovedApp ? "trainer" : u.role),
             phone: u.phone,
             avatarUrl: u.avatar_url,
           });
@@ -151,13 +181,24 @@ export default function AdminDashboardPage() {
           const effectiveRole: UserProfile["role"] =
             u.role === "admin"
               ? "admin"
-              : logRole || (ext.role === "trainer" ? "trainer" : u.role);
+              : logRole ||
+                (unpacked.meta?.role === "trainer" ||
+                ext.role === "trainer" ||
+                ext.isVerifiedTrainer ||
+                matchedApprovedApp
+                  ? "trainer"
+                  : u.role);
           const effectivePhone = u.phone || ext.phone || null;
 
-          if (ext.role !== effectiveRole || (effectivePhone && !ext.phone)) {
+          if (
+            ext.role !== effectiveRole ||
+            (matchedApprovedApp && !ext.isVerifiedTrainer) ||
+            (effectivePhone && !ext.phone)
+          ) {
             saveExtendedProfile({
               ...ext,
               role: effectiveRole,
+              isVerifiedTrainer: ext.isVerifiedTrainer || matchedApprovedApp,
               phone: (effectivePhone || "").split("|")[0].trim() || ext.phone,
             });
           }
@@ -174,29 +215,12 @@ export default function AdminDashboardPage() {
         setExtProfiles(getAllExtendedProfiles());
       }
 
-      // 2. Fetch Progress
-      const { data: progData } = await supabase.from("user_progress").select("*");
+      // 2. Fetch Progress & Supporters
+      const [{ data: progData }, { data: supps }] = await Promise.all([
+        supabase.from("user_progress").select("*"),
+        supabase.from("supporters").select("*").order("sort_order", { ascending: true }),
+      ]);
       if (progData) setProgressList(progData as UserProgressRecord[]);
-
-      // 3. Fetch Trainer Apps
-      const { data: tApps } = await supabase
-        .from("trainer_applications")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (tApps) setTrainerApps(tApps as TrainerApplicationRecord[]);
-
-      // 4. Fetch School Apps
-      const { data: sApps } = await supabase
-        .from("school_applications")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (sApps) setSchoolApps(sApps as SchoolApplicationRecord[]);
-
-      // 5. Fetch Supporters
-      const { data: supps } = await supabase
-        .from("supporters")
-        .select("*")
-        .order("sort_order", { ascending: true });
       if (supps) setSupportersList(supps as SupporterRecord[]);
     } catch (err) {
       console.error("Admin data load error:", err);
@@ -214,12 +238,53 @@ export default function AdminDashboardPage() {
     return () => window.removeEventListener("supermind:assignments-updated", onAssignsUpdated);
   }, [isAdmin, loadAdminData]);
 
-  // Overall Computed Stats
+  // Overall Computed Stats (accurately counts all approved trainers & schools across profiles + directory)
   const stats = useMemo(() => {
     const totalUsers = usersList.length;
     const studentsCount = usersList.filter((u) => u.role === "student").length;
-    const trainersCount = usersList.filter((u) => u.role === "trainer").length;
+    const trainerAccounts = usersList.filter((u) => u.role === "trainer");
+    const trainerAccountsCount = trainerAccounts.length;
     const activeUsersCount = usersList.filter((u) => u.status === "active").length;
+
+    const approvedTrainerApps = trainerApps.filter((a) => a.status === "active");
+    const approvedTrainerAppsCount = approvedTrainerApps.length;
+    const approvedSchoolAppsCount = schoolApps.filter((a) => a.status === "active").length;
+
+    // Deduplicated count of ALL actual certified trainers (account trainers + approved directory cards)
+    const normPhone = (raw?: string | null) =>
+      String(raw || "")
+        .replace(/[^0-9]/g, "")
+        .slice(-9);
+    const seenEmails = new Set<string>();
+    const seenPhones = new Set<string>();
+    const seenNames = new Set<string>();
+    let verifiedTrainersCount = 0;
+
+    for (const t of trainerAccounts) {
+      verifiedTrainersCount += 1;
+      const em = (t.email || "").trim().toLowerCase();
+      const ph = normPhone(unpackProfilePhoneColumn(t.phone).cleanPhone || t.phone);
+      const nm = (t.name || "").trim().toLowerCase();
+      if (em) seenEmails.add(em);
+      if (ph.length >= 8) seenPhones.add(ph);
+      if (nm) seenNames.add(nm);
+    }
+
+    for (const app of approvedTrainerApps) {
+      const em = (app.email || "").trim().toLowerCase();
+      const ph = normPhone(app.phone);
+      const nm = (app.name || "").trim().toLowerCase();
+      const alreadyCounted =
+        (em && seenEmails.has(em)) ||
+        (ph.length >= 8 && seenPhones.has(ph)) ||
+        (nm && seenNames.has(nm));
+      if (!alreadyCounted) {
+        verifiedTrainersCount += 1;
+        if (em) seenEmails.add(em);
+        if (ph.length >= 8) seenPhones.add(ph);
+        if (nm) seenNames.add(nm);
+      }
+    }
 
     const totalAnswers = progressList.reduce((acc, p) => acc + (p.total_answers || 0), 0);
     const correctAnswers = progressList.reduce((acc, p) => acc + (p.correct_answers || 0), 0);
@@ -233,7 +298,11 @@ export default function AdminDashboardPage() {
     return {
       totalUsers,
       studentsCount,
-      trainersCount,
+      trainersCount: verifiedTrainersCount,
+      verifiedTrainersCount,
+      trainerAccountsCount,
+      approvedTrainerAppsCount,
+      approvedSchoolAppsCount,
       activeUsersCount,
       totalAnswers,
       correctAnswers,
@@ -434,7 +503,37 @@ export default function AdminDashboardPage() {
     const table = type === "trainer" ? "trainer_applications" : "school_applications";
 
     try {
-      await supabase.from(table).update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", id);
+      await supabase
+        .from(table)
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq("id", id);
+
+      // If approving a trainer application, also promote any matching user account to 'trainer'
+      if (type === "trainer" && newStatus === "active") {
+        const app = trainerApps.find((a) => a.id === id);
+        if (app) {
+          const appEmail = (app.email || "").trim().toLowerCase();
+          const appPhoneTail = String(app.phone || "").replace(/[^0-9]/g, "").slice(-9);
+          const matchingUser = usersList.find((u) => {
+            if (u.role === "admin") return false;
+            const uEmail = (u.email || "").trim().toLowerCase();
+            const uPhoneTail = String(unpackProfilePhoneColumn(u.phone).cleanPhone || u.phone || "")
+              .replace(/[^0-9]/g, "")
+              .slice(-9);
+            return (
+              (appEmail && uEmail && appEmail === uEmail) ||
+              (appPhoneTail.length >= 8 && uPhoneTail && appPhoneTail === uPhoneTail)
+            );
+          });
+          if (matchingUser && matchingUser.role !== "trainer") {
+            await supabase
+              .from("profiles")
+              .update({ role: "trainer" })
+              .eq("id", matchingUser.id);
+          }
+        }
+      }
+
       await loadAdminData();
     } catch (err) {
       console.error("Status update error:", err);
@@ -619,11 +718,25 @@ export default function AdminDashboardPage() {
       {activeTab === "overview" && (
         <div className="space-y-8">
           {/* Main Stat Cards Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5">
             <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
               <span className="text-xs text-slate-500 font-semibold">إجمالي المستخدمين</span>
               <div className="text-3xl font-black font-mono text-slate-900 dark:text-white">{stats.totalUsers}</div>
-              <div className="text-[11px] text-emerald-600 font-bold">{stats.studentsCount} طلاب • {stats.trainersCount} مدربين</div>
+              <div className="text-[11px] text-emerald-600 font-bold">
+                {stats.studentsCount} طلاب • {stats.trainerAccountsCount} حساب مدرب
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50/70 dark:from-amber-950/40 dark:to-slate-900 p-5 rounded-3xl border-2 border-amber-300/70 dark:border-amber-800/70 shadow-sm space-y-1">
+              <span className="text-xs text-amber-800 dark:text-amber-300 font-black">
+                🏅 المدربون المعتمدون فعلياً
+              </span>
+              <div className="text-3xl font-black font-mono text-amber-700 dark:text-amber-300">
+                {stats.verifiedTrainersCount}
+              </div>
+              <div className="text-[11px] text-amber-900/80 dark:text-amber-200/80 font-bold">
+                {stats.approvedTrainerAppsCount} بالدليل • {stats.trainerAccountsCount} حساب مدرب
+              </div>
             </div>
 
             <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
@@ -638,10 +751,12 @@ export default function AdminDashboardPage() {
               <div className="text-[11px] text-emerald-600 font-bold">معدل دقة عالي</div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+            <div className="col-span-2 lg:col-span-1 bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
               <span className="text-xs text-slate-500 font-semibold">جلسات التدريب المكتملة</span>
               <div className="text-3xl font-black font-mono text-amber-500">{stats.completedExercises}</div>
-              <div className="text-[11px] text-amber-600 font-bold">تمارين منجزة</div>
+              <div className="text-[11px] text-amber-600 font-bold">
+                تمارين منجزة • {stats.approvedSchoolAppsCount} مدارس معتمدة
+              </div>
             </div>
           </div>
 
@@ -1280,11 +1395,23 @@ export default function AdminDashboardPage() {
                   key={app.id}
                   className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs"
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-black text-slate-900 dark:text-white text-base">{app.name}</h3>
-                      <div className="text-xs text-slate-500">{app.address}</div>
-                      <div className="text-xs font-mono text-emerald-600 font-bold mt-0.5">{app.phone}</div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      {app.book_cover_url && (
+                        <div className="w-14 h-14 rounded-2xl overflow-hidden border border-emerald-300 dark:border-emerald-700 bg-slate-100 dark:bg-slate-800 shrink-0">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={app.book_cover_url}
+                            alt={app.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <h3 className="font-black text-slate-900 dark:text-white text-base">{app.name}</h3>
+                        <div className="text-xs text-slate-500">{app.address}</div>
+                        <div className="text-xs font-mono text-emerald-600 font-bold mt-0.5">{app.phone}</div>
+                      </div>
                     </div>
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${

@@ -2310,7 +2310,7 @@ export async function fetchApprovedDirectoryFromCloud(): Promise<{
           address: String(s.address || `${s.country || "العراق"} — ${s.governorate || ""}`),
           curriculumStage: String(s.curriculum_stage || "المستوى التمهيدي والمستوى الأول"),
           bio: String(s.bio || ""),
-          logoUrl: s.logo_url || null,
+          logoUrl: s.book_cover_url || s.logo_url || null,
         });
       }
     }
@@ -2320,6 +2320,12 @@ export async function fetchApprovedDirectoryFromCloud(): Promise<{
     console.warn("Failed fetching cloud directory:", err);
     return { trainers: localTrainers, schools };
   }
+}
+
+function normalizeArabicDigits(val: string): string {
+  return val
+    .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)))
+    .replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)));
 }
 
 export async function submitTrainerDirectoryCardToCloud(params: {
@@ -2351,7 +2357,7 @@ export async function submitTrainerDirectoryCardToCloud(params: {
     const { error } = await supabase.from("trainer_applications").insert([
       {
         name: params.name.trim(),
-        phone: params.phone.trim(),
+        phone: normalizeArabicDigits(params.phone.trim()),
         email: params.email?.trim() || null,
         country: params.country || "العراق",
         governorate: params.governorate || "بغداد",
@@ -2389,18 +2395,21 @@ export async function submitSchoolDirectoryCardToCloud(params: {
   }
 
   try {
+    const cleanCountry = params.country || "العراق";
+    const cleanGov = params.governorate || "بغداد";
+    const cleanPhone = normalizeArabicDigits(params.phone.trim());
     const { error } = await supabase.from("school_applications").insert([
       {
         name: params.name.trim(),
-        phone: params.phone.trim(),
+        phone: cleanPhone,
         email: params.email?.trim() || null,
-        country: params.country || "العراق",
-        governorate: params.governorate || "بغداد",
-        address: params.address.trim() || `${params.country} — ${params.governorate}`,
-        curriculum_stage: params.curriculumStage.trim() || "جميع المراحل الدراسية",
+        country: cleanCountry,
+        governorate: cleanGov,
+        address: params.address.trim() || `${cleanCountry} — ${cleanGov}`,
+        curriculum_stage: params.curriculumStage.trim() || "المستوى التمهيدي والمستوى الأول",
         bio: params.bio.trim() || "مؤسسة تعليمية معتمدة لبرنامج العقل الخارق.",
-        logo_url: params.logoUrl || null,
-        annual_fee_iqd: 150000,
+        book_cover_url: params.logoUrl || null,
+        annual_fee_iqd: 75000,
         status: "pending",
       },
     ]);
