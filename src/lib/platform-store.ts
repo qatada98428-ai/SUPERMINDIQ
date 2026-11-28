@@ -97,6 +97,16 @@ export interface AssignmentSubmission {
   completedAt: string;
 }
 
+export interface AssignmentRuleGroup {
+  id: string;
+  count: number;
+  digitsCount: number; // 1: آحاد, 2: عشرات, 3: مئات, 4: ألوف
+  level: "simple" | "complex_5" | "complex_10" | "mixed" | "general";
+  targetRules: number[];
+  termsCount: number;
+  allowSubtraction: boolean;
+}
+
 export interface PlatformAssignment {
   id: string;
   kind: "trainer_homework" | "admin_competition" | "admin_challenge";
@@ -114,16 +124,23 @@ export interface PlatformAssignment {
     | "by_level"
     | "by_governorate";
   targetValue?: string; // studentId, level name, or governorate name
+  targetStudentIds?: string[]; // Optional list of selected student IDs for trainer tournaments
   // Exercise configuration
   exerciseType: "competition" | "flash_anzan" | "abacus";
-  rulesLevel: "simple" | "complex_5" | "complex_10" | "general";
+  rulesLevel: "simple" | "complex_5" | "complex_10" | "mixed" | "general";
   allowSubtraction: boolean;
   digitPlace: "units" | "tens" | "hundreds" | "thousands";
   termsCount: number;
   questionsCount: number;
   timeLimitMinutes: number;
+  timeMode?: "countdown" | "stopwatch";
   answerMode: "typing" | "choices";
   choicesCount: 2 | 3 | 4 | 5;
+  displayMode?: "sheet" | "focus";
+  voiceMode?: "arabic" | "english" | "off";
+  orderMode?: "sequential" | "shuffled";
+  ruleGroups?: AssignmentRuleGroup[];
+  notifyStudents?: boolean;
   flashSpeedSeconds?: number;
   dueDate?: string;
   isActive: boolean;
@@ -291,6 +308,7 @@ const STORAGE_KEYS = {
   ASSIGNMENTS: "supermind_assignments_v1",
   MONTHLY_TRIALS: "supermind_monthly_trials_v1",
   TRAINER_LINKS: "supermind_trainer_student_links_v1",
+  DISMISSED_COMP_NOTIFS: "supermind_dismissed_comp_notifs_v1",
 };
 
 // Evaluate effective subscription status and remaining days automatically
@@ -1033,6 +1051,72 @@ export async function recordRealTrainingSession(params: {
   return session;
 }
 
+export function encodeRuleGroupsParam(groups: AssignmentRuleGroup[]): string {
+  return groups
+    .map(
+      (g) =>
+        `${Math.max(1, Math.min(1000, Math.floor(g.count || 1)))}.${g.digitsCount}.${g.level}.${(
+          g.targetRules || []
+        ).join(",")}.${g.termsCount}.${g.allowSubtraction ? 1 : 0}`
+    )
+    .join(";");
+}
+
+export function decodeRuleGroupsParam(raw: string | null): AssignmentRuleGroup[] | undefined {
+  if (!raw || !raw.trim()) return undefined;
+  const parts = raw
+    .split(";")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const validLevels = new Set(["simple", "complex_5", "complex_10", "mixed", "general"]);
+  const groups: AssignmentRuleGroup[] = [];
+
+  parts.forEach((p, idx) => {
+    const seg = p.split(".");
+    if (seg.length < 6) return;
+    const count = Math.max(1, Math.min(1000, parseInt(seg[0], 10) || 20));
+    const digitsCount = Math.max(1, Math.min(4, parseInt(seg[1], 10) || 1));
+    const level = (
+      validLevels.has(seg[2]) ? seg[2] : "simple"
+    ) as AssignmentRuleGroup["level"];
+    const targetRules = seg[3]
+      ? seg[3]
+          .split(",")
+          .map((n) => parseInt(n, 10))
+          .filter((n) => !Number.isNaN(n) && n >= 1 && n <= 9)
+      : [];
+    const termsCount = Math.max(2, Math.min(15, parseInt(seg[4], 10) || 4));
+    const allowSubtraction = seg[5] !== "0";
+    groups.push({
+      id: `shared-g-${idx + 1}`,
+      count,
+      digitsCount,
+      level,
+      targetRules,
+      termsCount,
+      allowSubtraction,
+    });
+  });
+
+  return groups.length > 0 ? groups : undefined;
+}
+
+export function formatRuleGroupShortAr(g: AssignmentRuleGroup): string {
+  const digLabels: Record<number, string> = { 1: "آحاد", 2: "عشرات", 3: "مئات", 4: "ألوف" };
+  const lvlLabels: Record<string, string> = {
+    simple: "بسيط",
+    complex_5: "مركب 5",
+    complex_10: "مركب 10",
+    mixed: "مركب 5 و 10",
+    general: "عام شامل",
+  };
+  const subRules =
+    (g.level === "complex_5" || g.level === "complex_10") && g.targetRules.length > 0
+      ? ` (قاعدة ${g.targetRules.join("، ")})`
+      : "";
+  return `${digLabels[g.digitsCount] || `${g.digitsCount} خانات`} • ${lvlLabels[g.level] || g.level}${subRules} (${g.count} س / ${g.termsCount} صفوف)`;
+}
+
 export function buildShareableAssignmentPath(assignment: PlatformAssignment): string {
   const basePath =
     assignment.exerciseType === "flash_anzan"
@@ -1054,6 +1138,24 @@ export function buildShareableAssignmentPath(assignment: PlatformAssignment): st
   sp.set("mode", assignment.answerMode);
   sp.set("ch", String(assignment.choicesCount));
   sp.set("by", assignment.creatorName);
+  if (assignment.creatorId) {
+    sp.set("cid", assignment.creatorId);
+  }
+  if (assignment.timeMode) {
+    sp.set("tm", assignment.timeMode);
+  }
+  if (assignment.orderMode) {
+    sp.set("ord", assignment.orderMode);
+  }
+  if (assignment.displayMode) {
+    sp.set("disp", assignment.displayMode);
+  }
+  if (assignment.voiceMode) {
+    sp.set("vc", assignment.voiceMode);
+  }
+  if (assignment.ruleGroups && assignment.ruleGroups.length > 0) {
+    sp.set("rg", encodeRuleGroupsParam(assignment.ruleGroups));
+  }
   if (assignment.description) {
     sp.set("desc", assignment.description);
   }
@@ -1067,7 +1169,14 @@ export function parseAssignmentFromSearchParams(
   if (!assignId) return null;
 
   const existing = getAssignmentById(assignId);
-  if (existing) return existing;
+  const parsedGroups = decodeRuleGroupsParam(params.get("rg"));
+  if (existing) {
+    // If URL carries richer rule groups not yet on existing, merge them cleanly
+    if (parsedGroups && (!existing.ruleGroups || existing.ruleGroups.length === 0)) {
+      return { ...existing, ruleGroups: parsedGroups };
+    }
+    return existing;
+  }
 
   const title = params.get("title");
   if (!title) return null;
@@ -1088,15 +1197,20 @@ export function parseAssignmentFromSearchParams(
     rawChoices === 2 || rawChoices === 3 || rawChoices === 4 || rawChoices === 5
       ? rawChoices
       : 4;
+  const timeMode = (params.get("tm") as PlatformAssignment["timeMode"]) || "countdown";
+  const orderMode = (params.get("ord") as PlatformAssignment["orderMode"]) || "sequential";
+  const displayMode = (params.get("disp") as PlatformAssignment["displayMode"]) || "focus";
+  const voiceMode = (params.get("vc") as PlatformAssignment["voiceMode"]) || "arabic";
   const creatorName = params.get("by") || "الأستاذ قتادة كريم";
-  const description = params.get("desc") || "تمت مشاركة هذا الواجب عبر الرابط المباشر.";
+  const creatorId = params.get("cid") || "shared-link";
+  const description = params.get("desc") || "تمت مشاركة هذه البطولة عبر الرابط المباشر.";
 
   const reconstructed: PlatformAssignment = {
     id: assignId,
     kind,
     title,
     description,
-    creatorId: "shared-link",
+    creatorId,
     creatorName,
     creatorRole: kind === "trainer_homework" ? "trainer" : "admin",
     targetType: "all_students",
@@ -1105,10 +1219,18 @@ export function parseAssignmentFromSearchParams(
     allowSubtraction,
     digitPlace,
     termsCount,
-    questionsCount,
+    questionsCount: parsedGroups
+      ? Math.min(1000, parsedGroups.reduce((s, g) => s + g.count, 0))
+      : questionsCount,
     timeLimitMinutes,
+    timeMode,
     answerMode,
     choicesCount,
+    displayMode,
+    voiceMode,
+    orderMode,
+    ruleGroups: parsedGroups,
+    notifyStudents: false,
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     isActive: true,
     createdAt: new Date().toISOString(),
@@ -1129,11 +1251,167 @@ export function parseAssignmentFromSearchParams(
   return reconstructed;
 }
 
+export async function publishAssignmentToCloud(assignment: PlatformAssignment): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    await supabase.from("platform_assignments").upsert([
+      {
+        id: assignment.id,
+        kind: assignment.kind,
+        title: assignment.title,
+        description: assignment.description || null,
+        creator_id: assignment.creatorId,
+        creator_name: assignment.creatorName,
+        creator_role: assignment.creatorRole,
+        target_type: assignment.targetType,
+        target_value: assignment.targetValue || null,
+        target_student_ids: assignment.targetStudentIds || [],
+        config: {
+          exerciseType: assignment.exerciseType,
+          rulesLevel: assignment.rulesLevel,
+          allowSubtraction: assignment.allowSubtraction,
+          digitPlace: assignment.digitPlace,
+          termsCount: assignment.termsCount,
+          questionsCount: assignment.questionsCount,
+          timeLimitMinutes: assignment.timeLimitMinutes,
+          timeMode: assignment.timeMode || "countdown",
+          answerMode: assignment.answerMode,
+          choicesCount: assignment.choicesCount,
+          displayMode: assignment.displayMode || "focus",
+          voiceMode: assignment.voiceMode || "arabic",
+          orderMode: assignment.orderMode || "sequential",
+          ruleGroups: assignment.ruleGroups || [],
+        },
+        is_active: assignment.isActive,
+        notify_students: assignment.notifyStudents !== false,
+        due_date: assignment.dueDate || null,
+        created_at: assignment.createdAt,
+      },
+    ]);
+  } catch {
+    // Graceful fallback if table hasn't been created in cloud yet
+  }
+}
+
 export async function syncAllAssignmentsSubmissionsFromCloud(): Promise<PlatformAssignment[]> {
   const list = getInitialAssignments();
   const supabase = getSupabaseClient();
   if (!supabase) return list;
 
+  let updatedAny = false;
+
+  // 1. Fetch published cloud assignments from platform_assignments (if available)
+  try {
+    const { data: cloudAssigns, error: assignErr } = await supabase
+      .from("platform_assignments")
+      .select("*")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (!assignErr && cloudAssigns && cloudAssigns.length > 0) {
+      for (const row of cloudAssigns) {
+        const cfg = (row.config || {}) as Record<string, unknown>;
+        const mapped: PlatformAssignment = {
+          id: String(row.id),
+          kind: (row.kind as PlatformAssignment["kind"]) || "admin_competition",
+          title: String(row.title || ""),
+          description: row.description ? String(row.description) : undefined,
+          creatorId: String(row.creator_id || ""),
+          creatorName: String(row.creator_name || "إدارة المنصة"),
+          creatorRole: (row.creator_role as "trainer" | "admin") || "admin",
+          targetType: (row.target_type as PlatformAssignment["targetType"]) || "all_students",
+          targetValue: row.target_value ? String(row.target_value) : undefined,
+          targetStudentIds: Array.isArray(row.target_student_ids)
+            ? (row.target_student_ids as string[])
+            : undefined,
+          exerciseType: (cfg.exerciseType as PlatformAssignment["exerciseType"]) || "competition",
+          rulesLevel: (cfg.rulesLevel as PlatformAssignment["rulesLevel"]) || "simple",
+          allowSubtraction: cfg.allowSubtraction !== false,
+          digitPlace: (cfg.digitPlace as PlatformAssignment["digitPlace"]) || "units",
+          termsCount: Number(cfg.termsCount || 4),
+          questionsCount: Number(cfg.questionsCount || 20),
+          timeLimitMinutes: Number(cfg.timeLimitMinutes || 10),
+          timeMode: (cfg.timeMode as PlatformAssignment["timeMode"]) || "countdown",
+          answerMode: (cfg.answerMode as PlatformAssignment["answerMode"]) || "typing",
+          choicesCount: (Number(cfg.choicesCount || 4) as 2 | 3 | 4 | 5),
+          displayMode: (cfg.displayMode as PlatformAssignment["displayMode"]) || "focus",
+          voiceMode: (cfg.voiceMode as PlatformAssignment["voiceMode"]) || "arabic",
+          orderMode: (cfg.orderMode as PlatformAssignment["orderMode"]) || "sequential",
+          ruleGroups: Array.isArray(cfg.ruleGroups)
+            ? (cfg.ruleGroups as AssignmentRuleGroup[])
+            : undefined,
+          notifyStudents: row.notify_students !== false,
+          dueDate: row.due_date ? String(row.due_date) : undefined,
+          isActive: row.is_active !== false,
+          createdAt: String(row.created_at || new Date().toISOString()),
+          submissions: [],
+        };
+
+        const existingIdx = list.findIndex((a) => a.id === mapped.id);
+        if (existingIdx === -1) {
+          list.unshift(mapped);
+          updatedAny = true;
+        } else {
+          list[existingIdx] = {
+            ...mapped,
+            submissions: list[existingIdx].submissions || [],
+          };
+        }
+      }
+    }
+
+    // 2. Fetch cloud submissions from assignment_submissions (if available)
+    const { data: cloudSubs, error: subsErr } = await supabase
+      .from("assignment_submissions")
+      .select("*")
+      .order("completed_at", { ascending: false })
+      .limit(500);
+
+    if (!subsErr && cloudSubs && cloudSubs.length > 0) {
+      for (const row of cloudSubs) {
+        const assignId = String(row.assignment_id || "");
+        const idx = list.findIndex((a) => a.id === assignId);
+        if (idx === -1) continue;
+        const sub: AssignmentSubmission = {
+          studentId: String(row.student_id || ""),
+          studentName: String(row.student_name || "بطل العقل الخارق"),
+          governorate: row.governorate ? String(row.governorate) : "",
+          score: Number(row.score || 0),
+          totalQuestions: Number(row.total_questions || 0),
+          correctAnswers: Number(row.correct_answers || 0),
+          accuracy: Math.round(Number(row.accuracy || 0)),
+          durationSeconds: Number(row.duration_seconds || 0),
+          completedAt: String(row.completed_at || new Date().toISOString()),
+        };
+        const existingSubs = list[idx].submissions || [];
+        const subIdx = existingSubs.findIndex((s) => s.studentId === sub.studentId);
+        if (subIdx >= 0) {
+          const prev = existingSubs[subIdx];
+          if (
+            sub.accuracy > prev.accuracy ||
+            (sub.accuracy === prev.accuracy && sub.durationSeconds < prev.durationSeconds)
+          ) {
+            existingSubs[subIdx] = sub;
+            updatedAny = true;
+          }
+        } else {
+          existingSubs.push(sub);
+          updatedAny = true;
+        }
+        existingSubs.sort((a, b) => {
+          if (b.correctAnswers !== a.correctAnswers) return b.correctAnswers - a.correctAnswers;
+          return a.durationSeconds - b.durationSeconds;
+        });
+        list[idx].submissions = existingSubs;
+      }
+    }
+  } catch {
+    // Graceful fallback
+  }
+
+  // 3. Also merge submissions recorded inside training_sessions.metadata.assignmentId
   try {
     const { data: sessions } = await supabase
       .from("training_sessions")
@@ -1141,63 +1419,62 @@ export async function syncAllAssignmentsSubmissionsFromCloud(): Promise<Platform
       .order("created_at", { ascending: false })
       .limit(300);
 
-    if (!sessions || sessions.length === 0) return list;
+    if (sessions && sessions.length > 0) {
+      for (const row of sessions) {
+        const meta = (row.metadata || {}) as Record<string, unknown>;
+        const assignId = meta.assignmentId as string | undefined;
+        if (!assignId) continue;
 
-    let updatedAny = false;
-    for (const row of sessions) {
-      const meta = (row.metadata || {}) as Record<string, unknown>;
-      const assignId = meta.assignmentId as string | undefined;
-      if (!assignId) continue;
+        const idx = list.findIndex((a) => a.id === assignId);
+        if (idx === -1) continue;
 
-      const idx = list.findIndex((a) => a.id === assignId);
-      if (idx === -1) continue;
+        const studentId = String(row.user_id || "");
+        const studentName = String(meta.studentName || "بطل العقل الخارق");
+        const governorate = String(meta.governorate || "");
+        const submission: AssignmentSubmission = {
+          studentId,
+          studentName,
+          governorate,
+          score: Number(row.score || 0),
+          totalQuestions: Number(row.total_questions || 0),
+          correctAnswers: Number(row.correct_answers || 0),
+          accuracy: Math.round(Number(row.accuracy_rate || 0)),
+          durationSeconds: Number(row.duration_seconds || 0),
+          completedAt: String(row.created_at || new Date().toISOString()),
+        };
 
-      const studentId = String(row.user_id || "");
-      const studentName = String(meta.studentName || "بطل العقل الخارق");
-      const governorate = String(meta.governorate || "");
-      const submission: AssignmentSubmission = {
-        studentId,
-        studentName,
-        governorate,
-        score: Number(row.score || 0),
-        totalQuestions: Number(row.total_questions || 0),
-        correctAnswers: Number(row.correct_answers || 0),
-        accuracy: Math.round(Number(row.accuracy_rate || 0)),
-        durationSeconds: Number(row.duration_seconds || 0),
-        completedAt: String(row.created_at || new Date().toISOString()),
-      };
-
-      const existingSubs = list[idx].submissions || [];
-      const subIdx = existingSubs.findIndex((s) => s.studentId === studentId);
-      if (subIdx >= 0) {
-        const prev = existingSubs[subIdx];
-        if (
-          submission.accuracy > prev.accuracy ||
-          (submission.accuracy === prev.accuracy &&
-            submission.durationSeconds < prev.durationSeconds)
-        ) {
-          existingSubs[subIdx] = submission;
+        const existingSubs = list[idx].submissions || [];
+        const subIdx = existingSubs.findIndex((s) => s.studentId === studentId);
+        if (subIdx >= 0) {
+          const prev = existingSubs[subIdx];
+          if (
+            submission.accuracy > prev.accuracy ||
+            (submission.accuracy === prev.accuracy &&
+              submission.durationSeconds < prev.durationSeconds)
+          ) {
+            existingSubs[subIdx] = submission;
+            updatedAny = true;
+          }
+        } else {
+          existingSubs.push(submission);
           updatedAny = true;
         }
-      } else {
-        existingSubs.push(submission);
-        updatedAny = true;
+
+        existingSubs.sort((a, b) => {
+          if (b.correctAnswers !== a.correctAnswers) return b.correctAnswers - a.correctAnswers;
+          return a.durationSeconds - b.durationSeconds;
+        });
+        list[idx].submissions = existingSubs;
       }
-
-      existingSubs.sort((a, b) => {
-        if (b.correctAnswers !== a.correctAnswers) return b.correctAnswers - a.correctAnswers;
-        return a.durationSeconds - b.durationSeconds;
-      });
-      list[idx].submissions = existingSubs;
-    }
-
-    if (updatedAny && typeof window !== "undefined") {
-      try {
-        localStorage.setItem(STORAGE_KEYS.ASSIGNMENTS, JSON.stringify(list));
-      } catch {}
     }
   } catch (err) {
     console.warn("Cloud submissions sync warning:", err);
+  }
+
+  if (updatedAny && typeof window !== "undefined") {
+    try {
+      localStorage.setItem(STORAGE_KEYS.ASSIGNMENTS, JSON.stringify(list));
+    } catch {}
   }
 
   return list;
@@ -1287,6 +1564,7 @@ export function createPlatformAssignment(
   const list = getInitialAssignments();
   const created: PlatformAssignment = {
     ...assignment,
+    notifyStudents: assignment.notifyStudents !== false,
     id: `assign_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     createdAt: new Date().toISOString(),
     submissions: [],
@@ -1298,6 +1576,8 @@ export function createPlatformAssignment(
       window.dispatchEvent(new CustomEvent("supermind:assignments-updated"));
     } catch {}
   }
+  // Fire-and-forget cloud publish
+  publishAssignmentToCloud(created).catch(() => {});
   return created;
 }
 
@@ -1309,42 +1589,106 @@ export function deletePlatformAssignment(id: string): void {
       window.dispatchEvent(new CustomEvent("supermind:assignments-updated"));
     } catch {}
   }
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    supabase
+      .from("platform_assignments")
+      .delete()
+      .eq("id", id)
+      .then(() => {}, () => {});
+  }
 }
 
 export function submitAssignmentResult(assignmentId: string, submission: AssignmentSubmission): void {
   const list = getInitialAssignments();
   const idx = list.findIndex((a) => a.id === assignmentId);
-  if (idx === -1) return;
+  if (idx !== -1) {
+    const existingSubs = list[idx].submissions || [];
+    const subIdx = existingSubs.findIndex((s) => s.studentId === submission.studentId);
 
-  const existingSubs = list[idx].submissions || [];
-  const subIdx = existingSubs.findIndex((s) => s.studentId === submission.studentId);
-
-  if (subIdx >= 0) {
-    // Keep the better score or faster time
-    const prev = existingSubs[subIdx];
-    if (
-      submission.accuracy > prev.accuracy ||
-      (submission.accuracy === prev.accuracy && submission.durationSeconds <= prev.durationSeconds)
-    ) {
-      existingSubs[subIdx] = submission;
+    if (subIdx >= 0) {
+      // Keep the better score or faster time
+      const prev = existingSubs[subIdx];
+      if (
+        submission.accuracy > prev.accuracy ||
+        (submission.accuracy === prev.accuracy && submission.durationSeconds <= prev.durationSeconds)
+      ) {
+        existingSubs[subIdx] = submission;
+      }
+    } else {
+      existingSubs.push(submission);
     }
-  } else {
-    existingSubs.push(submission);
+
+    // Sort leaderboard by highest correctAnswers/accuracy then fastest durationSeconds
+    existingSubs.sort((a, b) => {
+      if (b.correctAnswers !== a.correctAnswers) return b.correctAnswers - a.correctAnswers;
+      return a.durationSeconds - b.durationSeconds;
+    });
+
+    list[idx].submissions = existingSubs;
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(STORAGE_KEYS.ASSIGNMENTS, JSON.stringify(list));
+        window.dispatchEvent(new CustomEvent("supermind:assignments-updated"));
+      } catch {}
+    }
   }
 
-  // Sort leaderboard by highest correctAnswers/accuracy then fastest durationSeconds
-  existingSubs.sort((a, b) => {
-    if (b.correctAnswers !== a.correctAnswers) return b.correctAnswers - a.correctAnswers;
-    return a.durationSeconds - b.durationSeconds;
-  });
-
-  list[idx].submissions = existingSubs;
-  if (typeof window !== "undefined") {
-    try {
-      localStorage.setItem(STORAGE_KEYS.ASSIGNMENTS, JSON.stringify(list));
-      window.dispatchEvent(new CustomEvent("supermind:assignments-updated"));
-    } catch {}
+  // Also sync submission to cloud assignment_submissions table if available
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    supabase
+      .from("assignment_submissions")
+      .upsert(
+        [
+          {
+            assignment_id: assignmentId,
+            student_id: submission.studentId,
+            student_name: submission.studentName,
+            governorate: submission.governorate || null,
+            score: submission.score,
+            total_questions: submission.totalQuestions,
+            correct_answers: submission.correctAnswers,
+            accuracy: submission.accuracy,
+            duration_seconds: submission.durationSeconds,
+            completed_at: submission.completedAt,
+          },
+        ],
+        { onConflict: "assignment_id,student_id" }
+      )
+      .then(() => {}, () => {});
   }
+}
+
+export function matchesAssignmentTarget(
+  a: PlatformAssignment,
+  profile: ExtendedUserProfile
+): boolean {
+  const evalSub = evaluateSubscription(profile.subscription);
+  if (a.targetStudentIds && a.targetStudentIds.length > 0) {
+    return a.targetStudentIds.includes(profile.id);
+  }
+  if (a.targetType === "all_students") return true;
+  if (a.targetType === "active_subscribers") return evalSub.isActive;
+  if (a.targetType === "specific_student") return a.targetValue === profile.id;
+  if (a.targetType === "trainer_students") {
+    return (
+      !profile.trainerId ||
+      profile.trainerId === a.creatorId ||
+      a.creatorId === "trainer-qatada"
+    );
+  }
+  if (a.targetType === "by_governorate") {
+    return Boolean(profile.governorate && a.targetValue === profile.governorate);
+  }
+  if (a.targetType === "by_level") {
+    return Boolean(
+      a.targetValue &&
+        (profile.currentLevel.includes(a.targetValue) ||
+          a.targetValue.includes(profile.currentLevel))
+    );
+  }
+  return true;
 }
 
 export function getStudentAssignments(profile: ExtendedUserProfile): {
@@ -1352,31 +1696,52 @@ export function getStudentAssignments(profile: ExtendedUserProfile): {
   trainerHomeworks: PlatformAssignment[];
 } {
   const all = getInitialAssignments().filter((a) => a.isActive);
-  const evalSub = evaluateSubscription(profile.subscription);
-
-  const matchesTarget = (a: PlatformAssignment): boolean => {
-    if (a.targetType === "all_students") return true;
-    if (a.targetType === "active_subscribers") return evalSub.isActive;
-    if (a.targetType === "specific_student") return a.targetValue === profile.id;
-    if (a.targetType === "trainer_students") {
-      return !profile.trainerId || profile.trainerId === a.creatorId || a.creatorId === "trainer-qatada";
-    }
-    if (a.targetType === "by_governorate") {
-      return Boolean(profile.governorate && a.targetValue === profile.governorate);
-    }
-    if (a.targetType === "by_level") {
-      return Boolean(a.targetValue && profile.currentLevel.includes(a.targetValue));
-    }
-    return true;
-  };
-
-  const filtered = all.filter(matchesTarget);
+  const filtered = all.filter((a) => matchesAssignmentTarget(a, profile));
   return {
     adminCompetitions: filtered.filter(
       (a) => a.kind === "admin_competition" || a.kind === "admin_challenge"
     ),
     trainerHomeworks: filtered.filter((a) => a.kind === "trainer_homework"),
   };
+}
+
+export function getDismissedCompetitionNotificationIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.DISMISSED_COMP_NOTIFS);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function dismissCompetitionNotification(assignmentId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const existing = getDismissedCompetitionNotificationIds();
+    if (!existing.includes(assignmentId)) {
+      localStorage.setItem(
+        STORAGE_KEYS.DISMISSED_COMP_NOTIFS,
+        JSON.stringify([...existing, assignmentId].slice(-100))
+      );
+    }
+  } catch {}
+}
+
+export function getPendingCompetitionNotifications(
+  profile: ExtendedUserProfile
+): PlatformAssignment[] {
+  const dismissed = new Set(getDismissedCompetitionNotificationIds());
+  const all = getInitialAssignments().filter(
+    (a) => a.isActive && a.notifyStudents !== false && !dismissed.has(a.id)
+  );
+  return all.filter((a) => {
+    // Don't notify creator about their own competition
+    if (a.creatorId === profile.id) return false;
+    // Skip if student already submitted a result for this competition
+    if ((a.submissions || []).some((s) => s.studentId === profile.id)) return false;
+    return matchesAssignmentTarget(a, profile);
+  });
 }
 
 export function getVerifiedTrainersForDirectory(): ExtendedUserProfile[] {

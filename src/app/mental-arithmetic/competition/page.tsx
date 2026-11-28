@@ -26,6 +26,9 @@ import {
   ListOrdered,
   Keyboard,
   ListChecks,
+  Share2,
+  Medal,
+  Users,
 } from "lucide-react";
 import {
   generateFlashAnzanSeries,
@@ -45,12 +48,19 @@ import {
   getMonthlyTrialStatus,
   consumeMonthlyTrialQuestions,
   parseAssignmentFromSearchParams,
+  buildShareableAssignmentPath,
   syncExtendedProfileFromSupabase,
   recordRealTrainingSession,
+  submitAssignmentResult,
+  getAllAssignments,
   SUBSCRIPTION_PLANS,
   MONTHLY_FREE_QUESTIONS_LIMIT,
   MONTHLY_FREE_MINUTES_LIMIT,
 } from "@/lib/platform-store";
+import {
+  TrainerTournamentModal,
+  TrainerTournamentsBoard,
+} from "@/components/competition/TrainerTournamentPanel";
 
 // ============================================================
 // TYPES & CONSTANTS
@@ -172,12 +182,34 @@ function generateChoicesForAnswer(
 }
 
 export default function MentalMathCompetitionPage() {
-  const { user, profile: authProfile, isGuest, recordProgressAnswer } = useAuth();
+  const { user, profile: authProfile, role: authRole, isGuest, recordProgressAnswer } = useAuth();
   const activeUserId = user?.id || "guest-local";
   const [activeAssignment, setActiveAssignment] = useState<PlatformAssignment | null>(null);
+  const [guestParticipantName, setGuestParticipantName] = useState<string>("");
+  const [copiedActiveLink, setCopiedActiveLink] = useState(false);
+  const [showTrainerTournamentModal, setShowTrainerTournamentModal] = useState(false);
+  const [showTrainerResultsBoard, setShowTrainerResultsBoard] = useState(false);
+  const [trainerTournamentsCount, setTrainerTournamentsCount] = useState(0);
+  const [tournamentsRefreshTick, setTournamentsRefreshTick] = useState(0);
   const [showSubPaywallModal, setShowSubPaywallModal] = useState(false);
   const [paywallReason, setPaywallReason] = useState<string>("");
   const [showCertificateModal, setShowCertificateModal] = useState(false);
+
+  const isTrainerOrAdminUser =
+    authRole === "trainer" ||
+    authRole === "admin" ||
+    authProfile?.role === "trainer" ||
+    authProfile?.role === "admin";
+
+  useEffect(() => {
+    if (!isTrainerOrAdminUser) return;
+    const all = getAllAssignments();
+    const mine =
+      authRole === "admin" || authProfile?.role === "admin"
+        ? all
+        : all.filter((a) => a.creatorId === activeUserId || a.creatorId === "trainer-qatada");
+    setTrainerTournamentsCount(mine.length);
+  }, [isTrainerOrAdminUser, authRole, authProfile?.role, activeUserId, tournamentsRefreshTick]);
 
   // ── Setup Configuration State ──────────────────────────────
   const [timeMode, setTimeMode] = useState<TimeMode>("countdown");
@@ -417,27 +449,45 @@ export default function MentalMathCompetitionPage() {
     if (!found) return;
 
     setActiveAssignment(found);
-    setTimeMode("countdown");
+    setTimeMode(found.timeMode || "countdown");
     setDurationMinutes(found.timeLimitMinutes || 5);
     setAnswerMode(found.answerMode || "typing");
     setChoicesCount(found.choicesCount || 4);
-    const digMap: Record<string, number> = {
-      units: 1,
-      tens: 2,
-      hundreds: 3,
-      thousands: 4,
-    };
-    setRuleGroups([
-      {
-        id: "assign-group-1",
-        count: found.questionsCount || 20,
-        digitsCount: digMap[found.digitPlace] || 1,
-        level: found.rulesLevel || "simple",
-        targetRules: [],
-        termsCount: found.termsCount || 4,
-        allowSubtraction: found.allowSubtraction !== false,
-      },
-    ]);
+    if (found.orderMode) setOrderMode(found.orderMode);
+    if (found.displayMode) setDisplayMode(found.displayMode);
+    if (found.voiceMode) setVoiceMode(found.voiceMode);
+
+    if (found.ruleGroups && found.ruleGroups.length > 0) {
+      setRuleGroups(
+        found.ruleGroups.map((g, i) => ({
+          id: g.id || `assign-group-${i + 1}`,
+          count: g.count || 20,
+          digitsCount: g.digitsCount || 1,
+          level: g.level || "simple",
+          targetRules: Array.isArray(g.targetRules) ? g.targetRules : [],
+          termsCount: g.termsCount || 4,
+          allowSubtraction: g.allowSubtraction !== false,
+        }))
+      );
+    } else {
+      const digMap: Record<string, number> = {
+        units: 1,
+        tens: 2,
+        hundreds: 3,
+        thousands: 4,
+      };
+      setRuleGroups([
+        {
+          id: "assign-group-1",
+          count: found.questionsCount || 20,
+          digitsCount: digMap[found.digitPlace] || 1,
+          level: found.rulesLevel || "simple",
+          targetRules: [],
+          termsCount: found.termsCount || 4,
+          allowSubtraction: found.allowSubtraction !== false,
+        },
+      ]);
+    }
   }, [activeUserId]);
 
   // ── Launch Competition ─────────────────────────────────────
@@ -558,9 +608,19 @@ export default function MentalMathCompetitionPage() {
       const primaryLevel: ArithmeticLevel = ruleGroups[0]?.level || "simple";
 
       // Record full competition session & homework/admin competition submission
+      const participantDisplayName =
+        guestParticipantName.trim() ||
+        authProfile?.name ||
+        user?.email?.split("@")[0] ||
+        "بطل العقل الخارق";
+      const participantSubmitId =
+        activeUserId !== "guest-local"
+          ? activeUserId
+          : `guest_${participantDisplayName.replace(/\s+/g, "_").slice(0, 20)}_${Date.now().toString(36)}`;
+
       recordRealTrainingSession({
         userId: activeUserId,
-        userName: authProfile?.name || user?.email?.split("@")[0] || "بطل العقل الخارق",
+        userName: participantDisplayName,
         type: "competition",
         title: activeAssignment
           ? activeAssignment.title
@@ -571,6 +631,24 @@ export default function MentalMathCompetitionPage() {
         durationSeconds: Math.max(1, elapsedSeconds),
         assignmentId: activeAssignment?.id,
       });
+
+      // Ensure guest link participants also post their custom name to the tournament leaderboard
+      if (activeAssignment && activeUserId === "guest-local") {
+        const acc =
+          targetQuestions.length > 0
+            ? Math.round((correctCnt / targetQuestions.length) * 100)
+            : 0;
+        submitAssignmentResult(activeAssignment.id, {
+          studentId: participantSubmitId,
+          studentName: participantDisplayName,
+          score: correctCnt * 10 + (acc >= 90 ? 25 : 5),
+          totalQuestions: targetQuestions.length,
+          correctAnswers: correctCnt,
+          accuracy: acc,
+          durationSeconds: Math.max(1, elapsedSeconds),
+          completedAt: new Date().toISOString(),
+        });
+      }
 
       if (correctCnt > 0) {
         recordProgressAnswer({
@@ -602,6 +680,7 @@ export default function MentalMathCompetitionPage() {
       ruleGroups,
       elapsedSeconds,
       activeUserId,
+      guestParticipantName,
       authProfile?.name,
       user?.email,
       activeAssignment,
@@ -862,30 +941,107 @@ export default function MentalMathCompetitionPage() {
         <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300">
           {/* Active Homework / Admin Competition One-Click Ready Banner */}
           {activeAssignment && (
-            <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-l from-amber-500 via-amber-400 to-yellow-400 text-slate-950 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-950 text-amber-300 text-[11px] font-black">
-                  <span>
-                    {activeAssignment.kind === "trainer_homework"
-                      ? `📝 واجب جاهز من المدرب: ${activeAssignment.creatorName}`
-                      : `🏆 مسابقة وتحدي رسمي من إدارة المنصة`}
-                  </span>
+            <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-l from-amber-500 via-amber-400 to-yellow-400 text-slate-950 shadow-xl space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="space-y-1.5">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-950 text-amber-300 text-[11px] font-black">
+                    <span>
+                      {activeAssignment.kind === "trainer_homework"
+                        ? `🎓 بطولة / واجب من المدرب: ${activeAssignment.creatorName}`
+                        : `🏆 مسابقة وتحدي رسمي من إدارة المنصة`}
+                    </span>
+                  </div>
+                  <h2 className="text-lg sm:text-2xl font-black">
+                    {activeAssignment.title}
+                  </h2>
+                  <p className="text-xs sm:text-sm font-bold text-slate-800">
+                    تم ضبط جميع الإعدادات تلقائياً ({totalQuestionsCount} سؤال •{" "}
+                    {timeMode === "countdown" ? `الوقت ${durationMinutes} دقائق` : "تايمر مفتوح"} •{" "}
+                    {ruleGroups.length} {ruleGroups.length > 1 ? "قواعد متعددة" : "قاعدة"}). اضغط زر البدء للانطلاق فوراً!
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {ruleGroups.map((g, i) => (
+                      <span
+                        key={g.id}
+                        className="px-2.5 py-0.5 rounded-lg bg-slate-950/15 text-slate-950 text-[11px] font-black"
+                      >
+                        ({i + 1}) {formatGroupLabel(g)} ({g.count} س)
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <h2 className="text-lg sm:text-2xl font-black">
-                  {activeAssignment.title}
-                </h2>
-                <p className="text-xs sm:text-sm font-bold text-slate-800">
-                  تم ضبط الإعدادات تلقائياً ({activeAssignment.questionsCount} سؤال • الوقت {activeAssignment.timeLimitMinutes} دقائق). اضغط زر البدء للانطلاق فوراً!
+                <div className="flex flex-col sm:items-end gap-2 shrink-0 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={startCompetition}
+                    className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-slate-950 hover:bg-slate-800 text-amber-300 font-black text-sm sm:text-base shadow-xl flex items-center justify-center gap-2 transition-transform active:scale-95"
+                  >
+                    <Play className="w-5 h-5 fill-current" />
+                    <span>ابدأ البطولة الآن 🚀</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = `${window.location.origin}${buildShareableAssignmentPath(activeAssignment)}`;
+                      navigator.clipboard?.writeText(url);
+                      setCopiedActiveLink(true);
+                      setTimeout(() => setCopiedActiveLink(false), 2000);
+                    }}
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-slate-950/15 hover:bg-slate-950/25 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span>{copiedActiveLink ? "✅ تم نسخ الرابط!" : "مشاركة رابط المسابقة"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {isGuest && (
+                <div className="pt-3 border-t border-slate-950/15 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <label className="text-xs font-black text-slate-900 shrink-0">
+                    ✍️ اكتب اسمك ليظهر في لوحة نتائج البطولة:
+                  </label>
+                  <input
+                    type="text"
+                    value={guestParticipantName}
+                    onChange={(e) => setGuestParticipantName(e.target.value)}
+                    placeholder="مثال: علي محمد — الصف الرابع"
+                    className="flex-1 px-3.5 py-2 rounded-xl bg-white/95 border border-slate-950/20 text-xs font-bold text-slate-900 outline-none"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Trainer / Admin Quick Tournament Action Strip */}
+          {isTrainerOrAdminUser && (
+            <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-l from-brand-700 via-indigo-700 to-purple-800 text-white shadow-lg border border-amber-300/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <div className="text-sm sm:text-base font-black flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-amber-300" />
+                  <span>وضع المدرب: أنشئ بطولة خاصة لطلابك مباشرة من المحاكي!</span>
+                </div>
+                <p className="text-xs text-indigo-100">
+                  اضبط القواعد والوقت أدناه ثم اضغط «بطولة لطلابي» لمشاركتها عبر رابط أو إرسالها لطلابك ومتابعة نتائجهم لحظياً.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={startCompetition}
-                className="px-7 py-4 rounded-2xl bg-slate-950 hover:bg-slate-800 text-amber-300 font-black text-sm sm:text-base shadow-xl flex items-center gap-2 shrink-0 transition-transform active:scale-95"
-              >
-                <Play className="w-5 h-5 fill-current" />
-                <span>ابدأ حل الواجب الآن 🚀</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setShowTrainerTournamentModal(true)}
+                  className="flex-1 sm:flex-initial px-4 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 transition-transform active:scale-95"
+                >
+                  <Users className="w-4 h-4" />
+                  <span>بطولة لطلابي 🏆</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowTrainerResultsBoard(true)}
+                  className="flex-1 sm:flex-initial px-4 py-2.5 rounded-2xl bg-white/15 hover:bg-white/25 text-white border border-white/25 font-black text-xs flex items-center justify-center gap-1.5"
+                >
+                  <Medal className="w-4 h-4 text-amber-300" />
+                  <span>بطولاتي ونتائج الطلاب ({trainerTournamentsCount})</span>
+                </button>
+              </div>
             </div>
           )}
 
@@ -1679,16 +1835,57 @@ export default function MentalMathCompetitionPage() {
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={startCompetition}
-                className="w-full sm:w-auto shrink-0 px-10 py-4 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-black text-base shadow-xl shadow-brand-500/25 transition-all hover:scale-102 active:scale-95 flex items-center justify-center gap-2.5"
-              >
-                <Play className="w-5 h-5 fill-white" />
-                <span>بدء المسابقة الآن ({totalQuestionsCount} سؤال) 🏅</span>
-              </button>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto shrink-0">
+                {isTrainerOrAdminUser && (
+                  <button
+                    type="button"
+                    onClick={() => setShowTrainerTournamentModal(true)}
+                    className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <Trophy className="w-5 h-5" />
+                    <span>إطلاق كـ بطولة لطلابي 🏆</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={startCompetition}
+                  className="w-full sm:w-auto px-10 py-4 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-black text-base shadow-xl shadow-brand-500/25 transition-all hover:scale-102 active:scale-95 flex items-center justify-center gap-2.5"
+                >
+                  <Play className="w-5 h-5 fill-white" />
+                  <span>بدء المسابقة الآن ({totalQuestionsCount} سؤال) 🏅</span>
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* Trainer Tournament Create Modal & Results Board */}
+          <TrainerTournamentModal
+            open={showTrainerTournamentModal}
+            onClose={() => setShowTrainerTournamentModal(false)}
+            creatorId={activeUserId === "guest-local" ? "trainer-qatada" : activeUserId}
+            creatorName={authProfile?.name || "المدرب المعتمد"}
+            creatorRole={
+              authRole === "admin" || authProfile?.role === "admin" ? "admin" : "trainer"
+            }
+            ruleGroups={ruleGroups}
+            totalQuestionsCount={totalQuestionsCount}
+            timeMode={timeMode}
+            durationMinutes={durationMinutes}
+            answerMode={answerMode}
+            choicesCount={choicesCount}
+            orderMode={orderMode}
+            displayMode={displayMode}
+            voiceMode={voiceMode}
+            onCreated={() => setTournamentsRefreshTick((t) => t + 1)}
+          />
+
+          <TrainerTournamentsBoard
+            open={showTrainerResultsBoard}
+            onClose={() => setShowTrainerResultsBoard(false)}
+            creatorId={activeUserId === "guest-local" ? "trainer-qatada" : activeUserId}
+            isAdmin={authRole === "admin" || authProfile?.role === "admin"}
+            refreshTrigger={tournamentsRefreshTick}
+          />
         </div>
       )}
 

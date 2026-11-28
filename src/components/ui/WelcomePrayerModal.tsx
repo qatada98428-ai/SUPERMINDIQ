@@ -32,6 +32,7 @@ export default function WelcomePrayerModal() {
     setIsOpen(false);
     try {
       sessionStorage.setItem(SESSION_STORAGE_KEY, "1");
+      window.dispatchEvent(new CustomEvent("supermind:prayer-closed"));
     } catch {
       // Ignore storage errors
     }

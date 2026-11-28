@@ -9,6 +9,7 @@ import WhatsAppFloating from "@/components/ui/WhatsAppFloating";
 import PWAInstallBanner from "@/components/ui/PWAInstallBanner";
 import GuestProgressMigrationPrompt from "@/components/ui/GuestProgressMigrationPrompt";
 import WelcomePrayerModal from "@/components/ui/WelcomePrayerModal";
+import CompetitionNotificationModal from "@/components/ui/CompetitionNotificationModal";
 import { ClayMotionProvider, ClayPageTransition } from "@/components/design-system/ClayMotion";
 import { Analytics } from "@vercel/analytics/next";
 import TrafficTracker from "@/components/analytics/TrafficTracker";
@@ -110,6 +111,7 @@ export default function RootLayout({
               <ClayMotionProvider>
                 <Navbar />
                 <WelcomePrayerModal />
+                <CompetitionNotificationModal />
                 <GuestProgressMigrationPrompt />
                 <main className="flex-1 flex flex-col">
                   <ClayPageTransition>{children}</ClayPageTransition>

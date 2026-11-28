@@ -40,14 +40,14 @@ import {
   evaluateSubscription,
   createSubscriptionForPlan,
   getAllAssignments,
-  createPlatformAssignment,
   deletePlatformAssignment,
   syncAllAssignmentsSubmissionsFromCloud,
   buildShareableAssignmentPath,
-  COUNTRIES_WITH_GOVERNORATES,
+  formatRuleGroupShortAr,
   getUserMembershipCode,
   unpackProfilePhoneColumn,
 } from "@/lib/platform-store";
+import AdminCompetitionCreatorModal from "@/components/admin/AdminCompetitionCreatorModal";
 import {
   UserProfile,
   UserProgressRecord,
@@ -83,22 +83,6 @@ export default function AdminDashboardPage() {
   const [subSearch, setSubSearch] = useState("");
   const [platformAssignments, setPlatformAssignments] = useState<PlatformAssignment[]>([]);
   const [showCreateCompModal, setShowCreateCompModal] = useState(false);
-  const [compKind, setCompKind] = useState<"admin_competition" | "admin_challenge" | "trainer_homework">(
-    "admin_competition"
-  );
-  const [compTitle, setCompTitle] = useState("");
-  const [compDesc, setCompDesc] = useState("");
-  const [compTargetType, setCompTargetType] = useState<
-    "all_students" | "active_subscribers" | "by_level" | "by_governorate"
-  >("all_students");
-  const [compTargetValue, setCompTargetValue] = useState("كربلاء المقدسة");
-  const [compRulesLevel, setCompRulesLevel] = useState<"simple" | "complex_5" | "complex_10" | "general">(
-    "simple"
-  );
-  const [compQuestionsCount, setCompQuestionsCount] = useState(30);
-  const [compTimeMinutes, setCompTimeMinutes] = useState(10);
-  const [compAnswerMode, setCompAnswerMode] = useState<"typing" | "choices">("typing");
-  const compChoicesCount: 2 | 3 | 4 | 5 = 4;
 
   // Data states from Supabase
   const [loadingData, setLoadingData] = useState(false);
@@ -1774,14 +1758,28 @@ export default function AdminDashboardPage() {
                 أطلق مسابقة رسمية أو تحدياً عاماً لجميع المشتركين أو لفئة محددة (حسب المحافظة أو المستوى)، وتابع ترتيب الفائزين تلقائياً!
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowCreateCompModal(true)}
-              className="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg flex items-center gap-2 shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>إنشاء مسابقة أو تحدي جديد 🏆</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={async () => {
+                  const synced = await syncAllAssignmentsSubmissionsFromCloud();
+                  setPlatformAssignments(synced);
+                  playFx("click");
+                }}
+                className="px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-black text-xs flex items-center gap-1.5"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>تحديث النتائج</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCreateCompModal(true)}
+                className="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg flex items-center gap-2 shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>إنشاء مسابقة / واجب (قواعد متعددة) 🏆</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -1816,17 +1814,48 @@ export default function AdminDashboardPage() {
                   </h3>
                   <p className="text-xs text-slate-500">{item.description}</p>
 
-                  <div className="flex flex-wrap gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                  <div className="flex flex-wrap gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300">
                     <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800">
                       الأسئلة: {item.questionsCount} سؤال
                     </span>
                     <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800">
-                      الوقت: {item.timeLimitMinutes} دقائق
+                      الوقت: {item.timeMode === "stopwatch" ? "تايمر مفتوح" : `${item.timeLimitMinutes} دقائق`}
                     </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
+                      الفئة:{" "}
+                      {item.targetType === "all_students"
+                        ? "جميع الطلاب"
+                        : item.targetType === "active_subscribers"
+                        ? "المشتركون الفعالون"
+                        : item.targetType === "by_governorate"
+                        ? `محافظة ${item.targetValue || ""}`
+                        : item.targetType === "by_level"
+                        ? item.targetValue || "مستوى محدد"
+                        : "طلاب المدرب"}
+                    </span>
+                    {item.notifyStudents !== false && (
+                      <span className="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
+                        🔔 إشعار تلقائي مفعّل
+                      </span>
+                    )}
                     <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
                       المشاركون: {item.submissions?.length || 0} طالب
                     </span>
                   </div>
+
+                  {/* Multi-Rule Groups Details */}
+                  {item.ruleGroups && item.ruleGroups.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {item.ruleGroups.map((g, gi) => (
+                        <span
+                          key={g.id || gi}
+                          className="px-2.5 py-1 rounded-lg bg-brand-50 dark:bg-brand-950/50 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800 text-[11px] font-bold"
+                        >
+                          ({gi + 1}) {formatRuleGroupShortAr(g)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Leaderboard Preview */}
                   {item.submissions && item.submissions.length > 0 && (
@@ -1902,209 +1931,15 @@ export default function AdminDashboardPage() {
             ))}
           </div>
 
-          {/* Modal to Create Admin Competition / Challenge */}
-          {showCreateCompModal && (
-            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in overflow-y-auto">
-              <div className="relative w-full max-w-xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-8 my-8 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                    🏆 إطلاق مسابقة أو تحدي أو واجب عام من إدارة المنصة
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateCompModal(false)}
-                    className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold"
-                  >
-                    إغلاق ✕
-                  </button>
-                </div>
-
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (!compTitle.trim()) return;
-                    createPlatformAssignment({
-                      kind: compKind,
-                      title: compTitle.trim(),
-                      description:
-                        compDesc.trim() ||
-                        "مسابقة وتحدي رسمي من إدارة منصة العقل الخارق - ابدأ الحل الآن بضغطة زر!",
-                      creatorId: "trainer-qatada",
-                      creatorName: "إدارة منصة العقل الخارق (الأستاذ قتادة كريم)",
-                      creatorRole: "admin",
-                      targetType: compTargetType,
-                      targetValue:
-                        compTargetType === "by_governorate" || compTargetType === "by_level"
-                          ? compTargetValue
-                          : undefined,
-                      exerciseType: "competition",
-                      rulesLevel: compRulesLevel,
-                      allowSubtraction: true,
-                      digitPlace: "units",
-                      termsCount: 5,
-                      questionsCount: compQuestionsCount,
-                      timeLimitMinutes: compTimeMinutes,
-                      answerMode: compAnswerMode,
-                      choicesCount: compChoicesCount,
-                      isActive: true,
-                    });
-                    setPlatformAssignments(getAllAssignments());
-                    setCompTitle("");
-                    setCompDesc("");
-                    setShowCreateCompModal(false);
-                    playFx("fanfare");
-                  }}
-                  className="space-y-4"
-                >
-                  <div>
-                    <label className="text-xs font-bold block mb-1">نوع الفعالية</label>
-                    <select
-                      value={compKind}
-                      onChange={(e) =>
-                        setCompKind(
-                          e.target.value as
-                            | "admin_competition"
-                            | "admin_challenge"
-                            | "trainer_homework"
-                        )
-                      }
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
-                    >
-                      <option value="admin_competition">🏆 مسابقة رسمية كبرى للمنصة</option>
-                      <option value="admin_challenge">⚡ تحدي أسبوعي سريع</option>
-                      <option value="trainer_homework">📝 واجب تدريبي عام</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold block mb-1">عنوان المسابقة أو التحدي *</label>
-                    <input
-                      type="text"
-                      required
-                      value={compTitle}
-                      onChange={(e) => setCompTitle(e.target.value)}
-                      placeholder="مثال: بطولة أبطال العقل الخارق الكبرى - المستوى الأول"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-bold block mb-1">الفئة المستهدفة</label>
-                      <select
-                        value={compTargetType}
-                        onChange={(e) =>
-                          setCompTargetType(
-                            e.target.value as
-                              | "all_students"
-                              | "active_subscribers"
-                              | "by_level"
-                              | "by_governorate"
-                          )
-                        }
-                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
-                      >
-                        <option value="all_students">جميع الطلاب والمشتركين في المنصة</option>
-                        <option value="active_subscribers">المشتركون الفعالون فقط (الباقات المدفوعة)</option>
-                        <option value="by_governorate">تحديد محافظة معينة</option>
-                        <option value="by_level">تحديد مستوى معين</option>
-                      </select>
-                    </div>
-
-                    {compTargetType === "by_governorate" && (
-                      <div>
-                        <label className="text-xs font-bold block mb-1">اختر المحافظة</label>
-                        <select
-                          value={compTargetValue}
-                          onChange={(e) => setCompTargetValue(e.target.value)}
-                          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
-                        >
-                          {COUNTRIES_WITH_GOVERNORATES["العراق"].map((g) => (
-                            <option key={g} value={g}>
-                              {g}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="text-xs font-bold block mb-1">القاعدة الحسابية</label>
-                      <select
-                        value={compRulesLevel}
-                        onChange={(e) =>
-                          setCompRulesLevel(
-                            e.target.value as "simple" | "complex_5" | "complex_10" | "general"
-                          )
-                        }
-                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
-                      >
-                        <option value="simple">الجمع والطرح البسيط</option>
-                        <option value="complex_5">أصدقاء الرقم 5 (مركب 5)</option>
-                        <option value="complex_10">أصدقاء الرقم 10 (مركب 10)</option>
-                        <option value="general">تحدي شامل</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold block mb-1">عدد الأسئلة (حتى 1000)</label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={1000}
-                        value={compQuestionsCount}
-                        onChange={(e) => setCompQuestionsCount(Number(e.target.value))}
-                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono font-bold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold block mb-1">الوقت المحدد (دقائق)</label>
-                      <select
-                        value={compTimeMinutes}
-                        onChange={(e) => setCompTimeMinutes(Number(e.target.value))}
-                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
-                      >
-                        {[5, 7, 10, 15, 20, 25, 30].map((m) => (
-                          <option key={m} value={m}>
-                            {m} دقائق
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold block mb-1">طريقة الإجابة</label>
-                      <select
-                        value={compAnswerMode}
-                        onChange={(e) => setCompAnswerMode(e.target.value as "typing" | "choices")}
-                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
-                      >
-                        <option value="typing">كتابة الجواب</option>
-                        <option value="choices">اختيارات متعددة</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowCreateCompModal(false)}
-                      className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold"
-                    >
-                      إلغاء
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md"
-                    >
-                      نشر المسابقة لجميع المستهدفين 🚀
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
+          {/* Full Multi-Rule Competition Simulator Modal for Admin */}
+          <AdminCompetitionCreatorModal
+            open={showCreateCompModal}
+            onClose={() => setShowCreateCompModal(false)}
+            onCreated={() => {
+              setPlatformAssignments(getAllAssignments());
+              playFx("fanfare");
+            }}
+          />
         </div>
       )}
 
