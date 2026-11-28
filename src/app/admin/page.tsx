@@ -33,7 +33,6 @@ import { getWhatsAppLink } from "@/lib/constants";
 import {
   ExtendedUserProfile,
   PlatformAssignment,
-  AssignmentSubmission,
   SubscriptionPlanId,
   getAllExtendedProfiles,
   getExtendedProfile,
@@ -41,16 +40,11 @@ import {
   evaluateSubscription,
   createSubscriptionForPlan,
   getAllAssignments,
-  deletePlatformAssignment,
   syncAllAssignmentsSubmissionsFromCloud,
-  buildShareableAssignmentPath,
-  formatRuleGroupShortAr,
-  formatAttemptLabelAr,
   getUserMembershipCode,
   unpackProfilePhoneColumn,
 } from "@/lib/platform-store";
-import AdminCompetitionCreatorModal from "@/components/admin/AdminCompetitionCreatorModal";
-import StudentResultDetailModal from "@/components/competition/StudentResultDetailModal";
+import CompetitionManagementCenter from "@/components/competition/CompetitionManagementCenter";
 import {
   UserProfile,
   UserProgressRecord,
@@ -85,12 +79,6 @@ export default function AdminDashboardPage() {
   >("all");
   const [subSearch, setSubSearch] = useState("");
   const [platformAssignments, setPlatformAssignments] = useState<PlatformAssignment[]>([]);
-  const [showCreateCompModal, setShowCreateCompModal] = useState(false);
-  const [selectedCompSubmission, setSelectedCompSubmission] = useState<{
-    submission: AssignmentSubmission;
-    title: string;
-    rank: number;
-  } | null>(null);
 
   // Data states from Supabase
   const [loadingData, setLoadingData] = useState(false);
@@ -122,7 +110,7 @@ export default function AdminDashboardPage() {
   // Load real data from Supabase + Extended Platform Store
   const loadAdminData = useCallback(async () => {
     setPlatformAssignments(getAllAssignments());
-    syncAllAssignmentsSubmissionsFromCloud().then((syncedAssigns) => {
+    syncAllAssignmentsSubmissionsFromCloud({ includeInactive: true }).then((syncedAssigns) => {
       setPlatformAssignments(syncedAssigns);
     });
     const localExt = getAllExtendedProfiles();
@@ -221,6 +209,9 @@ export default function AdminDashboardPage() {
     if (isAdmin) {
       loadAdminData();
     }
+    const onAssignsUpdated = () => setPlatformAssignments(getAllAssignments());
+    window.addEventListener("supermind:assignments-updated", onAssignsUpdated);
+    return () => window.removeEventListener("supermind:assignments-updated", onAssignsUpdated);
   }, [isAdmin, loadAdminData]);
 
   // Overall Computed Stats
@@ -1755,255 +1746,12 @@ export default function AdminDashboardPage() {
           TAB: ADMIN OFFICIAL COMPETITIONS, CHALLENGES & HOMEWORKS
          ========================================================================= */}
       {activeTab === "competitions" && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-            <div className="space-y-1">
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <Trophy className="w-6 h-6 text-amber-500" />
-                <span>🏆 إدارة المسابقات والتحديات والواجبات العامة للمنصة</span>
-              </h2>
-              <p className="text-xs text-slate-500">
-                أطلق مسابقة رسمية أو تحدياً عاماً لجميع المشتركين أو لفئة محددة (حسب المحافظة أو المستوى)، وتابع ترتيب الفائزين تلقائياً!
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={async () => {
-                  const synced = await syncAllAssignmentsSubmissionsFromCloud();
-                  setPlatformAssignments(synced);
-                  playFx("click");
-                }}
-                className="px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-black text-xs flex items-center gap-1.5"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span>تحديث النتائج</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCreateCompModal(true)}
-                className="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg flex items-center gap-2 shrink-0"
-              >
-                <Plus className="w-4 h-4" />
-                <span>إنشاء مسابقة / واجب (قواعد متعددة) 🏆</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {platformAssignments.map((item) => (
-              <div
-                key={item.id}
-                className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm flex flex-col justify-between gap-4"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 font-black text-xs">
-                      {item.kind === "admin_competition"
-                        ? "🏆 مسابقة رسمية من الإدارة"
-                        : item.kind === "admin_challenge"
-                        ? "⚡ تحدي أسبوعي"
-                        : `📝 واجب مدرب (${item.creatorName})`}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        deletePlatformAssignment(item.id);
-                        setPlatformAssignments(getAllAssignments());
-                      }}
-                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                    {item.title}
-                  </h3>
-                  <p className="text-xs text-slate-500">{item.description}</p>
-
-                  <div className="flex flex-wrap gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800">
-                      الأسئلة: {item.questionsCount} سؤال
-                    </span>
-                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800">
-                      الوقت: {item.timeMode === "stopwatch" ? "تايمر مفتوح" : `${item.timeLimitMinutes} دقائق`}
-                    </span>
-                    <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
-                      الفئة:{" "}
-                      {item.targetType === "all_students"
-                        ? "جميع الطلاب"
-                        : item.targetType === "active_subscribers"
-                        ? "المشتركون الفعالون"
-                        : item.targetType === "by_governorate"
-                        ? `محافظة ${item.targetValue || ""}`
-                        : item.targetType === "by_level"
-                        ? item.targetValue || "مستوى محدد"
-                        : "طلاب المدرب"}
-                    </span>
-                    {item.notifyStudents !== false && (
-                      <span className="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
-                        🔔 إشعار تلقائي مفعّل
-                      </span>
-                    )}
-                    <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
-                      المشاركون: {item.submissions?.length || 0} طالب
-                    </span>
-                  </div>
-
-                  {/* Multi-Rule Groups Details */}
-                  {item.ruleGroups && item.ruleGroups.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {item.ruleGroups.map((g, gi) => (
-                        <span
-                          key={g.id || gi}
-                          className="px-2.5 py-1 rounded-lg bg-brand-50 dark:bg-brand-950/50 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800 text-[11px] font-bold"
-                        >
-                          ({gi + 1}) {formatRuleGroupShortAr(g)}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Leaderboard Preview */}
-                  {item.submissions && item.submissions.length > 0 && (
-                    <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                      <div className="text-xs font-black text-amber-600">
-                        🥇 ترتيب الأبطال الفائزين (حسب الأعلى دقة والأسرع وقتاً):
-                      </div>
-                      <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                        {item.submissions.slice(0, 10).map((sub, idx) => {
-                          const attemptNum = Math.max(
-                            1,
-                            sub.attemptNumber || sub.attempts?.length || 1
-                          );
-                          return (
-                            <div
-                              key={sub.studentId}
-                              className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold bg-white dark:bg-slate-900 px-3 py-2 rounded-xl"
-                            >
-                              <div className="space-y-0.5">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <span>
-                                    {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`}{" "}
-                                    {sub.studentName} {sub.governorate ? `(${sub.governorate})` : ""}
-                                  </span>
-                                  <span
-                                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                                      attemptNum >= 2
-                                        ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300/70 dark:border-indigo-700"
-                                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                                    }`}
-                                  >
-                                    {attemptNum >= 2 ? "🔄 " : ""}
-                                    {formatAttemptLabelAr(attemptNum)}
-                                  </span>
-                                </div>
-                                {sub.attempts && sub.attempts.length > 1 && (
-                                  <div className="text-[10px] text-slate-500 flex flex-wrap gap-1.5">
-                                    {sub.attempts.map((att, aIdx) => (
-                                      <span key={`${att.attemptNumber}-${aIdx}`}>
-                                        {formatAttemptLabelAr(att.attemptNumber)}:{" "}
-                                        <span className="font-mono">
-                                          {att.correctAnswers}/{att.totalQuestions} ({att.accuracy}%)
-                                        </span>
-                                        {aIdx < (sub.attempts?.length || 0) - 1 ? " • " : ""}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-emerald-600">
-                                  {sub.correctAnswers}/{sub.totalQuestions} ({sub.accuracy}%) • {sub.durationSeconds}ث
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setSelectedCompSubmission({
-                                      submission: sub,
-                                      title: item.title,
-                                      rank: idx + 1,
-                                    })
-                                  }
-                                  className="px-2.5 py-1 rounded-lg bg-brand-100 hover:bg-brand-200 dark:bg-brand-950/70 text-brand-700 dark:text-brand-300 font-black text-[11px]"
-                                >
-                                  التفاصيل 📊
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-end gap-2">
-                  {(() => {
-                    const relPath = buildShareableAssignmentPath(item);
-                    const fullShareUrl =
-                      typeof window !== "undefined"
-                        ? `${window.location.origin}${relPath}`
-                        : relPath;
-                    const waShareHref = `https://wa.me/?text=${encodeURIComponent(
-                      `🏆 مسابقة وتحدي رسمي من منصة العقل الخارق (SUPER MIND):\n📌 ${item.title}\n🔢 عدد الأسئلة: ${item.questionsCount} سؤال | الوقت: ${item.timeLimitMinutes} دقائق\n🚀 اضغط هنا لبدء المسابقة فوراً بضغطة زر:\n${fullShareUrl}`
-                    )}`;
-
-                    return (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (typeof navigator !== "undefined" && navigator.clipboard) {
-                              navigator.clipboard.writeText(fullShareUrl);
-                              alert("تم نسخ رابط المسابقة الذكي! يمكنك إرساله لجميع المشتركين عبر واتساب أو تيليجرام.");
-                            }
-                          }}
-                          className="px-3.5 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-black text-xs"
-                        >
-                          🔗 نسخ رابط المسابقة
-                        </button>
-                        <a
-                          href={waShareHref}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" />
-                          <span>مشاركة واتساب</span>
-                        </a>
-                        <Link
-                          href={relPath}
-                          className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs"
-                        >
-                          معاينة وتجربة المسابقة 🚀
-                        </Link>
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Full Multi-Rule Competition Simulator Modal for Admin */}
-          <AdminCompetitionCreatorModal
-            open={showCreateCompModal}
-            onClose={() => setShowCreateCompModal(false)}
-            onCreated={() => {
-              setPlatformAssignments(getAllAssignments());
-              playFx("fanfare");
-            }}
-          />
-
-          <StudentResultDetailModal
-            submission={selectedCompSubmission?.submission || null}
-            assignmentTitle={selectedCompSubmission?.title}
-            rank={selectedCompSubmission?.rank}
-            onClose={() => setSelectedCompSubmission(null)}
-          />
-        </div>
+        <CompetitionManagementCenter
+          mode="admin"
+          creatorId={user?.id || "trainer-qatada"}
+          creatorName={profile?.name || "إدارة منصة العقل الخارق (الأستاذ قتادة كريم)"}
+          onAudioFx={(fx) => playFx(fx)}
+        />
       )}
 
       {/* =========================================================================

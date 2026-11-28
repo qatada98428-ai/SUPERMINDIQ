@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Plus,
   Trash2,
@@ -16,12 +16,15 @@ import {
   Sparkles,
   Check,
   MessageCircle,
+  Loader2,
+  Users,
 } from "lucide-react";
 import {
   AssignmentRuleGroup,
   PlatformAssignment,
   COUNTRIES_WITH_GOVERNORATES,
-  createPlatformAssignment,
+  createPlatformAssignmentAsync,
+  updatePlatformAssignmentAsync,
   buildShareableAssignmentPath,
   formatRuleGroupShortAr,
 } from "@/lib/platform-store";
@@ -29,7 +32,12 @@ import {
 interface AdminCompetitionCreatorModalProps {
   open: boolean;
   onClose: () => void;
-  onCreated: (created: PlatformAssignment) => void;
+  onCreated: (saved: PlatformAssignment, isEdit?: boolean) => void;
+  mode?: "admin" | "trainer";
+  creatorId?: string;
+  creatorName?: string;
+  trainerStudents?: Array<{ id: string; name: string; governorate?: string }>;
+  editingAssignment?: PlatformAssignment | null;
 }
 
 const LEVELS_OPTIONS = [
@@ -44,21 +52,42 @@ const LEVELS_OPTIONS = [
 
 const PRESET_MINUTES = [3, 5, 7, 10, 15, 20, 25, 30];
 
+const DEFAULT_RULE_GROUP: AssignmentRuleGroup = {
+  id: "admin-g-1",
+  count: 20,
+  digitsCount: 1,
+  level: "simple",
+  targetRules: [],
+  termsCount: 4,
+  allowSubtraction: true,
+};
+
 export default function AdminCompetitionCreatorModal({
   open,
   onClose,
   onCreated,
+  mode = "admin",
+  creatorId,
+  creatorName,
+  trainerStudents = [],
+  editingAssignment = null,
 }: AdminCompetitionCreatorModalProps) {
+  const isTrainerMode = mode === "trainer";
+  const isEditing = Boolean(editingAssignment);
+
   const [compKind, setCompKind] = useState<
     "admin_competition" | "admin_challenge" | "trainer_homework"
-  >("admin_competition");
+  >(isTrainerMode ? "trainer_homework" : "admin_competition");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [targetType, setTargetType] = useState<
-    "all_students" | "active_subscribers" | "by_level" | "by_governorate"
-  >("all_students");
+    "all_students" | "active_subscribers" | "trainer_students" | "by_level" | "by_governorate"
+  >(isTrainerMode ? "trainer_students" : "all_students");
   const [targetValue, setTargetValue] = useState("كربلاء المقدسة");
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [trainerAudienceMode, setTrainerAudienceMode] = useState<"all_my_students" | "selected_students">("all_my_students");
   const [notifyStudents, setNotifyStudents] = useState(true);
+  const [isActive, setIsActive] = useState(true);
 
   // Full Competition Simulator Settings
   const [timeMode, setTimeMode] = useState<"countdown" | "stopwatch">("countdown");
@@ -70,20 +99,88 @@ export default function AdminCompetitionCreatorModal({
   const [voiceMode, setVoiceMode] = useState<"arabic" | "english" | "off">("arabic");
 
   // Multi-Rule Groups Builder (1 to N rules, up to 1000 total questions)
-  const [ruleGroups, setRuleGroups] = useState<AssignmentRuleGroup[]>([
-    {
-      id: "admin-g-1",
-      count: 20,
-      digitsCount: 1,
-      level: "simple",
-      targetRules: [],
-      termsCount: 4,
-      allowSubtraction: true,
-    },
-  ]);
+  const [ruleGroups, setRuleGroups] = useState<AssignmentRuleGroup[]>([DEFAULT_RULE_GROUP]);
 
   const [createdResult, setCreatedResult] = useState<PlatformAssignment | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setCreatedResult(null);
+    setCopiedLink(false);
+    setSaveError(null);
+    setSaving(false);
+
+    if (editingAssignment) {
+      setCompKind(isTrainerMode ? "trainer_homework" : editingAssignment.kind);
+      setTitle(editingAssignment.title || "");
+      setDescription(editingAssignment.description || "");
+      setTargetType(
+        editingAssignment.targetType === "specific_student"
+          ? "trainer_students"
+          : editingAssignment.targetType || (isTrainerMode ? "trainer_students" : "all_students")
+      );
+      setTargetValue(editingAssignment.targetValue || "كربلاء المقدسة");
+      if (editingAssignment.targetStudentIds && editingAssignment.targetStudentIds.length > 0) {
+        setTrainerAudienceMode("selected_students");
+        setSelectedStudentIds([...editingAssignment.targetStudentIds]);
+      } else {
+        setTrainerAudienceMode("all_my_students");
+        setSelectedStudentIds([]);
+      }
+      setNotifyStudents(editingAssignment.notifyStudents !== false);
+      setIsActive(editingAssignment.isActive !== false);
+      setTimeMode(editingAssignment.timeMode || "countdown");
+      setTimeMinutes(editingAssignment.timeLimitMinutes || 10);
+      setAnswerMode(editingAssignment.answerMode || "typing");
+      setChoicesCount(editingAssignment.choicesCount || 4);
+      setOrderMode(editingAssignment.orderMode || "sequential");
+      setDisplayMode(editingAssignment.displayMode || "focus");
+      setVoiceMode(editingAssignment.voiceMode || "arabic");
+      if (editingAssignment.ruleGroups && editingAssignment.ruleGroups.length > 0) {
+        setRuleGroups(
+          editingAssignment.ruleGroups.map((g, i) => ({
+            ...g,
+            id: g.id || `edit-g-${i + 1}`,
+            targetRules: Array.isArray(g.targetRules) ? [...g.targetRules] : [],
+          }))
+        );
+      } else {
+        const digMap: Record<string, number> = { units: 1, tens: 2, hundreds: 3, thousands: 4 };
+        setRuleGroups([
+          {
+            id: "edit-g-1",
+            count: editingAssignment.questionsCount || 20,
+            digitsCount: digMap[editingAssignment.digitPlace] || 1,
+            level: editingAssignment.rulesLevel || "simple",
+            targetRules: [],
+            termsCount: editingAssignment.termsCount || 4,
+            allowSubtraction: editingAssignment.allowSubtraction !== false,
+          },
+        ]);
+      }
+    } else {
+      setCompKind(isTrainerMode ? "trainer_homework" : "admin_competition");
+      setTitle("");
+      setDescription("");
+      setTargetType(isTrainerMode ? "trainer_students" : "all_students");
+      setTargetValue("كربلاء المقدسة");
+      setTrainerAudienceMode("all_my_students");
+      setSelectedStudentIds([]);
+      setNotifyStudents(true);
+      setIsActive(true);
+      setTimeMode("countdown");
+      setTimeMinutes(10);
+      setAnswerMode("typing");
+      setChoicesCount(4);
+      setOrderMode("sequential");
+      setDisplayMode("focus");
+      setVoiceMode("arabic");
+      setRuleGroups([{ ...DEFAULT_RULE_GROUP, id: `g-${Date.now()}` }]);
+    }
+  }, [open, editingAssignment, isTrainerMode]);
 
   if (!open) return null;
 
@@ -192,11 +289,21 @@ export default function AdminCompetitionCreatorModal({
     setDescription("");
     setCreatedResult(null);
     setCopiedLink(false);
+    setSaveError(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const toggleStudentSelection = (sid: string) => {
+    setSelectedStudentIds((prev) =>
+      prev.includes(sid) ? prev.filter((id) => id !== sid) : [...prev, sid]
+    );
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || saving) return;
+
+    setSaving(true);
+    setSaveError(null);
 
     const first = ruleGroups[0];
     const digitMap: Record<number, PlatformAssignment["digitPlace"]> = {
@@ -206,21 +313,31 @@ export default function AdminCompetitionCreatorModal({
       4: "thousands",
     };
 
-    const created = createPlatformAssignment({
-      kind: compKind,
+    const payload: Omit<PlatformAssignment, "id" | "createdAt" | "submissions"> = {
+      kind: isTrainerMode ? "trainer_homework" : compKind,
       title: title.trim(),
       description:
         description.trim() ||
-        `مسابقة وتحدي رسمي من إدارة منصة العقل الخارق (${totalQuestions} سؤال • ${ruleGroups.length} ${
-          ruleGroups.length > 1 ? "قواعد متعددة" : "قاعدة"
-        })`,
-      creatorId: "trainer-qatada",
-      creatorName: "إدارة منصة العقل الخارق (الأستاذ قتادة كريم)",
-      creatorRole: "admin",
-      targetType,
+        (isTrainerMode
+          ? `بطولة تدريبية من المدرب ${creatorName || "المدرب المعتمد"} (${totalQuestions} سؤال • ${ruleGroups.length} ${ruleGroups.length > 1 ? "قواعد متعددة" : "قاعدة"})`
+          : `مسابقة وتحدي رسمي من إدارة منصة العقل الخارق (${totalQuestions} سؤال • ${ruleGroups.length} ${ruleGroups.length > 1 ? "قواعد متعددة" : "قاعدة"})`),
+      creatorId:
+        editingAssignment?.creatorId ||
+        creatorId ||
+        "trainer-qatada",
+      creatorName:
+        editingAssignment?.creatorName ||
+        creatorName ||
+        (isTrainerMode ? "المدرب المعتمد" : "إدارة منصة العقل الخارق (الأستاذ قتادة كريم)"),
+      creatorRole: editingAssignment?.creatorRole || (isTrainerMode ? "trainer" : "admin"),
+      targetType: isTrainerMode ? "trainer_students" : targetType,
       targetValue:
-        targetType === "by_governorate" || targetType === "by_level"
+        !isTrainerMode && (targetType === "by_governorate" || targetType === "by_level")
           ? targetValue
+          : undefined,
+      targetStudentIds:
+        isTrainerMode && trainerAudienceMode === "selected_students" && selectedStudentIds.length > 0
+          ? selectedStudentIds
           : undefined,
       exerciseType: "competition",
       rulesLevel: first?.level || "simple",
@@ -240,12 +357,33 @@ export default function AdminCompetitionCreatorModal({
         targetRules: [...g.targetRules],
       })),
       notifyStudents,
-      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-      isActive: true,
-    });
+      dueDate:
+        editingAssignment?.dueDate ||
+        new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      isActive,
+    };
 
-    setCreatedResult(created);
-    onCreated(created);
+    try {
+      if (editingAssignment) {
+        const res = await updatePlatformAssignmentAsync(editingAssignment.id, payload);
+        if (res.error) {
+          setSaveError(res.error);
+        }
+        if (res.assignment) {
+          onCreated(res.assignment, true);
+          onClose();
+        }
+      } else {
+        const res = await createPlatformAssignmentAsync(payload);
+        if (res.error) {
+          setSaveError(res.error);
+        }
+        setCreatedResult(res.assignment);
+        onCreated(res.assignment, false);
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const shareUrl = createdResult
@@ -275,7 +413,11 @@ export default function AdminCompetitionCreatorModal({
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                🏆 إنشاء مسابقة أو واجب عام بكامل إمكانيات محاكي المسابقة
+                {isEditing
+                  ? "✏️ تعديل إعدادات المسابقة / البطولة بالكامل"
+                  : isTrainerMode
+                  ? "🏆 إنشاء بطولة خاصة لطلابك بكامل إمكانيات محاكي المسابقة"
+                  : "🏆 إنشاء مسابقة أو واجب عام بكامل إمكانيات محاكي المسابقة"}
               </h3>
               <p className="text-[11px] text-slate-500">
                 دعم تعدد القواعد، المنازل، عدد الصفوف، طريقة الإجابة، التايمر، الإشعار التلقائي للطلاب، والرابط المباشر
@@ -353,49 +495,117 @@ export default function AdminCompetitionCreatorModal({
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* 1. Basic Info & Audience */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div>
-                <label className="text-xs font-black block mb-1">نوع الفعالية</label>
-                <select
-                  value={compKind}
-                  onChange={(e) =>
-                    setCompKind(
-                      e.target.value as
-                        | "admin_competition"
-                        | "admin_challenge"
-                        | "trainer_homework"
-                    )
-                  }
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
-                >
-                  <option value="admin_competition">🏆 مسابقة رسمية كبرى للمنصة</option>
-                  <option value="admin_challenge">⚡ تحدي أسبوعي سريع</option>
-                  <option value="trainer_homework">📝 واجب تدريبي عام</option>
-                </select>
+            {saveError && (
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-xs font-bold text-rose-700 dark:text-rose-300">
+                ⚠️ تنبيه مزامنة: {saveError}
               </div>
+            )}
 
-              <div>
-                <label className="text-xs font-black block mb-1">الفئة المستهدفة للإشعار والمشاركة</label>
-                <select
-                  value={targetType}
-                  onChange={(e) => {
-                    const v = e.target.value as
-                      | "all_students"
-                      | "active_subscribers"
-                      | "by_level"
-                      | "by_governorate";
-                    setTargetType(v);
-                    if (v === "by_level") setTargetValue(LEVELS_OPTIONS[1]);
-                    if (v === "by_governorate") setTargetValue("كربلاء المقدسة");
-                  }}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
-                >
-                  <option value="all_students">جميع الطلاب والمشتركين في المنصة</option>
-                  <option value="active_subscribers">المشتركون الفعّالون فقط (الباقات المدفوعة)</option>
-                  <option value="by_level">تحديد مستوى دراسي معين</option>
-                  <option value="by_governorate">تحديد محافظة معينة</option>
-                </select>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {!isTrainerMode ? (
+                <>
+                  <div>
+                    <label className="text-xs font-black block mb-1">نوع الفعالية</label>
+                    <select
+                      value={compKind}
+                      onChange={(e) =>
+                        setCompKind(
+                          e.target.value as
+                            | "admin_competition"
+                            | "admin_challenge"
+                            | "trainer_homework"
+                        )
+                      }
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                    >
+                      <option value="admin_competition">🏆 مسابقة رسمية كبرى للمنصة</option>
+                      <option value="admin_challenge">⚡ تحدي أسبوعي سريع</option>
+                      <option value="trainer_homework">📝 واجب تدريبي عام</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-black block mb-1">الفئة المستهدفة للإشعار والمشاركة</label>
+                    <select
+                      value={targetType}
+                      onChange={(e) => {
+                        const v = e.target.value as
+                          | "all_students"
+                          | "active_subscribers"
+                          | "by_level"
+                          | "by_governorate";
+                        setTargetType(v);
+                        if (v === "by_level") setTargetValue(LEVELS_OPTIONS[1]);
+                        if (v === "by_governorate") setTargetValue("كربلاء المقدسة");
+                      }}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                    >
+                      <option value="all_students">جميع الطلاب والمشتركين في المنصة</option>
+                      <option value="active_subscribers">المشتركون الفعّالون فقط (الباقات المدفوعة)</option>
+                      <option value="by_level">تحديد مستوى دراسي معين</option>
+                      <option value="by_governorate">تحديد محافظة معينة</option>
+                    </select>
+                  </div>
+                </>
+              ) : (
+                <div className="sm:col-span-2 p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 space-y-2.5">
+                  <div className="text-xs font-black text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                    <Users className="w-4 h-4" />
+                    <span>تحديد الطلاب المستهدفين بالبطولة والإشعار:</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTrainerAudienceMode("all_my_students")}
+                      className={`px-3 py-2.5 rounded-xl text-xs font-black border text-right ${
+                        trainerAudienceMode === "all_my_students"
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+                      }`}
+                    >
+                      👥 جميع طلابي المرتبطين + أي طالب عبر الرابط
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTrainerAudienceMode("selected_students")}
+                      className={`px-3 py-2.5 rounded-xl text-xs font-black border text-right ${
+                        trainerAudienceMode === "selected_students"
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+                      }`}
+                    >
+                      🎯 اختيار طلاب محددين من قائمتي ({selectedStudentIds.length})
+                    </button>
+                  </div>
+                  {trainerAudienceMode === "selected_students" && (
+                    <div className="max-h-36 overflow-y-auto p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {trainerStudents.length === 0 ? (
+                        <div className="col-span-2 text-center text-xs text-slate-500 py-2">
+                          لا يوجد طلاب مضافون حالياً — يمكنك مشاركة رابط البطولة مباشرة مع طلابك.
+                        </div>
+                      ) : (
+                        trainerStudents.map((st) => (
+                          <label
+                            key={st.id}
+                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-xs font-bold"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedStudentIds.includes(st.id)}
+                              onChange={() => toggleStudentSelection(st.id)}
+                              className="w-4 h-4 accent-indigo-600 rounded"
+                            />
+                            <span>{st.name}</span>
+                            {st.governorate && (
+                              <span className="text-[10px] text-slate-400">({st.governorate})</span>
+                            )}
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {targetType === "by_governorate" && (
                 <div>
@@ -807,9 +1017,19 @@ export default function AdminCompetitionCreatorModal({
               </button>
               <button
                 type="submit"
-                className="px-7 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg"
+                disabled={saving}
+                className="px-7 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-60 text-slate-950 font-black text-xs sm:text-sm shadow-lg flex items-center gap-2"
               >
-                نشر المسابقة وإرسال الإشعار للمستهدفين 🚀 ({totalQuestions} سؤال)
+                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                <span>
+                  {saving
+                    ? "جاري الحفظ والمزامنة..."
+                    : isEditing
+                    ? `حفظ التعديلات الآن ✅ (${totalQuestions} سؤال)`
+                    : isTrainerMode
+                    ? `إطلاق البطولة وإشعار طلابي 🚀 (${totalQuestions} سؤال)`
+                    : `نشر المسابقة وإرسال الإشعار للمستهدفين 🚀 (${totalQuestions} سؤال)`}
+                </span>
               </button>
             </div>
           </form>

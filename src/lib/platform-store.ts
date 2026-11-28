@@ -361,6 +361,7 @@ const STORAGE_KEYS = {
   PROFILES: "supermind_extended_profiles_v1",
   SESSIONS: "supermind_real_sessions_v1",
   ASSIGNMENTS: "supermind_assignments_v1",
+  DELETED_ASSIGNMENTS: "supermind_deleted_assignments_v1",
   MONTHLY_TRIALS: "supermind_monthly_trials_v1",
   TRAINER_LINKS: "supermind_trainer_student_links_v1",
   DISMISSED_COMP_NOTIFS: "supermind_dismissed_comp_notifs_v1",
@@ -1348,118 +1349,150 @@ export function parseAssignmentFromSearchParams(
   return reconstructed;
 }
 
-export async function publishAssignmentToCloud(assignment: PlatformAssignment): Promise<void> {
-  const supabase = getSupabaseClient();
-  if (!supabase) return;
+export function getDeletedAssignmentIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
   try {
-    await supabase.from("platform_assignments").upsert([
-      {
-        id: assignment.id,
-        kind: assignment.kind,
-        title: assignment.title,
-        description: assignment.description || null,
-        creator_id: assignment.creatorId,
-        creator_name: assignment.creatorName,
-        creator_role: assignment.creatorRole,
-        target_type: assignment.targetType,
-        target_value: assignment.targetValue || null,
-        target_student_ids: assignment.targetStudentIds || [],
-        config: {
-          exerciseType: assignment.exerciseType,
-          rulesLevel: assignment.rulesLevel,
-          allowSubtraction: assignment.allowSubtraction,
-          digitPlace: assignment.digitPlace,
-          termsCount: assignment.termsCount,
-          questionsCount: assignment.questionsCount,
-          timeLimitMinutes: assignment.timeLimitMinutes,
-          timeMode: assignment.timeMode || "countdown",
-          answerMode: assignment.answerMode,
-          choicesCount: assignment.choicesCount,
-          displayMode: assignment.displayMode || "focus",
-          voiceMode: assignment.voiceMode || "arabic",
-          orderMode: assignment.orderMode || "sequential",
-          ruleGroups: assignment.ruleGroups || [],
-        },
-        is_active: assignment.isActive,
-        notify_students: assignment.notifyStudents !== false,
-        due_date: assignment.dueDate || null,
-        created_at: assignment.createdAt,
-      },
-    ]);
+    const raw = localStorage.getItem(STORAGE_KEYS.DELETED_ASSIGNMENTS);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr.map(String) : []);
   } catch {
-    // Graceful fallback if table hasn't been created in cloud yet
+    return new Set();
   }
 }
 
-export async function syncAllAssignmentsSubmissionsFromCloud(): Promise<PlatformAssignment[]> {
-  const list = getInitialAssignments();
+function saveDeletedAssignmentIds(set: Set<string>): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(
+      STORAGE_KEYS.DELETED_ASSIGNMENTS,
+      JSON.stringify(Array.from(set).slice(-500))
+    );
+  } catch {}
+}
+
+export function markAssignmentDeletedLocally(id: string): void {
+  const set = getDeletedAssignmentIds();
+  set.add(id);
+  saveDeletedAssignmentIds(set);
+}
+
+function mergeDeletedAssignmentIdsLocally(ids: string[]): Set<string> {
+  const set = getDeletedAssignmentIds();
+  ids.forEach((id) => {
+    if (id) set.add(String(id));
+  });
+  saveDeletedAssignmentIds(set);
+  return set;
+}
+
+async function getAuthAccessToken(): Promise<string | null> {
   const supabase = getSupabaseClient();
-  if (!supabase) return list;
+  if (!supabase) return null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data?.session?.access_token || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function publishAssignmentToCloud(
+  assignment: PlatformAssignment
+): Promise<{ ok: boolean; source?: string; error?: string }> {
+  if (typeof window === "undefined") return { ok: false };
+  try {
+    const token = await getAuthAccessToken();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const resp = await fetch("/api/competitions", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ assignment }),
+    });
+    const data = (await resp.json().catch(() => ({}))) as {
+      ok?: boolean;
+      source?: string;
+      error?: string;
+    };
+    if (!resp.ok) {
+      return { ok: false, error: data.error || `HTTP ${resp.status}` };
+    }
+    return { ok: true, source: data.source || "cloud" };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+export async function syncAllAssignmentsSubmissionsFromCloud(options?: {
+  includeInactive?: boolean;
+}): Promise<PlatformAssignment[]> {
+  let deletedSet = getDeletedAssignmentIds();
+  let list = getInitialAssignments().filter((a) => !deletedSet.has(a.id));
+  const supabase = getSupabaseClient();
 
   let updatedAny = false;
+  let cloudAuthoritative = false;
 
-  // 1. Fetch published cloud assignments from platform_assignments (if available)
-  try {
-    const { data: cloudAssigns, error: assignErr } = await supabase
-      .from("platform_assignments")
-      .select("*")
-      .eq("is_active", true)
-      .order("created_at", { ascending: false })
-      .limit(100);
+  // 1. Fetch authoritative competitions list & deletedIds from /api/competitions
+  if (typeof window !== "undefined") {
+    try {
+      const token = await getAuthAccessToken();
+      const headers: Record<string, string> = {};
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const query = options?.includeInactive ? "?includeInactive=1" : "";
+      const resp = await fetch(`/api/competitions${query}`, {
+        headers,
+        cache: "no-store",
+      });
 
-    if (!assignErr && cloudAssigns && cloudAssigns.length > 0) {
-      for (const row of cloudAssigns) {
-        const cfg = (row.config || {}) as Record<string, unknown>;
-        const mapped: PlatformAssignment = {
-          id: String(row.id),
-          kind: (row.kind as PlatformAssignment["kind"]) || "admin_competition",
-          title: String(row.title || ""),
-          description: row.description ? String(row.description) : undefined,
-          creatorId: String(row.creator_id || ""),
-          creatorName: String(row.creator_name || "إدارة المنصة"),
-          creatorRole: (row.creator_role as "trainer" | "admin") || "admin",
-          targetType: (row.target_type as PlatformAssignment["targetType"]) || "all_students",
-          targetValue: row.target_value ? String(row.target_value) : undefined,
-          targetStudentIds: Array.isArray(row.target_student_ids)
-            ? (row.target_student_ids as string[])
-            : undefined,
-          exerciseType: (cfg.exerciseType as PlatformAssignment["exerciseType"]) || "competition",
-          rulesLevel: (cfg.rulesLevel as PlatformAssignment["rulesLevel"]) || "simple",
-          allowSubtraction: cfg.allowSubtraction !== false,
-          digitPlace: (cfg.digitPlace as PlatformAssignment["digitPlace"]) || "units",
-          termsCount: Number(cfg.termsCount || 4),
-          questionsCount: Number(cfg.questionsCount || 20),
-          timeLimitMinutes: Number(cfg.timeLimitMinutes || 10),
-          timeMode: (cfg.timeMode as PlatformAssignment["timeMode"]) || "countdown",
-          answerMode: (cfg.answerMode as PlatformAssignment["answerMode"]) || "typing",
-          choicesCount: (Number(cfg.choicesCount || 4) as 2 | 3 | 4 | 5),
-          displayMode: (cfg.displayMode as PlatformAssignment["displayMode"]) || "focus",
-          voiceMode: (cfg.voiceMode as PlatformAssignment["voiceMode"]) || "arabic",
-          orderMode: (cfg.orderMode as PlatformAssignment["orderMode"]) || "sequential",
-          ruleGroups: Array.isArray(cfg.ruleGroups)
-            ? (cfg.ruleGroups as AssignmentRuleGroup[])
-            : undefined,
-          notifyStudents: row.notify_students !== false,
-          dueDate: row.due_date ? String(row.due_date) : undefined,
-          isActive: row.is_active !== false,
-          createdAt: String(row.created_at || new Date().toISOString()),
-          submissions: [],
+      if (resp.ok) {
+        const payload = (await resp.json()) as {
+          assignments?: PlatformAssignment[];
+          deletedIds?: string[];
+          source?: string;
         };
 
-        const existingIdx = list.findIndex((a) => a.id === mapped.id);
-        if (existingIdx === -1) {
-          list.unshift(mapped);
+        if (Array.isArray(payload.deletedIds) && payload.deletedIds.length > 0) {
+          deletedSet = mergeDeletedAssignmentIdsLocally(payload.deletedIds);
+          list = list.filter((a) => !deletedSet.has(a.id));
           updatedAny = true;
-        } else {
-          list[existingIdx] = {
-            ...mapped,
-            submissions: list[existingIdx].submissions || [],
-          };
+        }
+
+        if (payload.source === "cloud" && Array.isArray(payload.assignments)) {
+          cloudAuthoritative = true;
+          const prevSubsMap = new Map<string, AssignmentSubmission[]>();
+          list.forEach((a) => prevSubsMap.set(a.id, a.submissions || []));
+
+          // Cloud list is the single source of truth — deleted items never come back!
+          list = payload.assignments
+            .filter((a) => !deletedSet.has(a.id))
+            .map((a) => ({
+              ...a,
+              submissions: prevSubsMap.get(a.id) || a.submissions || [],
+            }));
+          updatedAny = true;
         }
       }
+    } catch {
+      // Offline / network fallback keeps local non-deleted list
     }
+  }
 
-    // 2. Fetch cloud submissions from assignment_submissions (if available)
+  if (!supabase) {
+    if (updatedAny && typeof window !== "undefined") {
+      try {
+        localStorage.setItem(STORAGE_KEYS.ASSIGNMENTS, JSON.stringify(list));
+      } catch {}
+    }
+    return list;
+  }
+
+  // 2. Fetch cloud submissions from assignment_submissions (if table exists)
+  try {
     const { data: cloudSubs, error: subsErr } = await supabase
       .from("assignment_submissions")
       .select("*")
@@ -1469,6 +1502,7 @@ export async function syncAllAssignmentsSubmissionsFromCloud(): Promise<Platform
     if (!subsErr && cloudSubs && cloudSubs.length > 0) {
       for (const row of cloudSubs) {
         const assignId = String(row.assignment_id || "");
+        if (deletedSet.has(assignId)) continue;
         const idx = list.findIndex((a) => a.id === assignId);
         if (idx === -1) continue;
         const sub: AssignmentSubmission = {
@@ -1526,9 +1560,11 @@ export async function syncAllAssignmentsSubmissionsFromCloud(): Promise<Platform
             results?: Array<AssignmentSubmission & { assignmentId: string }>;
           };
           for (const item of payload.results || []) {
+            if (deletedSet.has(item.assignmentId)) continue;
             let idx = list.findIndex((a) => a.id === item.assignmentId);
             if (idx === -1) {
-              // Auto-reconstruct the competition entry cross-device so trainer/admin never misses a result
+              // Never resurrect deleted or removed competitions when cloud is authoritative
+              if (cloudAuthoritative) continue;
               list.unshift({
                 id: item.assignmentId,
                 kind: "trainer_homework",
@@ -1616,10 +1652,11 @@ export async function syncAllAssignmentsSubmissionsFromCloud(): Promise<Platform
       for (const row of sessions) {
         const meta = (row.metadata || {}) as Record<string, unknown>;
         const assignId = meta.assignmentId as string | undefined;
-        if (!assignId) continue;
+        if (!assignId || deletedSet.has(assignId)) continue;
 
         let idx = list.findIndex((a) => a.id === assignId);
         if (idx === -1) {
+          if (cloudAuthoritative) continue;
           list.unshift({
             id: assignId,
             kind: "trainer_homework",
@@ -1747,71 +1784,24 @@ export async function syncAllAssignmentsSubmissionsFromCloud(): Promise<Platform
 // Assignments & Admin Competitions Store
 function getInitialAssignments(): PlatformAssignment[] {
   if (typeof window === "undefined") return [];
+  const deletedSet = getDeletedAssignmentIds();
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.ASSIGNMENTS);
-    if (raw) {
-      return JSON.parse(raw);
+    if (raw !== null) {
+      const parsed = JSON.parse(raw) as PlatformAssignment[];
+      if (Array.isArray(parsed)) {
+        return parsed.filter((a) => a && a.id && !deletedSet.has(a.id));
+      }
     }
   } catch (e) {
     console.error("Error reading assignments:", e);
   }
 
-  const now = new Date();
-  const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
-
-  const defaults: PlatformAssignment[] = [
-    {
-      id: "comp-official-1",
-      kind: "admin_competition",
-      title: "🏆 بطولة العقل الخارق الشهرية الكبرى - الجمع والطرح البسيط",
-      description: "مسابقة رسمية من إدارة المنصة لجميع الأبطال! حل 20 سؤالاً بأعلى دقة وأسرع وقت لتصدر لوحة الشرف.",
-      creatorId: "trainer-qatada",
-      creatorName: "إدارة منصة العقل الخارق (الأستاذ قتادة كريم)",
-      creatorRole: "admin",
-      targetType: "all_students",
-      exerciseType: "competition",
-      rulesLevel: "simple",
-      allowSubtraction: true,
-      digitPlace: "units",
-      termsCount: 5,
-      questionsCount: 20,
-      timeLimitMinutes: 5,
-      answerMode: "typing",
-      choicesCount: 4,
-      dueDate: nextWeek,
-      isActive: true,
-      createdAt: now.toISOString(),
-      submissions: [],
-    },
-    {
-      id: "hw-qatada-1",
-      kind: "trainer_homework",
-      title: "📝 واجب اليوم: تنشيط الآحاد والعشرات (الجمع البسيط)",
-      description: "واجب تدريبي جاهز من الأستاذ قتادة كريم - اضغط زر البدء وسيتم ضبط الإعدادات تلقائياً.",
-      creatorId: "trainer-qatada",
-      creatorName: "الأستاذ قتادة كريم",
-      creatorRole: "trainer",
-      targetType: "all_students",
-      exerciseType: "competition",
-      rulesLevel: "simple",
-      allowSubtraction: true,
-      digitPlace: "units",
-      termsCount: 4,
-      questionsCount: 15,
-      timeLimitMinutes: 5,
-      answerMode: "choices",
-      choicesCount: 4,
-      dueDate: nextWeek,
-      isActive: true,
-      createdAt: now.toISOString(),
-      submissions: [],
-    },
-  ];
-
+  // First-time local initialization only (respects deleted IDs, never resurrects deleted items)
   try {
-    localStorage.setItem(STORAGE_KEYS.ASSIGNMENTS, JSON.stringify(defaults));
+    localStorage.setItem(STORAGE_KEYS.ASSIGNMENTS, JSON.stringify([]));
   } catch {}
-  return defaults;
+  return [];
 }
 
 export function getAllAssignments(): PlatformAssignment[] {
@@ -1822,45 +1812,178 @@ export function getAssignmentById(id: string): PlatformAssignment | undefined {
   return getInitialAssignments().find((a) => a.id === id);
 }
 
+function persistLocalAssignments(list: PlatformAssignment[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEYS.ASSIGNMENTS, JSON.stringify(list));
+    window.dispatchEvent(new CustomEvent("supermind:assignments-updated"));
+  } catch {}
+}
+
 export function createPlatformAssignment(
   assignment: Omit<PlatformAssignment, "id" | "createdAt" | "submissions">
 ): PlatformAssignment {
   const list = getInitialAssignments();
   const created: PlatformAssignment = {
     ...assignment,
+    isActive: assignment.isActive !== false,
     notifyStudents: assignment.notifyStudents !== false,
     id: `assign_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     createdAt: new Date().toISOString(),
     submissions: [],
   };
   list.unshift(created);
-  if (typeof window !== "undefined") {
-    try {
-      localStorage.setItem(STORAGE_KEYS.ASSIGNMENTS, JSON.stringify(list));
-      window.dispatchEvent(new CustomEvent("supermind:assignments-updated"));
-    } catch {}
-  }
-  // Fire-and-forget cloud publish
+  persistLocalAssignments(list);
   publishAssignmentToCloud(created).catch(() => {});
   return created;
 }
 
-export function deletePlatformAssignment(id: string): void {
+export async function createPlatformAssignmentAsync(
+  assignment: Omit<PlatformAssignment, "id" | "createdAt" | "submissions">
+): Promise<{ assignment: PlatformAssignment; syncedToCloud: boolean; error?: string }> {
+  const list = getInitialAssignments();
+  const created: PlatformAssignment = {
+    ...assignment,
+    isActive: assignment.isActive !== false,
+    notifyStudents: assignment.notifyStudents !== false,
+    id: `assign_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    createdAt: new Date().toISOString(),
+    submissions: [],
+  };
+  list.unshift(created);
+  persistLocalAssignments(list);
+
+  const cloudRes = await publishAssignmentToCloud(created);
+  return {
+    assignment: created,
+    syncedToCloud: cloudRes.ok && cloudRes.source === "cloud",
+    error: cloudRes.ok ? undefined : cloudRes.error,
+  };
+}
+
+export async function updatePlatformAssignmentAsync(
+  id: string,
+  patch: Partial<Omit<PlatformAssignment, "id" | "submissions">>
+): Promise<{ assignment: PlatformAssignment | null; syncedToCloud: boolean; error?: string }> {
+  const list = getInitialAssignments();
+  const idx = list.findIndex((a) => a.id === id);
+  if (idx === -1) {
+    return { assignment: null, syncedToCloud: false, error: "المسابقة غير موجودة" };
+  }
+
+  const updated: PlatformAssignment = {
+    ...list[idx],
+    ...patch,
+    id: list[idx].id,
+    submissions: list[idx].submissions || [],
+  };
+  list[idx] = updated;
+  persistLocalAssignments(list);
+
+  if (typeof window === "undefined") {
+    return { assignment: updated, syncedToCloud: false };
+  }
+
+  try {
+    const token = await getAuthAccessToken();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const resp = await fetch("/api/competitions", {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ id, patch, assignment: updated }),
+    });
+    const data = (await resp.json().catch(() => ({}))) as {
+      ok?: boolean;
+      source?: string;
+      error?: string;
+    };
+    if (!resp.ok) {
+      return {
+        assignment: updated,
+        syncedToCloud: false,
+        error: data.error || `HTTP ${resp.status}`,
+      };
+    }
+    return {
+      assignment: updated,
+      syncedToCloud: data.source === "cloud",
+    };
+  } catch (err) {
+    return {
+      assignment: updated,
+      syncedToCloud: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
+  }
+}
+
+export async function duplicatePlatformAssignmentAsync(
+  id: string,
+  overrides?: Partial<Omit<PlatformAssignment, "id" | "createdAt" | "submissions">>
+): Promise<{ assignment: PlatformAssignment | null; syncedToCloud: boolean; error?: string }> {
+  const orig = getAssignmentById(id);
+  if (!orig) {
+    return { assignment: null, syncedToCloud: false, error: "المسابقة الأصلية غير موجودة" };
+  }
+  const { id: _oldId, createdAt: _oldCreated, submissions: _oldSubs, ...rest } = orig;
+  void _oldId;
+  void _oldCreated;
+  void _oldSubs;
+  return createPlatformAssignmentAsync({
+    ...rest,
+    title: `${orig.title} (نسخة)`,
+    isActive: true,
+    ...overrides,
+  });
+}
+
+export async function deletePlatformAssignmentAsync(
+  id: string
+): Promise<{ ok: boolean; syncedToCloud: boolean; error?: string }> {
+  markAssignmentDeletedLocally(id);
   const list = getInitialAssignments().filter((a) => a.id !== id);
-  if (typeof window !== "undefined") {
-    try {
-      localStorage.setItem(STORAGE_KEYS.ASSIGNMENTS, JSON.stringify(list));
-      window.dispatchEvent(new CustomEvent("supermind:assignments-updated"));
-    } catch {}
+  persistLocalAssignments(list);
+
+  if (typeof window === "undefined") {
+    return { ok: true, syncedToCloud: false };
   }
-  const supabase = getSupabaseClient();
-  if (supabase) {
-    supabase
-      .from("platform_assignments")
-      .delete()
-      .eq("id", id)
-      .then(() => {}, () => {});
+
+  try {
+    const token = await getAuthAccessToken();
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const resp = await fetch(`/api/competitions?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers,
+    });
+    const data = (await resp.json().catch(() => ({}))) as {
+      ok?: boolean;
+      source?: string;
+      error?: string;
+    };
+    if (!resp.ok) {
+      return {
+        ok: false,
+        syncedToCloud: false,
+        error: data.error || `HTTP ${resp.status}`,
+      };
+    }
+    return {
+      ok: true,
+      syncedToCloud: data.source === "cloud",
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      syncedToCloud: false,
+      error: err instanceof Error ? err.message : "Network error",
+    };
   }
+}
+
+export function deletePlatformAssignment(id: string): void {
+  deletePlatformAssignmentAsync(id).catch(() => {});
 }
 
 export function getStudentAssignmentAttemptCount(

@@ -24,7 +24,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   Crown,
-  Share2,
   ExternalLink,
   UserPlus,
 } from "lucide-react";
@@ -40,11 +39,8 @@ import {
   saveExtendedProfile,
   evaluateSubscription,
   getAllAssignments,
-  createPlatformAssignment,
-  deletePlatformAssignment,
   syncExtendedProfileFromSupabase,
   syncAllAssignmentsSubmissionsFromCloud,
-  buildShareableAssignmentPath,
   getUserMembershipCode,
   SUBSCRIPTION_PLANS,
   getPendingLinksForTrainer,
@@ -53,6 +49,7 @@ import {
   getStoredTrainerStudentLinks,
 } from "@/lib/platform-store";
 import ProfileEditorModal from "@/components/profile/ProfileEditorModal";
+import CompetitionManagementCenter from "@/components/competition/CompetitionManagementCenter";
 
 export default function TrainerDashboardPage() {
   const { user, profile: authProfile } = useAuth();
@@ -68,9 +65,7 @@ export default function TrainerDashboardPage() {
 
   // Modals & Linking Student
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showCreateHwModal, setShowCreateHwModal] = useState(false);
   const [showAddAchievementModal, setShowAddAchievementModal] = useState(false);
-  const [selectedHwForGrades, setSelectedHwForGrades] = useState<PlatformAssignment | null>(null);
   const [linkStudentQuery, setLinkStudentQuery] = useState("");
   const [linkingStudent, setLinkingStudent] = useState(false);
   const [linkStudentFeedback, setLinkStudentFeedback] = useState<{
@@ -79,22 +74,6 @@ export default function TrainerDashboardPage() {
   } | null>(null);
   const [pendingStudentRequests, setPendingStudentRequests] = useState<TrainerStudentLink[]>([]);
   const [outgoingPendingLinks, setOutgoingPendingLinks] = useState<TrainerStudentLink[]>([]);
-
-  // New Homework Form State
-  const [hwTitle, setHwTitle] = useState("");
-  const [hwDesc, setHwDesc] = useState("");
-  const [hwExerciseType, setHwExerciseType] = useState<"competition" | "flash_anzan" | "abacus">(
-    "competition"
-  );
-  const [hwRulesLevel, setHwRulesLevel] = useState<"simple" | "complex_5" | "complex_10" | "general">(
-    "simple"
-  );
-  const hwDigitPlace: "units" | "tens" | "hundreds" = "units";
-  const [hwQuestionsCount, setHwQuestionsCount] = useState(20);
-  const [hwTimeMinutes, setHwTimeMinutes] = useState(5);
-  const [hwAnswerMode, setHwAnswerMode] = useState<"typing" | "choices">("typing");
-  const [hwChoicesCount, setHwChoicesCount] = useState<2 | 3 | 4 | 5>(4);
-  const [hwTargetStudent, setHwTargetStudent] = useState<string>("all");
 
   // New Achievement Form State
   const [achTitle, setAchTitle] = useState("");
@@ -149,7 +128,7 @@ export default function TrainerDashboardPage() {
         if (synced) loadTrainerData();
       });
     }
-    syncAllAssignmentsSubmissionsFromCloud().then(() => {
+    syncAllAssignmentsSubmissionsFromCloud({ includeInactive: true }).then(() => {
       loadTrainerData();
     });
 
@@ -252,39 +231,6 @@ export default function TrainerDashboardPage() {
     } catch {
       return iso.slice(0, 10);
     }
-  };
-
-  const handleCreateHomework = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!hwTitle.trim()) return;
-
-    createPlatformAssignment({
-      kind: "trainer_homework",
-      title: hwTitle.trim(),
-      description:
-        hwDesc.trim() ||
-        `واجب تدريبي جاهز من المدرب ${displayName} - يفتح مباشرة للحل بضغطة زر.`,
-      creatorId: trainerProfile.id,
-      creatorName: displayName,
-      creatorRole: "trainer",
-      targetType: hwTargetStudent === "all" ? "trainer_students" : "specific_student",
-      targetValue: hwTargetStudent === "all" ? undefined : hwTargetStudent,
-      exerciseType: hwExerciseType,
-      rulesLevel: hwRulesLevel,
-      allowSubtraction: true,
-      digitPlace: hwDigitPlace,
-      termsCount: 4,
-      questionsCount: Math.max(1, Math.min(1000, hwQuestionsCount)),
-      timeLimitMinutes: hwTimeMinutes,
-      answerMode: hwAnswerMode,
-      choicesCount: hwChoicesCount,
-      isActive: true,
-    });
-
-    setHwTitle("");
-    setHwDesc("");
-    setShowCreateHwModal(false);
-    loadTrainerData();
   };
 
   const handleAddAchievement = async (e: React.FormEvent) => {
@@ -578,7 +524,7 @@ export default function TrainerDashboardPage() {
       {/* 4. Navigation Tabs for Trainer Management */}
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
         {[
-          { id: "homeworks", label: "📝 قسم إعطاء الواجبات ودرجات الطلاب", icon: ClipboardList },
+          { id: "homeworks", label: `🏆 قسم المسابقات والبطولات الخاصة (${homeworks.length})`, icon: ClipboardList },
           { id: "students", label: `👥 متابعة تقدم طلابي (${studentsList.length})`, icon: Users },
           {
             id: "achievements",
@@ -608,117 +554,18 @@ export default function TrainerDashboardPage() {
         })}
       </div>
 
-      {/* TAB 1: HOMEWORKS BUILDER & SUBMISSIONS */}
+      {/* TAB 1: DEDICATED TRAINER COMPETITIONS & TOURNAMENTS MANAGEMENT CENTER */}
       {activeTab === "homeworks" && (
-        <section className="space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
-            <div className="space-y-1">
-              <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                📝 إرسال واجب تدريبي جاهز لطلابك
-              </h3>
-              <p className="text-xs text-slate-500">
-                حدد القاعدة وعدد الأسئلة والوقت، وسيظهر الواجب في واجهة كل طالب ليبدأ بحله فوراً بضغطة زر واحدة!
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowCreateHwModal(true)}
-              className="px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-black text-xs sm:text-sm shadow-lg shadow-brand-500/25 flex items-center gap-2 shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>إعطاء واجب جديد للطلاب</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {homeworks.map((hw) => {
-              const relSharePath = buildShareableAssignmentPath(hw);
-              const shareUrl =
-                typeof window !== "undefined"
-                  ? `${window.location.origin}${relSharePath}`
-                  : relSharePath;
-              const whatsappShareHref = `https://wa.me/?text=${encodeURIComponent(
-                `🌟 أبطال الحساب الذهني، إليكم واجب اليوم من (${displayName}):\n📌 ${hw.title}\n🔢 عدد الأسئلة: ${hw.questionsCount} سؤال | الوقت: ${hw.timeLimitMinutes} دقائق\n🚀 اضغط هنا لبدء الحل مباشرة بضغطة زر:\n${shareUrl}`
-              )}`;
-
-              return (
-                <div
-                  key={hw.id}
-                  className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm flex flex-col justify-between gap-4"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="px-3 py-1 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 font-black text-xs">
-                        {hw.questionsCount} سؤال • {hw.timeLimitMinutes} دقائق
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-emerald-600">
-                          أنجزه: {hw.submissions?.length || 0} طالب
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            deletePlatformAssignment(hw.id);
-                            loadTrainerData();
-                          }}
-                          className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                          title="حذف الواجب"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                      {hw.title}
-                    </h4>
-                    <p className="text-xs text-slate-500">{hw.description}</p>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedHwForGrades(hw)}
-                      className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-white font-bold text-xs"
-                    >
-                      عرض كشف الدرجات ({hw.submissions?.length || 0})
-                    </button>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (typeof navigator !== "undefined" && navigator.clipboard) {
-                            navigator.clipboard.writeText(shareUrl);
-                            alert("تم نسخ رابط الواجب الذكي! يمكنك لصقه في واتساب أو تيليجرام لطلابك.");
-                          }
-                        }}
-                        className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-black text-xs"
-                      >
-                        🔗 نسخ رابط الواجب
-                      </button>
-                      <a
-                        href={whatsappShareHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5"
-                      >
-                        <Share2 className="w-3.5 h-3.5" />
-                        <span>إرسال لكروب الواتساب</span>
-                      </a>
-                      <Link
-                        href={relSharePath}
-                        className="px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs"
-                      >
-                        معاينة الواجب
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+        <CompetitionManagementCenter
+          mode="trainer"
+          creatorId={activeTrainerId}
+          creatorName={displayName}
+          trainerStudents={studentsList.map((s) => ({
+            id: s.id,
+            name: s.name,
+            governorate: s.governorate,
+          }))}
+        />
       )}
 
       {/* TAB 2: REAL STUDENTS TRACKING */}
@@ -1079,184 +926,6 @@ export default function TrainerDashboardPage() {
         </section>
       )}
 
-      {/* Modal: Create Homework */}
-      {showCreateHwModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in overflow-y-auto">
-          <div className="relative w-full max-w-xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-8 my-8 space-y-5">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
-                📝 إنشاء واجب تدريبي جاهز للطلاب
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowCreateHwModal(false)}
-                className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold"
-              >
-                إغلاق ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateHomework} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  عنوان الواجب *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={hwTitle}
-                  onChange={(e) => setHwTitle(e.target.value)}
-                  placeholder="مثال: واجب اليوم - الجمع والطرح البسيط (آحاد وعشرات)"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    نوع التمرين
-                  </label>
-                  <select
-                    value={hwExerciseType}
-                    onChange={(e) =>
-                      setHwExerciseType(e.target.value as "competition" | "flash_anzan" | "abacus")
-                    }
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
-                  >
-                    <option value="competition">محاكي المسابقة (ورقة أسئلة / سؤال بسؤال)</option>
-                    <option value="flash_anzan">الفلاش أنزان السريع</option>
-                    <option value="abacus">تمارين عداد السوروبان</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    القاعدة الحسابية
-                  </label>
-                  <select
-                    value={hwRulesLevel}
-                    onChange={(e) =>
-                      setHwRulesLevel(
-                        e.target.value as "simple" | "complex_5" | "complex_10" | "general"
-                      )
-                    }
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
-                  >
-                    <option value="simple">الجمع والطرح البسيط</option>
-                    <option value="complex_5">أصدقاء الرقم 5 (مركب 5)</option>
-                    <option value="complex_10">أصدقاء الرقم 10 (مركب 10)</option>
-                    <option value="general">تحدي شامل</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    عدد الأسئلة (1 إلى 1000)
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={1000}
-                    value={hwQuestionsCount}
-                    onChange={(e) => setHwQuestionsCount(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono font-bold"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    الوقت المحدد (بالدقائق)
-                  </label>
-                  <select
-                    value={hwTimeMinutes}
-                    onChange={(e) => setHwTimeMinutes(Number(e.target.value))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
-                  >
-                    {[5, 7, 10, 15, 20, 25, 30].map((m) => (
-                      <option key={m} value={m}>
-                        {m} دقائق
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    طريقة الإجابة
-                  </label>
-                  <select
-                    value={hwAnswerMode}
-                    onChange={(e) => setHwAnswerMode(e.target.value as "typing" | "choices")}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
-                  >
-                    <option value="typing">كتابة الجواب</option>
-                    <option value="choices">اختيارات متعددة</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    المستهدفون بالواجب
-                  </label>
-                  <select
-                    value={hwTargetStudent}
-                    onChange={(e) => setHwTargetStudent(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
-                  >
-                    <option value="all">جميع طلابي</option>
-                    {studentsList.map((st) => (
-                      <option key={st.id} value={st.id}>
-                        طالب محدد: {st.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {hwAnswerMode === "choices" && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    عدد الاختيارات لكل سؤال:
-                  </label>
-                  <div className="flex gap-2">
-                    {([2, 3, 4, 5] as const).map((cnt) => (
-                      <button
-                        key={cnt}
-                        type="button"
-                        onClick={() => setHwChoicesCount(cnt)}
-                        className={`flex-1 py-2 rounded-xl text-xs font-black border ${
-                          hwChoicesCount === cnt
-                            ? "bg-brand-600 text-white border-brand-600"
-                            : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                        }`}
-                      >
-                        {cnt} اختيارات
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="pt-3 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateHwModal(false)}
-                  className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-black shadow-md"
-                >
-                  نشر وإرسال الواجب للطلاب 🚀
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Modal: Add Achievement / Trophy */}
       {showAddAchievementModal && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in">
@@ -1334,56 +1003,6 @@ export default function TrainerDashboardPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: View Homework Grades */}
-      {selectedHwForGrades && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                📊 كشف درجات الواجب: {selectedHwForGrades.title}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setSelectedHwForGrades(null)}
-                className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold"
-              >
-                إغلاق ✕
-              </button>
-            </div>
-
-            {(!selectedHwForGrades.submissions ||
-              selectedHwForGrades.submissions.length === 0) ? (
-              <div className="p-8 text-center text-xs text-slate-500">
-                لم يقم أي طالب بإتمام هذا الواجب حتى الآن.
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-80 overflow-y-auto">
-                {selectedHwForGrades.submissions.map((sub, idx) => (
-                  <div
-                    key={sub.studentId}
-                    className="py-3 flex items-center justify-between gap-4 text-xs"
-                  >
-                    <div className="flex items-center gap-2.5 font-bold">
-                      <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-black">
-                        {idx + 1}
-                      </span>
-                      <span>{sub.studentName}</span>
-                    </div>
-                    <div className="flex items-center gap-4 font-mono font-bold">
-                      <span>
-                        الدرجة: {sub.correctAnswers}/{sub.totalQuestions}
-                      </span>
-                      <span className="text-emerald-600">الدقة: {sub.accuracy}%</span>
-                      <span className="text-slate-400">الزمن: {sub.durationSeconds} ث</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       )}

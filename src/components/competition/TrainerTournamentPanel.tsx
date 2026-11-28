@@ -24,8 +24,8 @@ import {
   AssignmentSubmission,
   AssignmentRuleGroup,
   ExtendedUserProfile,
-  createPlatformAssignment,
-  deletePlatformAssignment,
+  createPlatformAssignmentAsync,
+  deletePlatformAssignmentAsync,
   getAllAssignments,
   getAllExtendedProfiles,
   getTrainerAcceptedStudents,
@@ -114,7 +114,7 @@ export function TrainerTournamentModal({
     4: "thousands",
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
@@ -123,7 +123,7 @@ export function TrainerTournamentModal({
         ? "all_students"
         : "trainer_students";
 
-    const created = createPlatformAssignment({
+    const { assignment: created } = await createPlatformAssignmentAsync({
       kind: creatorRole === "admin" ? "admin_competition" : "trainer_homework",
       title: title.trim(),
       description:
@@ -484,7 +484,7 @@ export function TrainerTournamentsBoard({
     setTournaments(filterMine(getAllAssignments()));
     if (withCloud) {
       setSyncing(true);
-      const synced = await syncAllAssignmentsSubmissionsFromCloud();
+      const synced = await syncAllAssignmentsSubmissionsFromCloud({ includeInactive: true });
       setTournaments(filterMine(synced));
       setSyncing(false);
     }
@@ -621,8 +621,8 @@ export function TrainerTournamentsBoard({
                       </Link>
                       <button
                         type="button"
-                        onClick={() => {
-                          deletePlatformAssignment(t.id);
+                        onClick={async () => {
+                          await deletePlatformAssignmentAsync(t.id);
                           loadList(false);
                         }}
                         className="p-1.5 rounded-xl bg-rose-100 hover:bg-rose-200 dark:bg-rose-950/60 text-rose-600"
