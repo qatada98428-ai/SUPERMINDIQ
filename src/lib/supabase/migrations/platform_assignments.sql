@@ -1,7 +1,7 @@
 -- =========================================================================
 -- SUPER MIND | العقل الخارق — Platform Competitions, Trainer Tournaments & Submissions
 -- Supports multi-rule competition simulator settings, targeted student notifications,
--- and real-time leaderboards across devices.
+-- multi-attempt tracking, and real-time leaderboards across devices.
 -- =========================================================================
 
 CREATE TABLE IF NOT EXISTS public.platform_assignments (
@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS public.platform_assignments (
   is_active BOOLEAN NOT NULL DEFAULT true,
   notify_students BOOLEAN NOT NULL DEFAULT true,
   due_date TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_platform_assignments_active_created
@@ -39,6 +40,7 @@ CREATE TABLE IF NOT EXISTS public.assignment_submissions (
   correct_answers INT NOT NULL DEFAULT 0,
   accuracy INT NOT NULL DEFAULT 0,
   duration_seconds INT NOT NULL DEFAULT 0,
+  attempt_number INT NOT NULL DEFAULT 1,
   completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (assignment_id, student_id)
 );
@@ -57,7 +59,7 @@ CREATE POLICY "platform_assignments_select_public"
   USING (
     is_active = true
     OR creator_id = (SELECT auth.uid())::text
-    OR (SELECT role FROM public.profiles WHERE id = (SELECT auth.uid())) = 'admin'
+    OR public.is_admin()
   );
 
 DROP POLICY IF EXISTS "platform_assignments_insert_staff" ON public.platform_assignments;
@@ -66,7 +68,8 @@ CREATE POLICY "platform_assignments_insert_staff"
   FOR INSERT
   TO authenticated
   WITH CHECK (
-    (SELECT role FROM public.profiles WHERE id = (SELECT auth.uid())) IN ('trainer', 'admin')
+    public.is_admin()
+    OR (SELECT role FROM public.profiles WHERE id = (SELECT auth.uid())) IN ('trainer', 'admin')
   );
 
 DROP POLICY IF EXISTS "platform_assignments_update_staff" ON public.platform_assignments;
@@ -76,7 +79,7 @@ CREATE POLICY "platform_assignments_update_staff"
   TO authenticated
   USING (
     creator_id = (SELECT auth.uid())::text
-    OR (SELECT role FROM public.profiles WHERE id = (SELECT auth.uid())) = 'admin'
+    OR public.is_admin()
   );
 
 DROP POLICY IF EXISTS "platform_assignments_delete_staff" ON public.platform_assignments;
@@ -86,34 +89,33 @@ CREATE POLICY "platform_assignments_delete_staff"
   TO authenticated
   USING (
     creator_id = (SELECT auth.uid())::text
-    OR (SELECT role FROM public.profiles WHERE id = (SELECT auth.uid())) = 'admin'
+    OR public.is_admin()
   );
 
-DROP POLICY IF EXISTS "assignment_submissions_select_public" ON public.assignment_submissions;
-CREATE POLICY "assignment_submissions_select_public"
+DROP POLICY IF EXISTS "assignment_submissions_select_auth" ON public.assignment_submissions;
+CREATE POLICY "assignment_submissions_select_auth"
   ON public.assignment_submissions
   FOR SELECT
-  TO anon, authenticated
+  TO authenticated
   USING (true);
 
-DROP POLICY IF EXISTS "assignment_submissions_insert_any" ON public.assignment_submissions;
-CREATE POLICY "assignment_submissions_insert_any"
+DROP POLICY IF EXISTS "assignment_submissions_insert_auth" ON public.assignment_submissions;
+CREATE POLICY "assignment_submissions_insert_auth"
   ON public.assignment_submissions
   FOR INSERT
-  TO anon, authenticated
+  TO authenticated
   WITH CHECK (
     student_id = (SELECT auth.uid())::text
-    OR student_id LIKE 'guest_%'
+    OR public.is_admin()
     OR (SELECT role FROM public.profiles WHERE id = (SELECT auth.uid())) IN ('trainer', 'admin')
   );
 
-DROP POLICY IF EXISTS "assignment_submissions_update_own" ON public.assignment_submissions;
-CREATE POLICY "assignment_submissions_update_own"
+DROP POLICY IF EXISTS "assignment_submissions_update_auth" ON public.assignment_submissions;
+CREATE POLICY "assignment_submissions_update_auth"
   ON public.assignment_submissions
   FOR UPDATE
-  TO anon, authenticated
+  TO authenticated
   USING (
     student_id = (SELECT auth.uid())::text
-    OR student_id LIKE 'guest_%'
-    OR (SELECT role FROM public.profiles WHERE id = (SELECT auth.uid())) = 'admin'
+    OR public.is_admin()
   );
